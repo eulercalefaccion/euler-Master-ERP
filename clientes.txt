@@ -1,0 +1,544 @@
+Terceros
+Buscar...
+
+Razón social	Nombre	Tipo	Estado	Cuenta	Categoría fiscal	Identificación	Etiqueta	Acciones
+DC INMUEBLES S.A.	ROBERTO ZORZOLI	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30707385991		 
+FOCUS ARQUITECTURA SRL	FOCUS ARQUITECTURA SRL	Cliente		Créditos por Ventas	Consumidor final	CUIT 30715282166		 
+GUILLERMO MACCARINI	GUILLERMO MACCARINI	Cliente		Créditos por Ventas	Consumidor final	DNI 27193965		 
+Melina Barreneche	Melina Barreneche	Cliente		Créditos por Ventas	Consumidor final	DNI 36833358		 
+GERMAN PABLO SCRIMIN	GERMAN PABLO SCRIMIN	Cliente		Créditos por Ventas	Consumidor final	CUIT 20293119849		 
+MARTIN MOLINA	MARTIN MOLINA	Cliente		Créditos por Ventas	Consumidor final	DNI 26745621		 
+MAURICIO MANUEL BAILI	MAURICIO MANUEL BAILI	Cliente		Créditos por Ventas	Consumidor final	CUIT 20131675608		 
+JUAN VENEZIA	JUAN VENEZIA	Cliente		Créditos por Ventas	Consumidor final	DNI 16161616		 
+MARIANO HERNAN LAJARA	MARIANO HERNAN LAJARA	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 20247204122		 
+CASA BARABINO SOCIEDAD ANONIMA	ANDRES TOMADA	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30710847610		 
+PECAM S A	PECAM S A	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30616509361		 
+AZUL ESTEVEZ	AZUL ESTEVEZ	Cliente		Créditos por Ventas	Consumidor final	DNI 11111113		 
+Pepe	Pepe	Cliente		Créditos por Ventas	Sin identificar	Doc. (Otro) 898		 
+CLINKER S. R. L.	CLINKER S. R. L.	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30717328082		 
+IVO ESTANCICH	IVO ESTANCICH	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 20356415311		 
+Anton Mauricio	Anton Mauricio	Cliente		Créditos por Ventas	Consumidor final	DNI 27880901		 
+Luisina Castellarin	Luisina Castellarin	Cliente		Créditos por Ventas	Consumidor final	DNI 27517754		 
+Sonvico Juan Pablo	Sonvico Juan Pablo	Cliente		Créditos por Ventas	Consumidor final	DNI 28557199		 
+N &amp; MR S.R.L.	Mario Virgili	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 33712060269		 
+Francisco Diaco	Francisco Diaco	Cliente		Créditos por Ventas	Consumidor final	DNI 33213904		 
+LAURA REGINA BAZZANA	LAURA REGINA BAZZANA	Cliente		Créditos por Ventas	Consumidor final	CUIT 27205770483		 
+PABLO ANDRES GUGLIELMI	PABLO ANDRES GUGLIELMI	Cliente		Créditos por Ventas	Consumidor final	CUIT 20340455631		 
+MARCELO ADRIAN SCHOR	MARCELO ADRIAN SCHOR	Cliente		Créditos por Ventas	Consumidor final	CUIT 20180938096		 
+Federico Henrich	Federico Henrich	Cliente		Créditos por Ventas	Consumidor final	DNI 32379288		 
+Ruben Horacio Oliva	Ruben Horacio Oliva	Cliente		Créditos por Ventas	Consumidor final	DNI 16513447		 
+GABRIELA JUDITH KAPLAN	GABRIELA JUDITH KAPLAN	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 27183129223		 
+Diego Monsalve	Diego Monsalve	Cliente		Créditos por Ventas	Consumidor final	DNI 23936098		 
+Graciela Ramon	Graciela Ramon	Cliente		Créditos por Ventas	Consumidor final	DNI 14988618		 
+DYSCON S A	DYSCON S A	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30709502480		 
+Andres Miguel Telesca	Andres Miguel Telesca	Cliente		Créditos por Ventas	Consumidor final	DNI 22592147		 
+Martin Eblagon	Martin Eblagon	Cliente		Créditos por Ventas	Consumidor final	DNI 11111111		 
+HECTOR DAVID MORGAN	HECTOR DAVID MORGAN	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 20225376159		 
+TOMAS SESSAREGO	TOMAS SESSAREGO	Cliente		Créditos por Ventas	Responsable monotributista	CUIT 20317870516		 
+PASAJE GOULD SAS	PASAJE GOULD SAS	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 33716712449		 
+BRU CE ARQUITECTURA S.R.L.	BRU CE ARQUITECTURA S.R.L.	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 33716550139		 
+Paulo Ferrari	Paulo Ferrari	Cliente		Créditos por Ventas	Consumidor final	DNI 29000496		 
+JUAN SEGUNDO TULIAN	JUAN SEGUNDO TULIAN	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 20396861195		 
+Ezequiel Martin	Ezequiel Martin	Cliente		Créditos por Ventas	Consumidor final	DNI 11234587		 
+Mariano Carignano	Mariano Carignano	Cliente		Créditos por Ventas	Consumidor final	DNI 22222222		 
+BORDO ARQUITECTURA S R L	BORDO ARQUITECTURA S R L	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30701526658		 
+L. H. Y CIA. S.A.	Alejandro Laraia	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30675023618		 
+TANIA LETICIA FABRISSIN	TANIA LETICIA FABRISSIN	Cliente		Créditos por Ventas	Consumidor final	CUIT 27301568598		 
+DANIEL MARCELO OLIVIERI	DANIEL MARCELO OLIVIERI	Cliente		Créditos por Ventas	Consumidor final	CUIT 20165268106		 
+JOAQUIN PASCUAL	JOAQUIN PASCUAL	Cliente		Créditos por Ventas	Consumidor final	DNI 28101573		 
+ASOCIACION EDUCATIVA JOAN MIRO	ASOCIACION EDUCATIVA JOAN MIRO	Cliente		Créditos por Ventas	IVA sujeto exento	CUIT 30707804919		 
+AIMARETTI MARIA LEDY	AIMARETTI MARIA LEDY	Cliente		Créditos por Ventas	Consumidor final	DNI 30550894		 
+INGENIERIA DE IMAGENES S A	INGENIERIA DE IMAGENES S A	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30693693310		 
+NICOLAS ROCCHETTI	NICOLAS ROCCHETTI	Cliente		Créditos por Ventas	Consumidor final	DNI 32407214		 
+EZEQUIEL CARRAZZA	EZEQUIEL CARRAZZA	Cliente		Créditos por Ventas	Consumidor final	CUIT 20346525240		 
+ALBERTO DIMAS PADOAN	ALBERTO DIMAS PADOAN	Cliente		Créditos por Ventas	Consumidor final	CUIT 20285810753		 
+GRETEL DANIELA DI GIORGIO	GRETEL DANIELA DI GIORGIO	Cliente		Créditos por Ventas	Consumidor final	CUIT 23299287254		 
+MARIA ALEJANDRA ARGUELLO	MARIA ALEJANDRA ARGUELLO	Cliente		Créditos por Ventas	Consumidor final	DNI 17855832		 
+Scheimberg Javier Cesar	Scheimberg Javier Cesar	Cliente		Créditos por Ventas	Consumidor final	DNI 22510064		 
+UNION PROVINCIAL ASOCIACION MUTUAL	UNION PROVINCIAL ASOCIACION MUTUAL	Cliente		Créditos por Ventas	IVA sujeto exento	CUIT 30552699390		 
+JORGE ALBERTO MARTIN	JORGE ALBERTO MARTIN	Cliente		Créditos por Ventas	Consumidor final	DNI 36816140		 
+EDIFICIO FOCUS SYMMETRY	EDIFICIO FOCUS SYMMETRY	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30717113825		 
+CLARA MATILDE RESCIA	CLARA MATILDE RESCIA	Cliente		Créditos por Ventas	Consumidor final	CUIT 27035580684		 
+BERNARDO COLOMAR	BERNARDO COLOMAR	Cliente		Créditos por Ventas	Consumidor final	DNI 29926167		 
+MANUEL ESTEBAN	MANUEL ESTEBAN	Cliente		Créditos por Ventas	Consumidor final	DNI 33069042		 
+JAVIER IVAN SANCA	JAVIER IVAN SANCA	Cliente		Créditos por Ventas	Consumidor final	DNI 23811795		 
+EPRECO SRL	EPRECO SRL	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30615255730		 
+HERNAN BORIOTTI	HERNAN BORIOTTI	Cliente		Créditos por Ventas	Consumidor final	DNI 22400447		 
+ALEXIS BALBI	ALEXIS BALBI	Cliente		Créditos por Ventas	Consumidor final	DNI 33562397		 
+ANDREA POZZI	ANDREA POZZI	Cliente		Créditos por Ventas	Consumidor final	DNI 23049844		 
+SEBASTIAN PELLEGRINI	SEBASTIAN PELLEGRINI	Cliente		Créditos por Ventas	Consumidor final	DNI 28308708		 
+DIEGO ORTIZ	DIEGO ORTIZ	Cliente		Créditos por Ventas	Consumidor final	DNI 23964651		 
+ALLEGRANZA RUBEN OSCAR	ALLEGRANZA RUBEN OSCAR	Cliente		Créditos por Ventas	Consumidor final	DNI 17104675		 
+ESTEBAN AMADEO PERUGINI	ESTEBAN AMADEO PERUGINI	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 23318746559		 
+MARIANA GILLI	MARIANA GILLI	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 27235133283		 
+LA RAIZ S.R.L	LA RAIZ S.R.L	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30715527932		 
+HECTOR MANUEL FERNANDEZ	HECTOR MANUEL FERNANDEZ	Cliente		Créditos por Ventas	Consumidor final	DNI 20704114		 
+EMPORIO PORT MATERIALES	EMPORIO PORT MATERIALES	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30716799820		 
+KRAR SRL	KRAR SRL	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30716075520		 
+CAROLINA GARGUICEVICH	CAROLINA GARGUICEVICH	Cliente		Créditos por Ventas	Responsable monotributista	CUIT 27331095651		 
+ULISES PRATO	ULISES PRATO	Cliente		Créditos por Ventas	Consumidor final	DNI 30548031		 
+JORGE JOSE RAMON FAROLLCH	JORGE JOSE RAMON FAROLLCH	Cliente		Créditos por Ventas	Consumidor final	CUIT 20227751674		 
+LUCIANO BALTAZAR NANNI	LUCIANO BALTAZAR NANNI	Cliente		Créditos por Ventas	Consumidor final	CUIT 20239000402		 
+CECILIA ANABEL CERATTI	CECILIA ANABEL CERATTI	Cliente		Créditos por Ventas	Consumidor final	CUIT 27363726203		 
+JUAN MANUEL CASTRO	JUAN MANUEL CASTRO	Cliente		Créditos por Ventas	Consumidor final	DNI 31784606		 
+ANDRES TOMBOLINI	ANDRES TOMBOLINI	Cliente		Créditos por Ventas	Consumidor final	DNI 28308757		 
+JAVIER RODRIGO LOPEZ CALI	JAVIER RODRIGO LOPEZ CALI	Cliente		Créditos por Ventas	Consumidor final	CUIT 20245865423		 
+DRAGON METALURGICA S R L	DRAGON METALURGICA S R L	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30559174188		 
+CARDOZO MAXIMILIANO	CARDOZO MAXIMILIANO	Cliente		Créditos por Ventas	Consumidor final	DNI 32908398		 
+SERGIO SEBASTIAN SEJUDO	SERGIO SEBASTIAN SEJUDO	Cliente		Créditos por Ventas	Consumidor final	DNI 29140420		 
+BENJAMIN GONZALEZ LERA	BENJAMIN GONZALEZ LERA	Cliente		Créditos por Ventas	Consumidor final	DNI 33333333		 
+MARCELO ANGELOTTI	MARCELO ANGELOTTI	Cliente		Créditos por Ventas	Consumidor final	DNI 22365013		 
+FRANCO RECCO	FRANCO RECCO	Cliente		Créditos por Ventas	Consumidor final	DNI 44444444		 
+JONAS RAMIRO SCIANGULA	JONAS RAMIRO SCIANGULA	Cliente		Créditos por Ventas	Consumidor final	CUIT 20345886290		 
+ANDRES SEGHETTI	ANDRES SEGHETTI	Cliente		Créditos por Ventas	Consumidor final	CUIT 20339615714		 
+HIDROSAN INGENIERIA	HIDROSAN INGENIERIA	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30710421664		 
+IGNACIO ORTIZ	IGNACIO ORTIZ	Cliente		Créditos por Ventas	Consumidor final	CUIT 20220956041		 
+DEL SOL CONSTRUCTORA S.A.	DEL SOL CONSTRUCTORA S.A.	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30625547632		 
+MARIA DE LAS MERCEDES MARIN	MARIA DE LAS MERCEDES MARIN	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 27101892854		 
+LEANDRO RUBEN ROCHA	LEANDRO RUBEN ROCHA	Cliente		Créditos por Ventas	Consumidor final	CUIT 23267199949		 
+MELINA CREVEL	MELINA CREVEL	Cliente		Créditos por Ventas	Consumidor final	DNI 28999883		 
+FERNANDO ENRIQUE BLANCO	FERNANDO ENRIQUE BLANCO	Cliente		Créditos por Ventas	Responsable monotributista	CUIT 20281469070		 
+TALLER GENOVA S R L	CARLOS RUSCONI	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30598803079		 
+BANCO COINAG S.A.	BANCO COINAG S.A.	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30714195960		 
+ALEJANDRA ROXANA MAFUD	ALEJANDRA ROXANA MAFUD	Cliente		Créditos por Ventas	Consumidor final	CUIT 27253811507		 
+HALT SRL	HALT SRL	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30709041343		 
+JOAQUIN IGNACIO BELLO	JOAQUIN IGNACIO BELLO	Cliente		Créditos por Ventas	Consumidor final	CUIT 20267202339		 
+Leonel Bonito	Leonel Bonito	Cliente		Créditos por Ventas	Consumidor final	DNI 30938159		 
+MARIA JOSE ORIO	MARIA JOSE ORIO	Cliente		Créditos por Ventas	Consumidor final	DNI 24784105		 
+AVELINO S.A.	AVELINO S.A.	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30707732039		 
+Pane Maria Soledad	Pane Maria Soledad	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 27328814213		 
+DANIEL OSCAR ARROYO	DANIEL OSCAR ARROYO	Cliente		Créditos por Ventas	Consumidor final	CUIT 20084129721		 
+ANA INES CANTADOR	ANA INES CANTADOR	Cliente		Créditos por Ventas	Consumidor final	DNI 18313049		 
+NILSO TORRE S.A.	NILSO TORRE S.A.	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30707795464	
+Prioridad Alta
+ 
+AC INGENIERIA SRL	AC INGENIERIA SRL	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30709343595		 
+MERCOSUR SEGURIDAD S. R. L.	MERCOSUR SEGURIDAD S. R. L.	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30710705417		 
+JUAN TABORDA	JUAN TABORDA	Cliente		Créditos por Ventas	Consumidor final	DNI 25047292		 
+AREAFIT SAS	AREAFIT SAS	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30716765705		 
+FRANCO MATHEY	FRANCO MATHEY	Cliente		Créditos por Ventas	Consumidor final	DNI 39686040		 
+IMAC CONSTRUCCIONES SRL	IMAC CONSTRUCCIONES SRL	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30714460966		 
+CRISTINA NOEMI BOSCO	CRISTINA NOEMI BOSCO	Cliente		Créditos por Ventas	Consumidor final	CUIT 27162209499		 
+J L METALES SRL	J L METALES SRL	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 33612087089		 
+THEO ARIEL SANTA CRUZ RIERA	THEO ARIEL SANTA CRUZ RIERA	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 20412398824		 
+DANIEL EDUARDO VARGAS	DANIEL EDUARDO VARGAS	Cliente		Créditos por Ventas	Consumidor final	DNI 27129055		 
+MARTIN ALBERTO CHIAPPERO	MARTIN ALBERTO CHIAPPERO	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 20283891365		 
+VANINA BORDA	VANINA BORDA	Cliente		Créditos por Ventas	Consumidor final	DNI 30704226		 
+HECTOR GERMAN LARRAYA SRL	HECTOR GERMAN LARRAYA SRL	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 33709043019		 
+VIVIANA MARTA AVIANI	VIVIANA MARTA AVIANI	Cliente		Créditos por Ventas	Consumidor final	CUIT 27176216366		 
+CECILIA DAIANA OJEDA	CECILIA DAIANA OJEDA	Cliente		Créditos por Ventas	Consumidor final	CUIT 27350584671		 
+Gina Rimoldi	Gina Rimoldi	Cliente		Créditos por Ventas	Consumidor final	DNI 41360748		 
+DIEGO ALBERTO GIULIANO	DIEGO ALBERTO GIULIANO	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 20172884181		 
+CARLOS RAMON SOLDI	CARLOS RAMON SOLDI	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 20084451615		 
+LEANDRO CABRERA	LEANDRO CABRERA	Cliente		Créditos por Ventas	Consumidor final	DNI 31385140		 
+JUAN PABLO NARI	JUAN PABLO NARI	Cliente		Créditos por Ventas	Consumidor final	CUIT 20335731876		 
+SILVIA RODRIGUEZ SOTO	SILVIA RODRIGUEZ SOTO	Cliente		Créditos por Ventas	Consumidor final	DNI 14758571		 
+FEDERICO VAN TUYNE	FEDERICO VAN TUYNE	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 20317873248		 
+ARIADNA VEIGA	ARIADNA VEIGA	Cliente		Créditos por Ventas	Consumidor final	DNI 26710236		 
+GABRIELA ANDREA MERONI	GABRIELA ANDREA MERONI	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 27284341991		 
+NICOLAS PALADINI	NICOLAS PALADINI	Cliente		Créditos por Ventas	Consumidor final	DNI 31437422		 
+LUCIANO MARTIN ALTUBE	LUCIANO MARTIN ALTUBE	Cliente		Créditos por Ventas	Consumidor final	CUIT 20253818590		 
+DINALE S A	DINALE S A	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30707682414		 
+GONZALO MIGUEL ESTEVEZ	GONZALO MIGUEL ESTEVEZ	Cliente		Créditos por Ventas	Consumidor final	CUIT 24178260444		 
+FEDERICO DURANDA	FEDERICO DURANDA	Cliente		Créditos por Ventas	Consumidor final	DNI 26347970		 
+JOSEFINA BAILI	JOSEFINA BAILI	Cliente		Créditos por Ventas	Consumidor final	DNI 36353892		 
+LISANDRO NICOLAS IZA	LISANDRO NICOLAS IZA	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 20263986254		 
+Hastings Julio Mayd	HASTINGS JULIO MAYD	Cliente		Créditos por Ventas	Consumidor final	DNI 33508326		 
+SELECSA S.R.L.	SELECSA S.R.L.	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30711388539		 
+GUPAZ S.A.	GUSTAVO SZULDMAN	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30694550149		 
+LUCIANO BELTRAMINO	LUCIANO BELTRAMINO	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 20926045467		 
+AGROPECUARIA MONTES DE OCA SOCIEDAD ANONIMA	AGROPECUARIA MONTES DE OCA SOCIEDAD ANONIMA	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30634921075		 
+FEDERICO TOMADIN	FEDERICO TOMADIN	Cliente		Créditos por Ventas	Consumidor final	DNI 11111122		 
+FERNANDO MACIEL	FERNANDO MACIEL	Cliente		Créditos por Ventas	Consumidor final	DNI 14228408		 
+FERNANDO GULLINI	FERNANDO GULLINI	Cliente		Créditos por Ventas	Consumidor final	DNI 36507799		 
+TERMOCLIMA SRL	TERMOCLIMA SRL	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30716814471		 
+ALEJANDRO RAMBAUDI	ALEJANDRO RAMBAUDI	Cliente		Créditos por Ventas	Consumidor final	DNI 30904603		 
+MARIA JULIA ARRONDO	MARIA JULIA ARRONDO	Cliente		Créditos por Ventas	Consumidor final	DNI 31702149		 
+CRISTIAN ZABCIC	CRISTIAN ZABCIC	Cliente		Créditos por Ventas	Consumidor final	DNI 34820217		 
+JULIAN FRANCISCO MATEOS	JULIAN FRANCISCO MATEOS	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 20315353670		 
+Laura Covolo	Laura Covolo	Cliente		Créditos por Ventas	Consumidor final	DNI 26710291		 
+CORPORACION CREA S.R.L.	CORPORACION CREA S.R.L.	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30716931192		 
+BIOXXAR	BIOXXAR	Cliente		Créditos por Ventas	Consumidor final	DNI 11111119		 
+CECILIA DUPRAZ	CECILIA DUPRAZ	Cliente		Créditos por Ventas	Consumidor final	DNI 29261408		 
+GABRIELA CELLA	GABRIELA CELLA	Cliente		Créditos por Ventas	Consumidor final	DNI 12122122		 
+ARA ARQUITECTURA	ARA ARQUITECTURA	Cliente		Créditos por Ventas	Consumidor final	DNI 10100100		 
+FIDEICOMISO MILO	FIDEICOMISO MILO	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30718079256		 
+Victoria Cadars	Victoria Cadars	Cliente		Créditos por Ventas	Consumidor final	DNI 58471212		 
+BERNARDINI	BERNARDINI	Cliente		Créditos por Ventas	Consumidor final	DNI 77777777		 
+CELESTE	CELESTE DON MATEO	Cliente		Créditos por Ventas	Consumidor final	DNI 88888888		 
+HECTOR RAUL TADDEO	HECTOR RAUL TADDEO	Cliente		Créditos por Ventas	Consumidor final	CUIT 20113871769		 
+CRISTINA RAMIREZ	CRISTINA RAMIREZ	Cliente		Créditos por Ventas	Consumidor final	DNI 14758457		 
+S Y J NEGOCIOS INMOBILIARIOS SAS	S Y J NEGOCIOS INMOBILIARIOS SAS	Cliente		Créditos por Ventas	Consumidor final	CUIT 30711233179		 
+MATIAS BAIDON	MATIAS BAIDON	Cliente		Créditos por Ventas	Consumidor final	DNI 33730985		 
+JORGELINA BOCCHINI	JORGELINA BOCCHINI	Cliente		Créditos por Ventas	Consumidor final	DNI 17825810		 
+ASOCIACION DE RELIGIOSAS FRANCISCANAS MISIONERAS DE LA INMACULADA CONCEPCION	ASOCIACION DE RELIGIOSAS FRANCISCANAS MISIONERAS DE LA INMACULADA CONCEPCION	Cliente		Créditos por Ventas	Consumidor final	CUIT 30530232634		 
+GABRIEL CARLOS FERNANDEZ	GABRIEL CARLOS FERNANDEZ	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 20171304882		 
+SEBASTIAN TORRES	SEBASTIAN TORRES	Cliente		Créditos por Ventas	Consumidor final	DNI 31082263		 
+SEGURMAX SAS	SEGURMAX SAS	Cliente		Créditos por Ventas	Consumidor final	CUIT 30716731150		 
+ROCIO SOLEDAD SUAREZ	ROCIO SOLEDAD SUAREZ	Cliente		Créditos por Ventas	Consumidor final	DNI 25715093		 
+FERNANDO CACERES	FERNANDO CACERES	Cliente		Créditos por Ventas	Consumidor final	DNI 17826017		 
+CASA DON S. A. S.	LUCIANO NANNI	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30717919331		 
+JAVIER CESAR SCHEIMBERG	JAVIER CESAR SCHEIMBERG	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 20225100641		 
+LUIS PERISSET	LUIS PERISSET	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 20146841539		 
+FIDEICOMISO INMOBILIARIO STUDIO XII	STUDIO XII	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30716635224		 
+Carolina Bazzana	Carolina Bazzana	Cliente		Créditos por Ventas	Consumidor final	DNI 22769412		 
+Jorge Cesarios	Jorge Cesarios	Cliente		Créditos por Ventas	Consumidor final	DNI 74857124		 
+ANDRES HORACIO GROSSO	ANDRES HORACIO GROSSO	Cliente		Créditos por Ventas	Consumidor final	DNI 19191919		 
+FRANCO BORA	FRANCO BORA	Cliente		Créditos por Ventas	Consumidor final	DNI 28314324		 
+MAGALI COLTRANI	MAGALI COLTRINARI	Cliente		Créditos por Ventas	Consumidor final	DNI 34241990		 
+OPTICA SCHELLHAS SACIFI	OPTICA SCHELLHAS SACIFI	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30547466442		 
+EDGARDO JAVIER HIRSCHFELD	EDGARDO JAVIER HIRSCHFELD	Cliente		Créditos por Ventas	Consumidor final	CUIT 24225144539		 
+ALBANO SAMPAOLI	ALBANO SAMPAOLI	Cliente		Créditos por Ventas	Consumidor final	DNI 35291858		 
+IGNACIO SOLAGNA	IGNACIO SOLAGNA	Cliente		Créditos por Ventas	Consumidor final	DNI 33720265		 
+CARLOS MANUEL NAVARRO	CARLOS MANUEL NAVARRO	Cliente		Créditos por Ventas	Consumidor final	CUIT 20325981017		 
+SCALONA MARIA DE LUJAN	SCALONA MARIA DE LUJAN	Cliente		Créditos por Ventas	Consumidor final	DNI 30548484		 
+VICTOR ALEJANDRO MONTES NINO	VICTOR ALEJANDRO MONTES NIÑO	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 20115433270		 
+MIGUEL EZEQUIEL SANCHEZ	MIGUEL EZEQUIEL SANCHEZ	Cliente		Créditos por Ventas	Consumidor final	CUIT 20215233325		 
+FEDERICO MARIO SCHLATTER	FEDERICO MARIO SCHLATTER	Cliente		Créditos por Ventas	Consumidor final	CUIT 20318047260		 
+ROMAN EMANUEL ROSATI	ROMAN EMANUEL ROSATI	Cliente		Créditos por Ventas	Consumidor final	CUIT 20302890847		 
+CAROLINA BELEN ODDINO	CAROLINA BELEN ODDINO	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 27341395122		 
+CLIENTE	CLIENTE	Cliente		Créditos por Ventas	Consumidor final	DNI 99999999		 
+MARIANO VILLALBA	MARIANO VILLALBA	Cliente		Créditos por Ventas	Consumidor final	DNI 25007740		 
+DANIELA FABBRO	DANIELA FABBRO	Cliente		Créditos por Ventas	Consumidor final	CUIT 23351525444		 
+DAMIAN BARTOLI	DAMIAN BARTOLI	Cliente		Créditos por Ventas	Consumidor final	DNI 30301791		 
+LILIANA GRACIELA DROVETTA	LILIANA GRACIELA DROVETTA	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 27050735996		 
+JULIETA ALVAREZ	JULIETA ALVAREZ	Cliente		Créditos por Ventas	Consumidor final	DNI 32445722		 
+PABLO COSENTINO	PABLO COSENTINO	Cliente		Créditos por Ventas	Consumidor final	DNI 18181818		 
+MARIA SOLEDAD VICENTIN	MARIA SOLEDAD VICENTIN	Cliente		Créditos por Ventas	Consumidor final	CUIT 27227905994		 
+MARTIN MOLINS	MARTIN MOLINS	Cliente		Créditos por Ventas	Consumidor final	DNI 17171717		 
+LE CORB S. R. L.	LE CORB S. R. L.	Cliente		Créditos por Ventas	Consumidor final	CUIT 30715059068		 
+ANA LAURA MARTINEZ	ANA LAURA MARTINEZ	Cliente		Créditos por Ventas	Consumidor final	CUIT 27347707142		 
+JOSE DE CESARIS	JOSE DE CESARIS	Cliente		Créditos por Ventas	Consumidor final	DNI 28012161		 
+VICTORIA MIRETTI	VICTORIA MIRETTI	Cliente		Créditos por Ventas	Consumidor final	DNI 54545454		 
+MARINA NATALIA MENDEZ	MARINA NATALIA MENDEZ	Cliente		Créditos por Ventas	Consumidor final	CUIT 24329093286		 
+JOSE AGUSTINI	JOSÉ AGUSTINI	Cliente		Créditos por Ventas	Consumidor final	DNI 99999998		 
+MARCELA ALVADO	MARCELA ALVADO	Cliente		Créditos por Ventas	Consumidor final	CUIT 27147589390		 
+JUAN MANUEL MENEGHINI	JUAN MANUEL MENEGHINI	Cliente		Créditos por Ventas	Consumidor final	CUIT 20251017892		 
+VERONICA CONIGLIO	VERONICA CONIGLIO	Cliente		Créditos por Ventas	Consumidor final	DNI 24945633		 
+Debora Ruth	Debora Ruth	Cliente		Créditos por Ventas	Consumidor final	DNI 14725836		 
+FIDEICOMISO EDIFICIO ALDEA DOCK HAUS	FIDEICOMISO EDIFICIO ALDEA DOCK HAUS	Cliente		Créditos por Ventas	Consumidor final	CUIT 30714471070		 
+BAILON &amp; ASOC. S.R.L.	BAILON & ASOC. S.R.L.	Cliente		Créditos por Ventas	Consumidor final	CUIT 30713451106		 
+NICOLAS BASTERRA	NICOLAS BASTERRA	Cliente		Créditos por Ventas	Consumidor final	DNI 30506076		 
+AYALA MARIA SOLEDAD	SOLEDAD MARIA AYALA	Cliente		Créditos por Ventas	Consumidor final	DNI 28834575		 
+BUYATTI DANIEL	PAOLO DANIEL BUYATTI	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 20121812275		 
+VANESA CLARA SERRA	VANESA CLARA SERRA	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 27365389689		 
+MARIA AUGUSTA GONZALEZ	MARIA AUGUSTA GONZALEZ	Cliente		Créditos por Ventas	Consumidor final	DNI 23344123		 
+DENISE GENOVESE	DENISE GENOVESE	Cliente		Créditos por Ventas	Consumidor final	DNI 36009280		 
+NADIA CAROLINA DE LA HORRA	NADIA CAROLINA DE LA HORRA	Cliente		Créditos por Ventas	Consumidor final	CUIT 27325633218		 
+BALDIZZONE ALEJANDRO	BALDIZZONE ALEJANDRO	Cliente		Créditos por Ventas	Consumidor final	DNI 16745691		 
+MARIA ANGELICA PLANES	MARIA ANGÉLICA PLANES	Cliente		Créditos por Ventas	Consumidor final	DNI 23150213		 
+PIA ALBERTALLI	PIA ALBERTALLI	Cliente		Créditos por Ventas	Consumidor final	DNI 14141414		 
+FEDERICO MARINOZZI	FEDERICO MARINOZZI	Cliente		Créditos por Ventas	Consumidor final	DNI 56565656		 
+FERNANDA MIRANDA	FERNANDA MIRANDA	Cliente		Créditos por Ventas	Consumidor final	DNI 78787878		 
+DAMIAN RICOBELLI	DAMIAN RICOBELLI	Cliente		Créditos por Ventas	Consumidor final	DNI 37577481		 
+RAFAEL PINEDA	RAFAEL PINEDA	Cliente		Créditos por Ventas	Consumidor final	DNI 25648841		 
+LUPARINI REPUESTOS S.R.L.	LUPARINI REPUESTOS S.R.L.	Cliente		Créditos por Ventas	Consumidor final	DNI 30695350		 
+VICTOR HUGO NEDER	FEDERICO NEDER	Cliente		Créditos por Ventas	Consumidor final	DNI 16155825		 
+GABRIELA MARTINOVIC	ARQ. GABRIELA MARTINOVIC	Cliente		Créditos por Ventas	Consumidor final	CUIT 27236239689		 
+JORGE HELEG	JORGE HELEG	Cliente		Créditos por Ventas	Consumidor final	DNI 47474747		 
+GURINA SOC RESP LTDA	GURINA SOC RESP LTDA	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30554632633		 
+ANTONIO JOSE MARVELLI	ANTONIO JOSE MARVELLI	Cliente		Créditos por Ventas	Consumidor final	CUIT 20171132887		 
+EDUARDO ANTONIO PIGAZZI	EDUARDO ANTONIO PIGAZZI	Cliente		Créditos por Ventas	Consumidor final	CUIT 20054002638		 
+AGROINDUSTRIAL RECONQUISTA SA	RODRIGO MOSCHEN	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30709112208		 
+GALBUSERA DOLZANI	GALBUSERA DOLZANI	Cliente		Créditos por Ventas	Consumidor final	DNI 83838383		 
+MARIA EUGENIA GALIZIA	MARIA EUGENIA GALIZIA	Cliente		Créditos por Ventas	Consumidor final	CUIT 27257506784		 
+EMPRENDARQ SRL	EMPRENDARQ SRL	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30716094169		 
+SOFIA ZAPPALA	SOFIA ZAPPALA	Cliente		Créditos por Ventas	Consumidor final	DNI 11111222		 
+JUAN PABLO PACILIO	JUAN PABLO PACILIO	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 20251714534		 
+Gustavo Avena	Gustavo Avena	Cliente		Créditos por Ventas	Consumidor final	DNI 14785236		 
+FRANCO CASTELLARO DI FIORE	FRANCO CASTELLARO DI FIORE	Cliente		Créditos por Ventas	Consumidor final	CUIT 20331337391		 
+NOELIA DIAZ	NOELIA DIAZ	Cliente		Créditos por Ventas	Consumidor final	DNI 34138154		 
+ELIANA BOASSO	ELIANA BOASSO	Cliente		Créditos por Ventas	Consumidor final	DNI 46464646		 
+SI DESARROLLOS S.A.S	SI DESARROLLOS S.A.S	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30717117669		 
+PABLO FERNANDEZ	PABLO FERNANDEZ	Cliente		Créditos por Ventas	Consumidor final	DNI 28818517		 
+MARCELA DREWES	MARCELA DREWES	Cliente		Créditos por Ventas	Consumidor final	DNI 28907708		 
+IVAN ANGEL PEREZ	IVAN ANGEL PEREZ	Cliente		Créditos por Ventas	Consumidor final	DNI 35642358		 
+LAURA BROCHERO	LAURA BROCHERO	Cliente		Créditos por Ventas	Consumidor final	DNI 20598775		 
+NICOLAS MONJELAT	NICOLAS MONJELAT	Cliente		Créditos por Ventas	Consumidor final	DNI 33005248		 
+JUAN FRANCISCO SIMONDI	JUAN FRANCISCO SIMONDI	Cliente		Créditos por Ventas	Consumidor final	DNI 25007998		 
+JULIA SUELDO	JULIA SUELDO	Cliente		Créditos por Ventas	Consumidor final	DNI 81818181		 
+FABRICIO SCATTEMBURLO	FABRICIO SCATTEMBURLO	Cliente		Créditos por Ventas	Consumidor final	DNI 32295511		 
+RODEG S.A.	RODEG S.A.	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30674845975		 
+ANDREA ACEBAL	ANDREA ACEBAL	Cliente		Créditos por Ventas	Consumidor final	DNI 67676767		 
+PABLO ALGACIBIUR	PABLO ALGACIBIUR	Cliente		Créditos por Ventas	Consumidor final	DNI 30294026		 
+JUAN CARLOS CHAPIRE	JUAN CARLOS CHAPIRE	Indistinto		Créditos por Ventas	Consumidor final	DNI 27134851		 
+MARCOS LISANDRO PEYRANO	MARCOS LISANDRO PEYRANO	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 20230615900		 
+FACUNDO PERSOGLIA	FACUNDO PERSOGLIA	Cliente		Créditos por Ventas	Consumidor final	CUIT 20326195864		 
+CONSTRUCTORA HAIDAR S R L	CONSTRUCTORA HAIDAR S R L	Cliente		Créditos por Ventas	Consumidor final	CUIT 30690879162		 
+LORENA POU	LORENA POU	Cliente		Créditos por Ventas	Consumidor final	DNI 27539980		 
+ERO CONSTRUCTORA S.A.	ERO CONSTRUCTORA S.A.	Cliente		Créditos por Ventas	Consumidor final	CUIT 30714306851		 
+ANDRES CALZAVARA	ANDRES CALZAVARA	Cliente		Créditos por Ventas	Consumidor final	DNI 32803680		 
+FIDEICOMISO DM 60 POINT	FIDEICOMISO DM 60 POINT	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 33716753269		 
+LEANDRO SERVEDIA	LEANDRO SERVEDIA	Cliente		Créditos por Ventas	Consumidor final	DNI 32924368		 
+NICOLAS PALADINI	NICOLAS PALADINI	Cliente		Créditos por Ventas	Consumidor final	CUIT 20314377223		 
+RAFAEL DE BAHUOFF	RAFAEL DE BAHUOFF	Cliente		Créditos por Ventas	Consumidor final	DNI 12121212		 
+ESTUDIO INGENIA - ARQUITECTURA E INGENIERIA	ESTUDIO INGENIA - ARQUITECTURA E INGENIERIA	Cliente		Créditos por Ventas	Consumidor final	DNI 11211211		 
+IGNACIO BODO	IGNACIO BODO	Cliente		Créditos por Ventas	Consumidor final	DNI 35016602		 
+PATRICIO OCONOR	PATRICIO O´CONOR	Cliente		Créditos por Ventas	Consumidor final	CUIT 20107780638		 
+JAVIER ANDRES SPECTOR	JAVIER ANDRES SPECTOR	Cliente		Créditos por Ventas	Consumidor final	CUIT 20202981179		 
+MARTIN JUZEFISZYN	MARTIN JUZEFISZYN	Cliente		Créditos por Ventas	Consumidor final	DNI 34421104		 
+HERNAN ARIEL COSTANTINI	HERNAN ARIEL COSTANTINI	Cliente		Créditos por Ventas	Consumidor final	DNI 25381248		 
+ROCIO MARIA VALDES	ROCIO MARIA VALDES	Cliente		Créditos por Ventas	Consumidor final	CUIT 27288188950		 
+IBL BROKER SAS	IBL BROKER SAS	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30716730413		 
+LARA MILENA MARAN	LARA MILENA MARAN	Cliente		Créditos por Ventas	Consumidor final	CUIT 27352258259		 
+POTOC MARCOS	POTOC MARCOS	Cliente		Créditos por Ventas	Consumidor final	DNI 30747075		 
+GRUPO DELCO SRL	GRUPO DELCO SRL	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30715013858		 
+MARTIN GALARZA	MARTIN GALARZA	Cliente		Créditos por Ventas	Consumidor final	DNI 29902181		 
+LUCIANO LEOCATTA	LUCIANO LEOCATTA	Cliente		Créditos por Ventas	Consumidor final	DNI 31565763		 
+FLAVIO MARCOS ZAMPALO	FLAVIO MARCOS ZAMPALO	Cliente		Créditos por Ventas	Consumidor final	DNI 30550487		 
+WALTER SEBASTIAN MORENO	WALTER SEBASTIÁN MORENO	Cliente		Créditos por Ventas	Consumidor final	DNI 31161377		 
+FIDEICOMISO EME	FIDEICOMISO EME	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 33714733279		 
+MAURICIO ROMAN QUARTUCCI	MAURICIO ROMAN QUARTUCCI	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 20308511597		 
+Jose Manuel Abalos	Jose Manuel Abalos	Cliente		Créditos por Ventas	Consumidor final	DNI 14285648		 
+CELESTE CATERA	CELESTE CATERA	Cliente		Créditos por Ventas	Consumidor final	DNI 36141014		 
+CARLOS MUSSIO	CARLOS MUSSIO	Cliente		Créditos por Ventas	Consumidor final	DNI 11222333		 
+FERNANDO ORESTES SENN	FERNANDO ORESTES SENN	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 20288137383		 
+ADALBERTO FERNANDEZ	ADALBERTO FERNANDEZ	Cliente		Créditos por Ventas	Consumidor final	DNI 18074416		 
+LUCIANO MARTIN BUCCI	LUCIANO MARTIN BUCCI	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 20367368234		 
+CARLA SPIAGGI	CARLA SPIAGGI	Cliente		Créditos por Ventas	Consumidor final	DNI 30513090		 
+JORGE GRUVMAN	JORGE GRUVMAN	Cliente		Créditos por Ventas	Consumidor final	DNI 60730114		 
+JULIAN RIEFFOLO	JULIAN RIEFFOLO	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 20314377568		 
+MATCH ARQUITECTAS	MATCH ARQUITECTAS	Cliente		Créditos por Ventas	Consumidor final	DNI 37813474		 
+DEMU S.R.L.	JOSE IGNACIO MENCHACA	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 33710960629		 
+CLARISA DE CESARIS	CLARISA DE CESARIS	Cliente		Créditos por Ventas	Consumidor final	DNI 01025648		 
+SOFIA CARLOMAGNO	SOFIA CARLOMAGNO	Cliente		Créditos por Ventas	Consumidor final	DNI 31202373		 
+IGNACIO CARIDE	IGNACIO CARIDE	Cliente		Créditos por Ventas	Consumidor final	DNI 37450896		 
+IVAN RICOBELLI	IVAN RICOBELLI	Cliente		Créditos por Ventas	Consumidor final	DNI 36659579		 
+MARCOS ANDRES PENAGARICANO	MARCOS ANDRES PEÑAGARICANO	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 20257089933		 
+PATRICIA GISELA ZORATTI	PATRICIA GISELA ZORATTI	Cliente		Créditos por Ventas	Consumidor final	CUIT 27301006530		 
+DAVID FERNANDO JUAN	DAVID FERNANDO JUAN	Cliente		Créditos por Ventas	Consumidor final	CUIT 20175559338		 
+ALVAREZ JUAN MANUEL	ALVAREZ JUAN MANUEL	Cliente		Créditos por Ventas	Consumidor final	DNI 26073028		 
+CLIENTE CONSUMIDOR FINAL	CLIENTE CONSUMIDOR FINAL	Cliente		Créditos por Ventas	Consumidor final	DNI 22222223		 
+EDUARDO SCHWANK	EDUARDO SCHWANK	Cliente		Créditos por Ventas	Consumidor final	DNI 11221122		 
+EMANUEL VILA	EMANUEL VILA	Cliente		Créditos por Ventas	Consumidor final	DNI 62626262		 
+MATIAS DE JUANA	MATIAS DE JUANA	Cliente		Créditos por Ventas	Consumidor final	DNI 31302748		 
+JAUKE DESARROLLOS S.A	JAUKE DESARROLLOS S.A	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30712017135		 
+SOUND HOME S.R.L.	SOUND HOME S.R.L.	Cliente		Créditos por Ventas	Consumidor final	CUIT 30715103245		 
+FABIANA RUSTICHELLI	FABIANA RUSTICHELLI	Cliente		Créditos por Ventas	Consumidor final	DNI 22542105		 
+IVAN YERCOVICH	IVAN YERCOVICH	Cliente		Créditos por Ventas	Consumidor final	DNI 11223344		 
+ESTEFANIA GALASSI	ESTEFANIA GALASSI	Cliente		Créditos por Ventas	Consumidor final	DNI 31524927		 
+PABLO BISSON	PABLO BISSON	Cliente		Créditos por Ventas	Consumidor final	DNI 11225544		 
+LAURA GAUNA	LAURA GAUNA	Cliente		Créditos por Ventas	Consumidor final	DNI 12122222		 
+EL CINCEL S.A.	AUGUSTO PASCHETA	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30656374671		 
+VALERIA ALVAREZ	VALERIA ALVAREZ	Cliente		Créditos por Ventas	Consumidor final	DNI 35644396		 
+MAXI GONZALEZ	MAXI GONZALEZ	Cliente		Créditos por Ventas	Consumidor final	DNI 17711771		 
+NINJATA SRL	NINJATA SRL	Cliente		Créditos por Ventas	Consumidor final	CUIT 30717015440		 
+CESAR PABLO SCACCHI	CESAR PABLO SCACCHI	Cliente		Créditos por Ventas	Consumidor final	CUIT 20181937832		 
+VICTOR HUGO NEDER	VICTOR HUGO NEDER	Cliente		Créditos por Ventas	Consumidor final	CUIT 20161558258		 
+DIEGO FLAMINI	DIEGO FLAMINI	Cliente		Créditos por Ventas	Consumidor final	DNI 20143306		 
+PABLO MARTIRE	PABLO MARTIRE	Cliente		Créditos por Ventas	Consumidor final	DNI 78877887		 
+FEDERICO ALEJANDRO KEARNEY	FEDERICO ALEJANDRO KEARNEY	Cliente		Créditos por Ventas	Consumidor final	CUIT 20317075228		 
+MARCELO CARIBAUX	MARCELO CARIBAUX	Cliente		Créditos por Ventas	Consumidor final	DNI 30955314		 
+ANA PAULA FINELLI	ANA PAULA FINELLI	Cliente		Créditos por Ventas	Consumidor final	DNI 28146009		 
+JORGE CARDOZO	JORGE CARDOZO	Cliente		Créditos por Ventas	Consumidor final	DNI 72277222		 
+JORGELINA POISSOT	JORGELINA POISSOT	Cliente		Créditos por Ventas	Consumidor final	DNI 88778877		 
+MATIAS NUNEZ	MATIAS NUÑEZ	Cliente		Créditos por Ventas	Consumidor final	DNI 77787778		 
+ESTUDIO S+ TABLE	ESTUDIO S+ TABLE	Cliente		Créditos por Ventas	Consumidor final	DNI 10010100		 
+GIULIANO SOBRERO	GIULIANO SOBRERO	Cliente		Créditos por Ventas	Consumidor final	DNI 39254476		 
+ARIEL VALENZUELA	ARIEL VALENZUELA	Cliente		Créditos por Ventas	Consumidor final	DNI 31249032		 
+PATRICIA ZURLO	PATRICIA ZURLO	Cliente		Créditos por Ventas	Consumidor final	DNI 77877877		 
+IVAN PORCARELLO	IVAN PORCARELLO	Cliente		Créditos por Ventas	Consumidor final	DNI 71711717		 
+MARISA YUVONE	MARISA YUVONE	Cliente		Créditos por Ventas	Consumidor final	DNI 18483608		 
+ESTABLECIMIENTO FIN DEL MUNDO S.A.	ESTABLECIMIENTO FIN DEL MUNDO S.A.	Cliente		Créditos por Ventas	Consumidor final	CUIT 30714479063		 
+GABRIEL BOHE	GABRIEL BOHE	Cliente		Créditos por Ventas	Consumidor final	DNI 17849791		 
+DAMIAN VEGA	DAMIAN VEGA	Cliente		Créditos por Ventas	Consumidor final	DNI 31734070		 
+GUSTAVO GARCIA	GUSTAVO GARCIA	Cliente		Créditos por Ventas	Consumidor final	DNI 87788787		 
+RODRIGO MARTINEZ	RODRIGO MARTINEZ	Cliente		Créditos por Ventas	Consumidor final	DNI 31280289		 
+FLAVIA LARDONE	FLAVIA LARDONE	Cliente		Créditos por Ventas	Consumidor final	DNI 86688668		 
+DIANA CECILIA GONZALEZ	DIANA CECILIA GONZALEZ	Cliente		Créditos por Ventas	Consumidor final	CUIT 27127257839		 
+DIEGO COSTELLO	DIEGO COSTELLO	Cliente		Créditos por Ventas	Consumidor final	DNI 21722593		 
+PANELLA MARIANO OMAR	PANELLA MARIANO OMAR	Cliente		Créditos por Ventas	Consumidor final	DNI 33828552		 
+BAGALONI ELVIO DARIO	BAGALONI ELVIO DARIO	Cliente		Créditos por Ventas	Consumidor final	DNI 26633970		 
+LUCAS MATIOCEVICH	LUCAS MATIOCEVICH	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 20308022189		 
+GABRIEL TOMASSETTI	GABRIEL TOMASSETTI	Cliente		Créditos por Ventas	Consumidor final	DNI 34254948		 
+EMPRENDIMIENTOS URBANOS S.A	ADG EMPRENDIMIENTOS URBANOS S.A	Cliente		Créditos por Ventas	Consumidor final	CUIT 30715273027		 
+JUAN MANUEL SILVA	JUAN MANUEL SILVA	Cliente		Créditos por Ventas	Consumidor final	CUIT 20289293141		 
+MARIANA PALACIO	MARIANA PALACIO	Cliente		Créditos por Ventas	Consumidor final	DNI 33410228		 
+PASSARINO GUSTAVO ANDRES	PASSARINO GUSTAVO ANDRES	Cliente		Créditos por Ventas	Responsable inscripto	DNI 30621216		 
+ERIC ROVERE	ERIC ROVERE	Cliente		Créditos por Ventas	Responsable monotributista	CUIT 20285763348		 
+CARINA FRID	CARINA FRID	Cliente		Créditos por Ventas	Consumidor final	DNI 67349320		 
+BUNKER SEGURIDAD S.R.L.	BUNKER SEGURIDAD S.R.L.	Cliente		Créditos por Ventas	Consumidor final	CUIT 30710654316		 
+CASTILLO ALEJANDRO	CASTILLO ALEJANDRO	Cliente		Créditos por Ventas	Consumidor final	DNI 31280328		 
+RAMIRO PANADES	RAMIRO PANADES	Cliente		Créditos por Ventas	Consumidor final	DNI 26380323		 
+FLEIRE SEBASTIAN	FLEIRE SEBASTIAN	Cliente		Créditos por Ventas	Consumidor final	DNI 26550581		 
+GERARDO DORTO	GERARDO DORTO	Cliente		Créditos por Ventas	Consumidor final	DNI 10243112		 
+LOPEZ JORGE	LOPEZ JORGE	Cliente		Créditos por Ventas	Consumidor final	DNI 45274123		 
+BENETTI SILVINA	BENETTI SILVINA	Cliente		Créditos por Ventas	Consumidor final	DNI 18308463		 
+DIARQ CONSTRUCCIONES S. R. L.	DIARQ CONSTRUCCIONES S. R. L.	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30717221989		 
+SILVANA JACCUZZI	SILVANA JACCUZZI	Cliente		Créditos por Ventas	Consumidor final	CUIT 27256480560		 
+ROBERTO BASCHIERA	ROBERTO BASCHIERA	Cliente		Créditos por Ventas	Consumidor final	DNI 11273365		 
+DIEGO SEPEDA	DIEGO SEPEDA	Cliente		Créditos por Ventas	Consumidor final	DNI 18811818		 
+FEDERICO TION	FEDERICO TION	Cliente		Créditos por Ventas	Consumidor final	DNI 36004809		 
+WERK CONSTRUCTORA SRL	WERK CONSTRUCTORA SRL	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30558223320		 
+CARE S. R. L.	CARE S. R. L.	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30711074232		 
+CREARQ S.R.L.	CREARQ S.R.L.	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30714395625		 
+ROBERTO LUIS JUAN LENZI	ROBERTO LUIS JUAN LENZI	Cliente		Créditos por Ventas	Consumidor final	CUIT 20118721234		 
+CAMILA BOFFO	CAMILA BOFFO	Cliente		Créditos por Ventas	Consumidor final	DNI 95527306		 
+JUAN CRUZ ALONSO	JUAN CRUZ ALONSO	Cliente		Créditos por Ventas	Consumidor final	CUIT 23390949669		 
+SOLEDAD VICENTE	SOLEDAD VICENTE	Cliente		Créditos por Ventas	Consumidor final	DNI 31200889		 
+PAOLA PISTELLI	PAOLA PISTELLI	Cliente		Créditos por Ventas	Consumidor final	DNI 25324617		 
+DESIGNIO HABITAR S.A.S	DESIGNIO HABITAR S.A.S	Cliente		Créditos por Ventas	Consumidor final	CUIT 30717108562		 
+AGUSTINA PAOLA CUCIT	AGUSTINA PAOLA CUCIT	Cliente		Créditos por Ventas	Consumidor final	CUIT 27365085663		 
+ASOCIACION COOPERADORA DE LA FACULTAD DE DERECHO DE ROSARIO COFADE	ASOCIACION COOPERADORA DE LA FACULTAD DE DERECHO DE ROSARIO COFADE	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30680482132		 
+MARCELA TURICH	MARCELA TURICH	Cliente		Créditos por Ventas	Consumidor final	DNI 18094158		 
+PATIO PELLEGRINI S A	PATIO PELLEGRINI S A	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30659576518		 
+NICOLAS PAGANINI	NICOLAS PAGANINI	Cliente		Créditos por Ventas	Consumidor final	DNI 23061363		 
+SERVICIOS COMERCIALES KHALISA S. A. S.	SERVICIOS COMERCIALES KHALISA S. A. S.	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30718868625		 
+BELIZAN JOSE MIGUEL	BELIZAN JOSE MIGUEL	Cliente		Créditos por Ventas	Consumidor final	DNI 24779066		 
+AGUSTINA SCHLATTER	AGUSTINA SCHLATTER	Cliente		Créditos por Ventas	Consumidor final	DNI 34746489		 
+DISTRIBUIDORA RAYMUNDO SRL	DISTRIBUIDORA RAYMUNDO SRL	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30711622620		 
+NICOLAS GATTARELLO	NICOLAS GATTARELLO	Cliente		Créditos por Ventas	Consumidor final	DNI 30891612		 
+MANILI OLGA	MANILI OLGA	Cliente		Créditos por Ventas	Consumidor final	DNI 5700115		 
+DAVID JESUS SENSINI	DAVID JESUS SENSINI	Cliente		Créditos por Ventas	Consumidor final	CUIT 20269999331		 
+MARTIN EGEA	MARTIN EGEA	Cliente		Créditos por Ventas	Consumidor final	DNI 27462727		 
+MARIANA MAITE CASTRO	MARIANA MAITE CASTRO	Cliente		Créditos por Ventas	Consumidor final	CUIT 27305482647		 
+LEONELA MARIA SERRA	LEONELA MARIA SERRA	Cliente		Créditos por Ventas	Consumidor final	CUIT 27333824340		 
+MARIA PIA ECHEVERRIA	MARIA PIA ECHEVERRIA	Cliente		Créditos por Ventas	Consumidor final	DNI 37702610		 
+MINISTERIO DE EDUCACION DE LA PROVINCIA DE SANTA FE	EEESO NUM 607	Cliente		Créditos por Ventas	Consumidor final	CUIT 30999079039		 
+GAGLIARDO AGRICOLA GANADERA S.A.	GAGLIARDO AGRICOLA GANADERA S.A.	Cliente		Créditos por Ventas	Consumidor final	CUIT 30708324546		 
+HERNAN DIAZ	HERNAN DIAZ	Cliente		Créditos por Ventas	Consumidor final	DNI 37938019		 
+MARIA EUGENIA FROSI	MARIA EUGENIA FROSI	Cliente		Créditos por Ventas	Consumidor final	DNI 32503283		 
+LIZA JOSE	LIZA JOSE	Cliente		Créditos por Ventas	Consumidor final	DNI 24779430		 
+FRANCO NICOLAS POMILIO DI LORETO	FRANCO NICOLAS POMILIO DI LORETO	Cliente		Créditos por Ventas	Responsable monotributista	CUIT 20277721024		 
+MACARENA PACIARONI	MACARENA PACIARONI	Cliente		Créditos por Ventas	Consumidor final	DNI 3087561		 
+CARLOS SESAGO	CARLOS SESAGO	Cliente		Créditos por Ventas	Consumidor final	DNI 45235487		 
+FLORENCIA GIACOMINO	FLORENCIA GIACOMINO	Cliente		Créditos por Ventas	Consumidor final	DNI 39504331		 
+MARCELO DANIEL LOPEZ	MARCELO DANIEL LOPEZ	Cliente		Créditos por Ventas	Consumidor final	CUIT 20215315917		 
+JOSE CORTES	JOSÉ CORTES	Cliente		Créditos por Ventas	Consumidor final	DNI 31918412		 
+NICOLAS AUGUSTO STORERO	NICOLAS AUGUSTO STORERO	Cliente		Créditos por Ventas	Consumidor final	CUIT 23271290969		 
+ANA PAEZ	ANA PÁEZ	Cliente		Créditos por Ventas	Consumidor final	DNI 35550311		 
+MATIAS JAVIER BENZI	MATIAS JAVIER BENZI	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 20315359148		 
+MARCOS MAMMARELLA	MARCOS MAMMARELLA	Cliente		Créditos por Ventas	Consumidor final	CUIT 20356423659		 
+LIRUSSO JUAN MANUEL	LIRUSSO JUAN MANUEL	Cliente		Créditos por Ventas	Consumidor final	DNI 8524315		 
+MARIA PIVIDORI	MARIA PIVIDORI	Cliente		Créditos por Ventas	Consumidor final	DNI 75797478		 
+DIEGO OLIVA	DIEGO OLIVA	Cliente		Créditos por Ventas	Consumidor final	DNI 31540979		 
+LUCIA ROSSI	LUCIA ROSSI	Cliente		Créditos por Ventas	Consumidor final	DNI 12131415		 
+APASA S.R.L.	APASA S.R.L.	Cliente		Créditos por Ventas	Consumidor final	CUIT 30715318756		 
+COOPERATIVA DE TRABAJO POLLUX LIMITADA	COOPERATIVA DE TRABAJO POLLUX LIMITADA	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30716994887		 
+VIRGINIA OLLARCE	VIRGINIA OLLARCE	Cliente		Créditos por Ventas	Consumidor final	DNI 2314296		 
+INDIV S.A.	INDIV S.A.	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30701509737		 
+EMILIANO GIULIANI	EMILIANO GIULIANI	Cliente		Créditos por Ventas	Consumidor final	DNI 33573111		 
+JORGE OMAR CALAON	JORGE OMAR CALAON	Cliente		Créditos por Ventas	Consumidor final	DNI 13057230		 
+YANINA CARDASCIA	YANINA CARDASCIA	Cliente		Créditos por Ventas	Consumidor final	DNI 29098579		 
+OSSA S. R. L	OSSA S. R. L	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 33710691989		 
+MARTINI PABLO LUIS	MARTINI PABLO LUIS	Cliente		Créditos por Ventas	Consumidor final	DNI 29182885		 
+FARCO PABLO	FARCO PABLO	Cliente		Créditos por Ventas	Consumidor final	DNI 11478452		 
+JUAN PABLO DI COSCO	JUAN PABLO DI COSCO	Cliente		Créditos por Ventas	Consumidor final	DNI 26517618		 
+DIANA ISABEL SANCHEZ	DIANA ISABEL SANCHEZ	Cliente		Créditos por Ventas	Consumidor final	CUIT 27235017089		 
+IGNACIO LORENZON	IGNACIO LORENZON	Cliente		Créditos por Ventas	Consumidor final	DNI 10101111		 
+MARIANA ANDREA RACCOSTA	MARIANA ANDREA RACCOSTA	Cliente		Créditos por Ventas	Consumidor final	CUIT 27318998979		 
+LOS AMORES S.A.	LOS AMORES S.A.	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30674384021		 
+EVER CARUCCI	EVER CARUCCI	Cliente		Créditos por Ventas	Consumidor final	DNI 30677964		 
+GUILLERMO DESTEFANIS	GUILLERMO DESTEFANIS	Cliente		Créditos por Ventas	Consumidor final	DNI 27939697		 
+ELIANA VIRGA	ELIANA VIRGA	Cliente		Créditos por Ventas	Consumidor final	DNI 28536154		 
+CAROLINA MENGONI	CAROLINA MENGONI	Cliente		Créditos por Ventas	Consumidor final	DNI 30729331		 
+ICA S.R.L.	ICA S.R.L.	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30708520337		 
+COCIVIAL S.A.	COCIVIAL S.A.	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30581567622		 
+STADT BAU SOCIEDAD ANONIMA	STADT BAU SOCIEDAD ANONIMA	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30715917862		 
+JOSE FRANCISCO AGRETTI	JOSE FRANCISCO AGRETTI	Cliente		Créditos por Ventas	Consumidor final	CUIT 20357549125		 
+FIDEICOMISO AL COSTO EDIFICIO BOND	FIDEICOMISO AL COSTO EDIFICIO BOND	Cliente		Créditos por Ventas	Consumidor final	CUIT 30718017528		 
+ANDRES ALBERTO HAUGH	ANDRES ALBERTO HAUGH	Cliente		Créditos por Ventas	Consumidor final	CUIT 20226023756		 
+RUBEN TAGLIANI	RUBEN TAGLIANI	Cliente		Créditos por Ventas	Consumidor final	DNI 31757732		 
+AYELEN SULUZZI	AYELEN SULUZZI	Cliente		Créditos por Ventas	Consumidor final	DNI 30390760		 
+LEANDRO OCHOTECO	LEANDRO OCHOTECO	Cliente		Créditos por Ventas	Consumidor final	DNI 31516780		 
+TICO PISOS INDUSTRIALES SOCIEDAD DE RESPONSABILIDAD LIMITADA S. R. L.	TICO PISOS INDUSTRIALES SOCIEDAD DE RESPONSABILIDAD LIMITADA S. R. L.	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 33712599109		 
+CRISTIAN ADROVER	CRISTIAN ADROVER	Cliente		Créditos por Ventas	Consumidor final	CUIT 20214223679		 
+SANTIAGO SEMINO	SANTIAGO SEMINO	Cliente		Créditos por Ventas	Consumidor final	DNI 26739724		 
+AYELEN CAMILA BRARDA	AYELEN CAMILA BRARDA	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 27277479228		 
+MT ESTUDIO DE ARQUITECTURA	MT ESTUDIO DE ARQUITECTURA	Cliente		Créditos por Ventas	Consumidor final	DNI 32943269		 
+RAMIRO TORRES	RAMIRO TORRES	Cliente		Créditos por Ventas	Consumidor final	DNI 01001001		 
+ALDO OLIVERA	ALDO OLIVERA	Cliente		Créditos por Ventas	Consumidor final	DNI 02002002		 
+OBRING SOCIEDAD ANONIMA	OBRING SOCIEDAD ANONIMA	Cliente		Créditos por Ventas	Consumidor final	CUIT 30605942950		 
+LETICIA CHAJCHIR	LETICIA CHAJCHIR	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 27294026059		 
+LORENZO FERNANDO	LORENZO FERNANDO	Cliente		Créditos por Ventas	Consumidor final	DNI 22777572		 
+ENRIQUE IMAZ	ENRIQUE IMAZ	Cliente		Créditos por Ventas	Consumidor final	DNI 10866884		 
+FACUNDO DOMINGUEZ	FACUNDO DOMINGUEZ	Cliente		Créditos por Ventas	Consumidor final	DNI 12312312		 
+CLAUDIO DARIO BARTOLACCI	CLAUDIO DARIO BARTOLACCI	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 23148029849		 
+ANTONELA MOSSUZ	ANTONELA MOSSUZ	Cliente		Créditos por Ventas	Consumidor final	DNI 11121314		 
+IGNACIO VESCO	IGNACIO VESCO	Cliente		Créditos por Ventas	Consumidor final	DNI 02030405		 
+INDUSTRIAS MOVIMEC SRL	INDUSTRIAS MOVIMEC S R L	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30701479978		 
+SANTIAGO GOLDARAZ	SANTIAGO GOLDARAZ	Cliente		Créditos por Ventas	Consumidor final	DNI 03040506		 
+FERNANDO CALORE	FERNANDO CALORE	Cliente		Créditos por Ventas	Consumidor final	DNI 04050607		 
+OZCARI GERMAN ANDRES	OZCARI GERMAN ANDRES	Cliente		Créditos por Ventas	Consumidor final	DNI 12584715		 
+HERNAN EDUARDO MARTINELLI	HERNAN EDUARDO MARTINELLI	Cliente		Créditos por Ventas	Consumidor final	CUIT 20321767908		 
+LEANDRO PART	LEANDRO PART	Cliente		Créditos por Ventas	Consumidor final	DNI 05060708		 
+JUAN CARLOS GALVANO	JUAN CARLOS GALVANO	Cliente		Créditos por Ventas	Consumidor final	DNI 14392302		 
+LUCIANO REBOTARO	LUCIANO REBOTARO	Cliente		Créditos por Ventas	Consumidor final	DNI 26871198		 
+FIDEICOMISO VENTUS	FIDEICOMISO VENTUS	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30717688046		 
+SANTIAGO SEMINO	SANTIAGO SEMINO	Cliente		Créditos por Ventas	Consumidor final	CUIT 20267397245		 
+FEDERICO HERNAN FOCHI	FEDERICO HERNAN FOCHI	Cliente		Créditos por Ventas	Consumidor final	CUIT 20370746223		 
+PINTOS CONSTRUCCIONES S.R.L.	PINTOS ISIDRO	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30717342948		 
+DIEGO OTAZU	DIEGO OTAZU	Cliente		Créditos por Ventas	Consumidor final	DNI 20704117		 
+CAROLINA BARAVALLE	CAROLINA BARAVALLE	Cliente		Créditos por Ventas	Consumidor final	CUIT 27343114430		 
+3DF S. R. L.	3DF S. R. L.	Cliente		Créditos por Ventas	Consumidor final	CUIT 33714555729		 
+EDUARDO FIORITO	EDUARDO FIORIDO	Cliente		Créditos por Ventas	Consumidor final	DNI 10890102		 
+FEDERICO PABLO MARINARO	FEDERICO PABLO MARINARO	Cliente		Créditos por Ventas	Consumidor final	CUIT 20285667810		 
+FIDEICOMISO SAN CARLOS 1053	FIDEICOMISO SAN CARLOS 1053	Cliente		Créditos por Ventas	Consumidor final	CUIT 30717907139		 
+SINIGAGLIA DAVID	SINIGAGLIA DAVID	Cliente		Créditos por Ventas	Consumidor final	DNI 30017045		 
+LA BIENVENIDA S.R.L	LA BIENVENIDA S.R.L	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30712035850		 
+PEDRO VARGAS	PEDRO VARGAS	Cliente		Créditos por Ventas	Consumidor final	DNI 29521977		 
+EQB SOCIEDAD ANONIMA	EQB SOCIEDAD ANONIMA	Cliente		Créditos por Ventas	Consumidor final	CUIT 30714046000		 
+CECILIA PERCOCO	CECILIA PERCOCO	Cliente		Créditos por Ventas	Consumidor final	DNI 31938717		 
+ZENIT INGENIERIA S. A. S.	ZENIT INGENIERIA S. A. S.	Cliente		Créditos por Ventas	Consumidor final	CUIT 30717776689		 
+CASA VBC UNIDAD 235 FIDEICOMISO	CASA VBC UNIDAD 235 FIDEICOMISO	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30719203538		 
+MBA MASSARI BONANNO ASOC. S.A.S	MBA MASSARI BONANNO ASOC. S.A.S	Cliente		Créditos por Ventas	Consumidor final	CUIT 30717144658		 
+SANTIAGO TOSI	SANTIAGO TOZZI	Cliente		Créditos por Ventas	Consumidor final	DNI 75491652		 
+PABLO JAVIER MENTABERRY	PABLO JAVIER MENTABERRY	Cliente		Créditos por Ventas	Consumidor final	CUIT 20316523901		 
+RAUL OFICIALDEGUI	RAUL OFICIALDEGUI	Cliente		Créditos por Ventas	Consumidor final	DNI 6064629		 
+DATAWAVES S.A.	DATAWAVES S.A.	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 33626346389		 
+IDEA S.A.	IDEA S.A.	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30707656707		 
+CECILIA BERTRAN	CECILIA BERTRAN	Cliente		Créditos por Ventas	Consumidor final	DNI 28912712		 
+MARTIN CRUZ PENDINO	MARTIN CRUZ PENDINO	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 20283924158		 
+ADRIAN HUGO SCOLARI	ADRIAN HUGO SCOLARI	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 20230497223		 
+WALTER DENIS BENZI	WALTER DENIS BENZI	Cliente		Créditos por Ventas	Consumidor final	CUIT 20349340217		 
+BAUHOFF S.A.	BAUHOFF S.A.	Cliente		Créditos por Ventas	Consumidor final	DNI 55555555		 
+JUAN MIGUEL MOINE	JUAN MIGUEL MOINE	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 20304575442		 
+COIRINI S A	COIRINI S.A.	Indistinto		Créditos por Ventas	Responsable inscripto	CUIT 30600422754		 
+ARQ. OSVALDO RODRIGUEZ	ARQ. OSVALDO RODRIGUEZ	Cliente		Créditos por Ventas	Consumidor final	DNI 10407080		 
+MARCELO LAZZERETTI	MARCELO LAZZERETTI	Cliente		Créditos por Ventas	Consumidor final	DNI 15453796		 
+BEI EMPRENDIMIENTOS INMOBILIARIOS S.A.	BEI EMPRENDIMIENTOS INMOBILIARIOS S.A.	Cliente		Créditos por Ventas	Consumidor final	CUIT 30709929042		 
+RAMIRO PENARANDA	RAMIRO PEÑARANDA	Cliente		Créditos por Ventas	Consumidor final	DNI 30022584		 
+PAULO FAVA	PAULO FAVA	Cliente		Créditos por Ventas	Consumidor final	DNI 31542493		 
+DESARROLLOS 3MR S.R.L.	DESARROLLOS 3MR S.R.L.	Cliente		Créditos por Ventas	Consumidor final	CUIT 30715959832		 
+PEREZ LUCIANA RAQUEL	PEREZ LUCIANA RAQUEL	Cliente		Créditos por Ventas	Consumidor final	DNI 81254215		 
+MERCEDES BERTIN	MERCEDES BERTIN	Cliente		Créditos por Ventas	Consumidor final	DNI 3416991414		 
+PICOTTO EDGARDO PEDRO Y PICOTTO OSVALDO HUGO S. CAP I SECC IV	PICOTTO EDGARDO PEDRO Y PICOTTO OSVALDO HUGO S. CAP I SECC IV	Cliente		Créditos por Ventas	Consumidor final	CUIT 30502222674		 
+EMILIO CUELLO	EMILIO CUELLO	Cliente		Créditos por Ventas	Consumidor final	DNI 3416236754		 
+LEONARDO NUNCIO REGATUSO	LEONARDO NUNCIO REGATUSO	Cliente		Créditos por Ventas	Consumidor final	CUIT 20287443979		 
+ARQ. JULIAN NOGARA	ARQ. JULIAN NOGARA	Cliente		Créditos por Ventas	Responsable inscripto	DNI 31930155		 
+WN INTERNET S.R.L.	WN INTERNET S.R.L.	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30715415530		 
+MAURO IVAN PRADO	MAURO IVAN PRADO	Cliente		Créditos por Ventas	Consumidor final	CUIT 20280555313		 
+MARINELLI FACUNDO	MARINELLI FACUNDO	Cliente		Créditos por Ventas	Consumidor final	DNI 37079311		 
+AYELEN MARTINEZ	AYELEN MARTINEZ	Cliente		Créditos por Ventas	Consumidor final	DNI 35585127		 
+MACARENA GOICOECHEA	MACARENA GOICOECHEA	Cliente		Créditos por Ventas	Consumidor final	DNI 3416127789		 
+GREEN PACK S. A. S.	GREEN PACK S. A. S.	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 33718763679		 
+LAS LAGRIMAS SOCIEDAD DE RESPONSABILIDAD LIMITADA	LAS LAGRIMAS SOCIEDAD DE RESPONSABILIDAD LIMITADA	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30708502169		 
+WALTER PEIRONE	WALTER PEIRONE	Cliente		Créditos por Ventas	Consumidor final	DNI 24322222		 
+EZEQUIEL MARTIN	EZEQUIEL MARTIN	Cliente		Créditos por Ventas	Consumidor final	DNI 27209878		 
+MIGUEL PEIRETTI	MIGUEL PEIRETTI	Cliente		Créditos por Ventas	Consumidor final	DNI 24617371		 
+GRAPHIGRAF S.A.	GRAPHIGRAF S.A.	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30708041781		 
+MORZAN MANCUELLO ADELINA	MORZAN MANCUELLO ADELINA	Cliente		Créditos por Ventas	Consumidor final	DNI 3426105559		 
+PLAYCOM SRL	MARIA PIVIDORI PC	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30714999318		 
+JAQUELINA ALICIA TURCHETTI	JAQUELINA ALICIA TURCHETTI	Cliente		Créditos por Ventas	Consumidor final	CUIT 27184917500		 
+LAURA CARCOVICH	LAURA CARCOVICH	Cliente		Créditos por Ventas	Consumidor final	DNI 11122233		 
+FRANCO ROSTAGNO	FRANCO ROSTAGNO	Cliente		Créditos por Ventas	Consumidor final	DNI 29190929		 
+FRANCO PETRELLI	FRANCO PETRELLI	Cliente		Créditos por Ventas	Consumidor final	CUIT 20323100390		 
+CAMILA MONTES	ARQ. CAMILA MONTES	Cliente		Créditos por Ventas	Consumidor final	DNI 34525869		 
+VIRGINIA PAGLIARECCI	ARQ. VIRGINIA PAGLIARECCI	Cliente		Créditos por Ventas	Consumidor final	DNI 34713321		 
+NICOLAS BERRONI	NICOLAS BERRONI	Cliente		Créditos por Ventas	Consumidor final	DNI 99999991		 
+JOSE LUIS FURNO	JOSE LUIS FURNO	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 23169318069		 
+MARIELA SUSANA QUILICI	MARIELA SUSANA QUILICI	Cliente		Créditos por Ventas	Consumidor final	CUIT 27178036810		 
+ANGELA ZUKER	ANGELA ZUKER	Cliente		Créditos por Ventas	Consumidor final	DNI 31900045		 
+PARANA LIVESTOCK S. A.	PARANA LIVESTOCK S. A.	Cliente		Créditos por Ventas	Consumidor final	CUIT 30717328406		 
+LUZ TETTAMANZI	LUZ TETTAMANZI	Cliente		Créditos por Ventas	Consumidor final	DNI 31787258		 
+LUMILA LARRAYA	LUMILA LARRAYA	Cliente		Créditos por Ventas	Consumidor final	DNI 30102409		 
+DIEGO BORIN	DIEGO BORIN	Cliente		Créditos por Ventas	Consumidor final	CUIT 20331898733		 
+FERNANDO RIVAS	FERNANDO RIVAS	Cliente		Créditos por Ventas	Responsable inscripto	DNI 36987524		 
+MELLANO SEGURIDAD S.A.S	MELLANO SEGURIDAD S.A.S	Cliente		Créditos por Ventas	Consumidor final	CUIT 30716862735		 
+PAULA GUILLAMET	PAULA GUILLAMET	Cliente		Créditos por Ventas	Consumidor final	DNI 3413547776		 
+RAUL HERNAN OFICIALDEGUI	RAUL HERNAN OFICIALDEGUI	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 20060646296		 
+MALAGA GROUP S.R.L.	MALAGA GROUP S.R.L.	Cliente		Créditos por Ventas	Responsable inscripto	CUIT 30715713272		 
+MARIA EMILIA IBANEZ	MARIA EMILIA IBAÑEZ	Cliente		Créditos por Ventas	Consumidor final	CUIT 23322519974		 
+ECOAIRES S. A. S.	ECOAIRES S. A. S.	Cliente		Créditos por Ventas	Consumidor final	CUIT 30718657047		 
+ROSARIO CATALANO	ROSARIO CATALANO	Cliente		Créditos por Ventas	Consumidor final	DNI 32313027		 
+GUILLERMO CARLOS HENRICH	GUILLERMO CARLOS HENRICH	Cliente		Créditos por Ventas	Consumidor final	CUIT 20115478177		 

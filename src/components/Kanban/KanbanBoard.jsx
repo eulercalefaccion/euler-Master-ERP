@@ -1,0 +1,331 @@
+import React, { useState, useEffect } from 'react';
+import { DragDropContext } from '@hello-pangea/dnd';
+import { Plus } from 'lucide-react';
+import KanbanColumn from './KanbanColumn';
+import { db } from '../../services/firebaseConfig';
+import { collection, onSnapshot, query, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
+
+const KanbanBoard = () => {
+  const [data, setData] = useState({
+    items: {},
+    columns: {
+      'pendiente': { id: 'pendiente', title: 'Presupuesto Pendiente', itemsIds: [] },
+      'calculo': { id: 'calculo', title: 'En Cálculo', itemsIds: [] },
+      'enviado': { id: 'enviado', title: 'Enviado al Cliente', itemsIds: [] },
+      'seguimiento': { id: 'seguimiento', title: 'Seguimiento Activo', itemsIds: [] },
+      'aprobado': { id: 'aprobado', title: 'Aprobado', itemsIds: [] },
+      'rechazado': { id: 'rechazado', title: 'Rechazado / En Espera', itemsIds: [] }
+    },
+    columnOrder: ['pendiente', 'calculo', 'enviado', 'seguimiento', 'aprobado', 'rechazado']
+  });
+
+  const [clientesList, setClientesList] = useState([]);
+
+  // Modals State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLeadModalOpen, setIsLeadModalOpen] = useState(false);
+  const [pendingMove, setPendingMove] = useState(null);
+  
+  // Form State para la Seña
+  const [paymentStatus, setPaymentStatus] = useState('Pendiente');
+  const [paymentAmount, setPaymentAmount] = useState('');
+
+  // Form State para Nuevo Lead
+  const [newLead, setNewLead] = useState({ clientId: '', location: '', source: 'WhatsApp', paramSistema: 'Radiadores' });
+
+  useEffect(() => {
+    // Escuchar Clientes para el dropdown del Nuevo Lead
+    const qClientes = query(collection(db, 'clientes'));
+    const unsubClientes = onSnapshot(qClientes, (snapshot) => {
+      const c = snapshot.docs.map(d => ({ id: d.id, name: d.data().name }));
+      c.sort((a,b) => (a.name || '').localeCompare(b.name || ''));
+      setClientesList(c);
+    });
+
+    // Escuchar Presupuestos (Leads Kanban)
+    const qPresupuestos = query(collection(db, 'presupuestos'));
+    const unsubPresupuestos = onSnapshot(qPresupuestos, (snapshot) => {
+      const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      
+      const newColumns = {
+        'pendiente': { id: 'pendiente', title: 'Presupuesto Pendiente', itemsIds: [] },
+        'calculo': { id: 'calculo', title: 'En Cálculo', itemsIds: [] },
+        'enviado': { id: 'enviado', title: 'Enviado al Cliente', itemsIds: [] },
+        'seguimiento': { id: 'seguimiento', title: 'Seguimiento Activo', itemsIds: [] },
+        'aprobado': { id: 'aprobado', title: 'Aprobado', itemsIds: [] },
+        'rechazado': { id: 'rechazado', title: 'Rechazado / En Espera', itemsIds: [] }
+      };
+      
+      const newItems = {};
+      docs.forEach(d => {
+        // Mapeo seguro con fallback properties expected by KanbanColumn
+        // El componente original espera: tags (array), name, etc.
+        const tags = Array.isArray(d.tags) ? d.tags : [d.paramSistema || 'S/D'];
+        newItems[d.id] = { ...d, tags };
+        
+        if (newColumns[d.status]) {
+          newColumns[d.status].itemsIds.push(d.id);
+        } else {
+          newColumns['pendiente'].itemsIds.push(d.id);
+        }
+      });
+
+      setData({
+        items: newItems,
+        columns: newColumns,
+        columnOrder: ['pendiente', 'calculo', 'enviado', 'seguimiento', 'aprobado', 'rechazado']
+      });
+    });
+
+    return () => {
+      unsubClientes();
+      unsubPresupuestos();
+    };
+  }, []);
+
+  const onDragEnd = async (result) => {
+    const { destination, source, draggableId } = result;
+
+    if (!destination) return;
+    if (destination.droppableId === source.droppableId && destination.index === source.index) return;
+
+    const startColumn = data.columns[source.droppableId];
+    const finishColumn = data.columns[destination.droppableId];
+
+    // Si se mueve dentro de la misma columna (En un sistema real con firebase se debería guardar un orderIndex, aquí lo omitiremos visualmente, onSnapshot volverá a acomodar si no guardamos. Para dejarlo simple:
+    if (startColumn === finishColumn) return;
+
+    // Si se mueve a la columna de APROBADO, frenar para pedir datos de seña y crear OBRA
+    if (finishColumn.id === 'aprobado') {
+      setPendingMove(result);
+      setIsModalOpen(true);
+      return;
+    }
+
+    // Diferente columna normal (Solo actualizamos Firebase, el onSnapshot redibuja)
+    try {
+      await updateDoc(doc(db, 'presupuestos', draggableId), {
+        status: finishColumn.id
+      });
+    } catch (err) {
+      console.error("Error al mover presupuesto", err);
+    }
+  };
+
+  const confirmMoveToAprobado = async () => {
+    if (!pendingMove) return;
+    const { draggableId, destination } = pendingMove;
+
+    try {
+      const itemToApprove = data.items[draggableId];
+      
+      // 1. Actualizar el Lead en Firebase
+      await updateDoc(doc(db, 'presupuestos', draggableId), {
+        status: destination.droppableId, // 'aprobado'
+        paymentStatus: paymentStatus,
+        amount: paymentAmount ? parseInt(paymentAmount) : (itemToApprove.amount || 0)
+      });
+
+      // 2. MAGIA ERP: Crear la Obra automáticamente
+      await addDoc(collection(db, 'obras'), {
+        name: `Obra ${itemToApprove.name} - ${itemToApprove.paramSistema || ''}`,
+        location: itemToApprove.location || 'S/D',
+        clientId: itemToApprove.clientId || '',
+        clientName: itemToApprove.name || 'S/D',
+        system: itemToApprove.paramSistema || 'S/D',
+        phase: 'Obra',
+        estado: 'Pendiente de Inicio',
+        progress: 0,
+        operarios: '',
+        bitacoraPreview: 'Nacimiento de Obra. Generada automáticamente tras aprobar el Presupuesto comercial.',
+        createdAt: serverTimestamp(),
+        startDate: new Date().toLocaleDateString('es-AR')
+      });
+
+    } catch (err) {
+      console.error("Error al confirmar venta:", err);
+      alert("Hubo un fallo en la base de datos al cerrar el presupuesto.");
+    }
+
+    closeModal();
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setPendingMove(null);
+    setPaymentStatus('Pendiente');
+    setPaymentAmount('');
+  };
+
+  const handleAddLead = async (e) => {
+    e.preventDefault();
+    if (!newLead.clientId) {
+       alert("Por favor seleccione un cliente de la lista.");
+       return;
+    }
+
+    const selectedClient = clientesList.find(c => c.id === newLead.clientId);
+    
+    try {
+      await addDoc(collection(db, 'presupuestos'), {
+        clientId: selectedClient.id,
+        name: selectedClient.name,
+        location: newLead.location,
+        source: newLead.source,
+        paramSistema: newLead.paramSistema,
+        tags: [newLead.paramSistema],
+        status: 'pendiente',
+        date: new Date().toLocaleDateString('es-AR'),
+        amount: null,
+        paymentStatus: 'Pendiente',
+        createdAt: serverTimestamp()
+      });
+      
+      setIsLeadModalOpen(false);
+      setNewLead({ clientId: '', location: '', source: 'WhatsApp', paramSistema: 'Radiadores' });
+    } catch (err) {
+      console.error(err);
+      alert('Error guardando el lead.');
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Header Incorporado */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+        <div>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: '600', margin: 0 }}>Presupuestos (CRM)</h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginTop: '0.25rem' }}>Gestiona los leads y avance comercial. Al aprobarse, nacen las Obras.</p>
+        </div>
+        
+        <button className="btn btn-primary" onClick={() => setIsLeadModalOpen(true)}>
+          <Plus size={18} />
+          Nuevo Lead
+        </button>
+      </div>
+
+      <div style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '1rem', flex: 1, minHeight: '500px' }}>
+        <DragDropContext onDragEnd={onDragEnd}>
+          {data.columnOrder.map(columnId => {
+            const column = data.columns[columnId];
+            const items = column.itemsIds.map(itemId => data.items[itemId]).filter(Boolean); // Filtrar falsy values
+            return <KanbanColumn key={column.id} column={column} items={items} />;
+          })}
+        </DragDropContext>
+      </div>
+
+      {isModalOpen && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex',
+          alignItems: 'center', justifyContent: 'center', zIndex: 1000
+        }}>
+          <div className="card" style={{ width: '400px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <h3 style={{ margin: 0 }}>Aprobar Presupuesto</h3>
+            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+              Al aprobar, se registrará el pago inicial y <strong style={{color: 'var(--accent-600)'}}>se generará automáticamente una Obra</strong> en Producción.
+            </p>
+            
+            <div className="form-group">
+              <label className="form-label">Estado de Pago</label>
+              <select 
+                className="input-field" 
+                value={paymentStatus}
+                onChange={(e) => setPaymentStatus(e.target.value)}
+              >
+                <option value="Pendiente">Pendiente de Pago</option>
+                <option value="Seña Abonada">Seña Abonada</option>
+                <option value="Pago Completo">Pago Completo (100%)</option>
+              </select>
+            </div>
+
+            {paymentStatus !== 'Pendiente' && (
+              <div className="form-group">
+                <label className="form-label">Monto Abonado ($)</label>
+                <input 
+                  type="number" 
+                  className="input-field" 
+                  placeholder="Ej: 500000"
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                />
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem' }}>
+              <button className="btn btn-secondary" onClick={closeModal}>Cancelar</button>
+              <button className="btn btn-primary" onClick={confirmMoveToAprobado}>Cerrar Venta y Generar Obra</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Nuevo Lead */}
+      {isLeadModalOpen && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex',
+          alignItems: 'center', justifyContent: 'center', zIndex: 1000
+        }}>
+          <div className="card" style={{ width: '450px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0 }}>Ingresar Nuevo Lead Comercial</h3>
+            </div>
+            
+            <form onSubmit={handleAddLead} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Seleccionar Cliente/Prospecto <span style={{color: 'var(--accent-600)'}}>*</span></label>
+                <select 
+                  required 
+                  className="input-field" 
+                  value={newLead.clientId} 
+                  onChange={(e) => setNewLead({...newLead, clientId: e.target.value})}
+                >
+                  <option value="" disabled>-- Busca en el Directorio --</option>
+                  {clientesList.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '0.25rem' }}>Si no existe, debes <a href="/clientes" style={{color: 'var(--primary-600)'}}>agregarlo primero en Clientes.</a></p>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Localidad / Zona (Referencia)</label>
+                <input required type="text" className="input-field" value={newLead.location} onChange={(e) => setNewLead({...newLead, location: e.target.value})} placeholder="Ej: Funes, Fisherton" />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Canal de Llegada</label>
+                  <select className="input-field" value={newLead.source} onChange={(e) => setNewLead({...newLead, source: e.target.value})}>
+                    <option value="WhatsApp">WhatsApp</option>
+                    <option value="Instagram">Instagram</option>
+                    <option value="Referido">Referido</option>
+                    <option value="Arquitecto">Arquitecto</option>
+                  </select>
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Sistema Solicitado</label>
+                  <select className="input-field" value={newLead.paramSistema} onChange={(e) => setNewLead({...newLead, paramSistema: e.target.value})}>
+                    <option value="Radiadores">Radiadores</option>
+                    <option value="Piso Radiante">Piso Radiante</option>
+                    <option value="SSTT Caldera">SSTT Caldera</option>
+                    <option value="Hibrido">Híbrido</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem' }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setIsLeadModalOpen(false)}>Cancelar</button>
+                <button type="submit" className="btn btn-primary">Crear Lead</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default KanbanBoard;
