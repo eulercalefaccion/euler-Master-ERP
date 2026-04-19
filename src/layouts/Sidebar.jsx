@@ -10,9 +10,8 @@ const Sidebar = () => {
     { name: 'Obras', icon: <ClipboardList size={20} />, path: '/obras' },
     { name: 'Stock', icon: <Package size={20} />, path: '/stock' },
     { name: 'Jornadas', icon: <MapPin size={20} />, path: '/jornadas' },
+    { name: 'Sueldos', icon: <Receipt size={20} />, path: '/sueldos' },
     { name: 'Balance', icon: <Flame size={20} />, path: '/balance' },
-    // Descomentar a medida que se implementen:
-    // { name: 'Sueldos', icon: <Receipt size={20} />, path: '/sueldos' },
   ];
 
   return (
