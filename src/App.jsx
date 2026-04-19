@@ -9,6 +9,7 @@ import Dashboard from './pages/Dashboard/Dashboard';
 import Obras from './pages/Obras/Obras';
 import Stock from './pages/Stock/Stock';
 import Jornadas from './pages/Jornadas/Jornadas';
+import Balance from './pages/Balance/Balance';
 
 // Rutas Privadas
 const PrivateRoute = ({ children }) => {
@@ -29,6 +30,7 @@ function App() {
         <Route path="/obras" element={<PrivateRoute><Obras /></PrivateRoute>} />
         <Route path="/stock" element={<PrivateRoute><Stock /></PrivateRoute>} />
         <Route path="/jornadas" element={<PrivateRoute><Jornadas /></PrivateRoute>} />
+        <Route path="/balance" element={<PrivateRoute><Balance /></PrivateRoute>} />
       </Routes>
     </BrowserRouter>
   );

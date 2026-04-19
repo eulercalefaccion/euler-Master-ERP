@@ -21,12 +21,12 @@ const Dashboard = () => {
     ventasMesActual: 0
   });
 
-  const ventasAnuales = [
+  const [ventasAnualesState, setVentasAnualesState] = useState([
     { name: 'Ene', ventas: 0 }, { name: 'Feb', ventas: 0 }, { name: 'Mar', ventas: 0 },
     { name: 'Abr', ventas: 0 }, { name: 'May', ventas: 0 }, { name: 'Jun', ventas: 0 },
     { name: 'Jul', ventas: 0 }, { name: 'Ago', ventas: 0 }, { name: 'Sep', ventas: 0 },
     { name: 'Oct', ventas: 0 }, { name: 'Nov', ventas: 0 }, { name: 'Dic', ventas: 0 }
-  ];
+  ]);
 
   useEffect(() => {
     // Oficial BNA API
@@ -68,10 +68,53 @@ const Dashboard = () => {
       setPresupuestosPendientes(count);
     });
 
+    const unsubTrans = onSnapshot(collection(db, 'transacciones'), (snap) => {
+      const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const currentMonth = new Date().getMonth();
+      const currentYear = new Date().getFullYear();
+      
+      let ventasMes = 0;
+      let globalIngresos = 0;
+      let globalEgresos = 0;
+
+      const chartMap = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0, 11: 0 };
+
+      data.forEach(t => {
+        if (!t.fecha) return;
+        const d = new Date(t.fecha);
+        
+        // Ventas Anuales Chart (Solo Ingresos por ahora)
+        if (d.getFullYear() === currentYear && t.tipo === 'ingreso') {
+          chartMap[d.getMonth()] += t.monto;
+        }
+
+        // Métricas del Mes Actual
+        if (d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
+           if (t.tipo === 'ingreso') ventasMes += t.monto;
+           if (t.tipo === 'ingreso') globalIngresos += t.monto;
+           if (t.tipo === 'egreso') globalEgresos += t.monto;
+        }
+      });
+
+      const rentNeta = globalIngresos - globalEgresos;
+      const rentPct = globalIngresos > 0 ? ((rentNeta / globalIngresos) * 100).toFixed(1) : 0;
+
+      setMetricasKpi({
+        rentabilidadMesGloba: rentPct,
+        obrasEnAprobacion: 0,
+        ventasMesActual: ventasMes
+      });
+
+      const mesesNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+      const formatAnual = Object.entries(chartMap).map(([m, val]) => ({ name: mesesNames[parseInt(m)], ventas: val }));
+      setVentasAnualesState(formatAnual);
+    });
+
     return () => {
       unsubObras();
       unsubJornadas();
       unsubPresupuestos();
+      unsubTrans();
     };
   }, []);
 
@@ -136,7 +179,7 @@ const Dashboard = () => {
         <h3 style={{ fontSize: '1.125rem', marginBottom: '1.5rem' }}>Evolución de Ventas Anuales</h3>
         <div style={{ width: '100%', height: '250px' }}>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={ventasAnuales} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+            <BarChart data={ventasAnualesState} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-secondary)' }} />
               <YAxis 
                 axisLine={false} 
