@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { dashboardData } from './mockDataDashboard';
 import { BadgeDollarSign, TrendingUp, Presentation, AlertCircle, Wrench, HardHat, Pickaxe, MapPin, Wallet } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import DatabaseWiper from '../../components/DatabaseWiper';
 
 const Dashboard = () => {
   const [bnaRate, setBnaRate] = useState(null);
@@ -26,6 +27,7 @@ const Dashboard = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', paddingBottom: '2rem' }}>
+      <DatabaseWiper />
       <div>
         <h2 style={{ fontSize: '1.5rem', fontWeight: '600', margin: 0 }}>Dashboard Principal</h2>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginTop: '0.25rem' }}>Resumen operativo y comercial de Euler</p>
