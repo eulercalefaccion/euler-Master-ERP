@@ -158,8 +158,7 @@ const KanbanBoard = () => {
     setPaymentAmount('');
   };
 
-  const handleAddLead = async (e) => {
-    e.preventDefault();
+  const handleAddLead = async () => {
     
     let finalClientId = newLead.clientId;
     let finalClientName = '';
@@ -293,7 +292,7 @@ const KanbanBoard = () => {
               <h3 style={{ margin: 0 }}>Ingresar Nuevo Lead Comercial</h3>
             </div>
             
-            <form onSubmit={handleAddLead} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
@@ -306,7 +305,7 @@ const KanbanBoard = () => {
                 
                 {isNewClient ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '0.75rem', backgroundColor: 'var(--bg-surface-hover)', borderRadius: '8px', border: '1px dashed var(--primary-300)' }}>
-                     <input required type="text" className="input-field" placeholder="Nombre completo del cliente" value={newLead.newClientName} onChange={e => setNewLead({...newLead, newClientName: e.target.value})} />
+                     <input type="text" className="input-field" placeholder="Nombre completo del cliente" value={newLead.newClientName} onChange={e => setNewLead({...newLead, newClientName: e.target.value})} />
                      <input type="text" className="input-field" placeholder="Teléfono de contacto (opcional)" value={newLead.newClientPhone} onChange={e => setNewLead({...newLead, newClientPhone: e.target.value})} />
                   </div>
                 ) : (
@@ -352,9 +351,9 @@ const KanbanBoard = () => {
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem' }}>
                 <button type="button" className="btn btn-secondary" onClick={() => setIsLeadModalOpen(false)}>Cancelar</button>
-                <button type="submit" className="btn btn-primary">Crear Lead</button>
+                <button type="button" className="btn btn-primary" onClick={handleAddLead}>Crear Lead</button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
