@@ -2,8 +2,7 @@ import React from 'react';
 import { Droppable } from '@hello-pangea/dnd';
 import KanbanCard from './KanbanCard';
 
-const KanbanColumn = ({ column, items }) => {
-  // Sumar monto de las tarjetas (si aplica, útil para métrica en columnas del CRM)
+const KanbanColumn = ({ column, items, onCardClick }) => {
   const totalAmount = items.reduce((acc, item) => item.amount ? acc + item.amount : acc, 0);
 
   return (
@@ -16,7 +15,6 @@ const KanbanColumn = ({ column, items }) => {
       borderRadius: 'var(--radius-lg)',
       padding: '0.75rem',
       height: '100%',
-      // border: '1px solid var(--border-light)',
     }}>
       <div style={{ padding: '0.5rem 0.5rem 1rem 0.5rem', display: 'flex', flexDirection: 'column' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -48,7 +46,7 @@ const KanbanColumn = ({ column, items }) => {
             }}
           >
             {items.map((item, index) => (
-              <KanbanCard key={item.id} item={item} index={index} />
+              <KanbanCard key={item.id} item={item} index={index} onCardClick={onCardClick} />
             ))}
             {provided.placeholder}
           </div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { DragDropContext } from '@hello-pangea/dnd';
-import { Plus } from 'lucide-react';
+import { Plus, X, Save, MessageSquare, DollarSign, MapPin, Calendar, Tag, Trash2 } from 'lucide-react';
 import KanbanColumn from './KanbanColumn';
 import { db } from '../../services/firebaseConfig';
 import { collection, onSnapshot, query, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
@@ -40,6 +40,45 @@ const KanbanBoard = () => {
     source: 'WhatsApp', 
     paramSistema: 'Radiadores' 
   });
+
+  // Detail Panel
+  const [selectedLead, setSelectedLead] = useState(null);
+  const [detailNotes, setDetailNotes] = useState('');
+  const [detailAmount, setDetailAmount] = useState('');
+  const [isSavingDetail, setIsSavingDetail] = useState(false);
+
+  const openDetail = (item) => {
+    setSelectedLead(item);
+    setDetailNotes(item.notas || '');
+    setDetailAmount(item.amount || '');
+  };
+
+  const saveDetail = async () => {
+    if (!selectedLead) return;
+    setIsSavingDetail(true);
+    try {
+      await updateDoc(doc(db, 'presupuestos', selectedLead.id), {
+        notas: detailNotes,
+        amount: detailAmount ? Number(detailAmount) : null
+      });
+      setSelectedLead(null);
+    } catch (err) {
+      alert('Error: ' + err.message);
+    }
+    setIsSavingDetail(false);
+  };
+
+  const deleteLead = async () => {
+    if (!selectedLead) return;
+    if (!window.confirm(`¿Eliminar lead "${selectedLead.name}"?`)) return;
+    try {
+      const { deleteDoc: delDoc } = await import('firebase/firestore');
+      await delDoc(doc(db, 'presupuestos', selectedLead.id));
+      setSelectedLead(null);
+    } catch (err) {
+      alert('Error: ' + err.message);
+    }
+  };
 
   useEffect(() => {
     // Escuchar Clientes para el dropdown del Nuevo Lead
@@ -233,7 +272,7 @@ const KanbanBoard = () => {
           {data.columnOrder.map(columnId => {
             const column = data.columns[columnId];
             const items = column.itemsIds.map(itemId => data.items[itemId]).filter(Boolean); // Filtrar falsy values
-            return <KanbanColumn key={column.id} column={column} items={items} />;
+            return <KanbanColumn key={column.id} column={column} items={items} onCardClick={openDetail} />;
           })}
         </DragDropContext>
       </div>
@@ -363,6 +402,95 @@ const KanbanBoard = () => {
           </div>
         </div>
       )}
+
+      {/* Lead Detail Panel */}
+      {selectedLead && (
+        <>
+          <div 
+            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 40 }}
+            onClick={() => setSelectedLead(null)}
+          />
+          <div style={{
+            position: 'fixed', top: 0, right: 0, bottom: 0, width: '100%', maxWidth: '480px',
+            backgroundColor: 'var(--bg-primary)', boxShadow: '-5px 0 25px rgba(0,0,0,0.15)', zIndex: 50,
+            display: 'flex', flexDirection: 'column', animation: 'slideIn 0.25s ease'
+          }}>
+            {/* Panel Header */}
+            <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--bg-surface-hover)' }}>
+              <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: '600' }}>Ficha del Lead</h3>
+              <button onClick={() => setSelectedLead(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: '0.25rem' }}>
+                <X size={22} />
+              </button>
+            </div>
+
+            {/* Panel Body */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              
+              {/* Client Info */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700' }}>{selectedLead.name}</h2>
+                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><MapPin size={14}/> {selectedLead.location || 'S/D'}</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Calendar size={14}/> {selectedLead.date}</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Tag size={14}/> {selectedLead.paramSistema || 'S/D'}</span>
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
+                  <span style={{ fontSize: '0.7rem', padding: '0.2rem 0.6rem', borderRadius: '4px', backgroundColor: '#dbeafe', color: '#1e40af', fontWeight: '600' }}>
+                    {selectedLead.source || 'WhatsApp'}
+                  </span>
+                  <span style={{ fontSize: '0.7rem', padding: '0.2rem 0.6rem', borderRadius: '4px', backgroundColor: '#f0fdf4', color: '#166534', fontWeight: '600' }}>
+                    {selectedLead.status}
+                  </span>
+                </div>
+              </div>
+
+              {/* Amount */}
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <DollarSign size={16}/> Monto del Presupuesto ($)
+                </label>
+                <input 
+                  type="number" className="input-field" placeholder="Ej: 2500000"
+                  value={detailAmount} onChange={e => setDetailAmount(e.target.value)}
+                />
+              </div>
+
+              {/* Notes */}
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <MessageSquare size={16}/> Notas / Comentarios
+                </label>
+                <textarea 
+                  className="input-field" rows={6} placeholder="Escribí notas, historial de conversaciones, detalles técnicos, etc."
+                  value={detailNotes} onChange={e => setDetailNotes(e.target.value)}
+                  style={{ resize: 'vertical', fontFamily: 'inherit' }}
+                />
+              </div>
+
+            </div>
+
+            {/* Panel Footer */}
+            <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <button type="button" onClick={deleteLead} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600' }}>
+                <Trash2 size={16}/> Eliminar Lead
+              </button>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setSelectedLead(null)}>Cerrar</button>
+                <button type="button" className="btn btn-primary" onClick={saveDetail} disabled={isSavingDetail} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <Save size={16}/> {isSavingDetail ? 'Guardando...' : 'Guardar Cambios'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      <style>{`
+        @keyframes slideIn {
+          from { transform: translateX(100%); }
+          to { transform: translateX(0); }
+        }
+      `}</style>
     </div>
   );
 };

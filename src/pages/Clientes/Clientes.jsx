@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Plus, FileText, Wrench, MoreVertical, Building, User, Mail, Phone, X, Save } from 'lucide-react';
+import { Search, Filter, Plus, FileText, Wrench, MoreVertical, Building, User, Mail, Phone, X, Save, Edit2, Trash2 } from 'lucide-react';
 import { db } from '../../services/firebaseConfig';
-import { collection, onSnapshot, query, addDoc, writeBatch, doc } from 'firebase/firestore';
+import { collection, onSnapshot, query, addDoc, updateDoc, deleteDoc, writeBatch, doc } from 'firebase/firestore';
 
 const Clientes = () => {
   const [clientes, setClientes] = useState([]);
@@ -12,9 +12,13 @@ const Clientes = () => {
   // States for Side Panel
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
     name: '', type: 'Propietario', cuit: '', email: '', phone: '', address: '', priceList: 'Consumidor Final'
   });
+
+  // Actions dropdown
+  const [openMenuId, setOpenMenuId] = useState(null);
 
   const types = ['Todos', 'Propietario', 'Arquitecto', 'Estudio de Arquitectura', 'Constructora', 'Cliente SSTT'];
   const formTypes = ['Propietario', 'Arquitecto', 'Estudio de Arquitectura', 'Constructora', 'Cliente SSTT'];
@@ -28,16 +32,22 @@ const Clientes = () => {
       }));
       setClientes(docs);
     });
-
     return () => unsubscribe();
   }, []);
+
+  // Close menu on outside click
+  useEffect(() => {
+    const handleClick = () => setOpenMenuId(null);
+    if (openMenuId) document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, [openMenuId]);
 
   const filteredClientes = clientes.filter(cliente => {
     const term = searchTerm.toLowerCase();
     const nameMatch = cliente.name ? cliente.name.toLowerCase().includes(term) : false;
     const cuitMatch = cliente.cuit ? cliente.cuit.includes(term) : false;
-    const matchesSearch = nameMatch || cuitMatch;
-    
+    const phoneMatch = cliente.phone ? cliente.phone.includes(term) : false;
+    const matchesSearch = nameMatch || cuitMatch || phoneMatch;
     const matchesType = filterType === 'Todos' || cliente.type === filterType;
     return matchesSearch && matchesType;
   }).sort((a, b) => {
@@ -59,6 +69,39 @@ const Clientes = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const openNewPanel = () => {
+    setEditingId(null);
+    setFormData({ name: '', type: 'Propietario', cuit: '', email: '', phone: '', address: '', priceList: 'Consumidor Final' });
+    setIsPanelOpen(true);
+  };
+
+  const openEditPanel = (cliente) => {
+    setEditingId(cliente.id);
+    setFormData({
+      name: cliente.name || '',
+      type: cliente.type || 'Propietario',
+      cuit: cliente.cuit || '',
+      email: cliente.email || '',
+      phone: cliente.phone || '',
+      address: cliente.address || '',
+      priceList: cliente.priceList || 'Consumidor Final'
+    });
+    setIsPanelOpen(true);
+    setOpenMenuId(null);
+  };
+
+  const handleDeleteClient = async (id, name) => {
+    setOpenMenuId(null);
+    if (window.confirm(`¿Seguro que deseas eliminar a "${name}"? Esta acción no se puede deshacer.`)) {
+      try {
+        await deleteDoc(doc(db, 'clientes', id));
+      } catch (err) {
+        console.error(err);
+        alert('Error al eliminar: ' + err.message);
+      }
+    }
+  };
+
   const handleSaveClient = async (e) => {
     e.preventDefault();
     if (!formData.name) {
@@ -68,19 +111,22 @@ const Clientes = () => {
     
     setIsSubmitting(true);
     try {
-      await addDoc(collection(db, 'clientes'), {
-        ...formData,
-        obrasCount: 0,
-        ssttCount: 0,
-        createdAt: new Date()
-      });
+      if (editingId) {
+        await updateDoc(doc(db, 'clientes', editingId), { ...formData });
+      } else {
+        await addDoc(collection(db, 'clientes'), {
+          ...formData,
+          obrasCount: 0,
+          ssttCount: 0,
+          createdAt: new Date()
+        });
+      }
       setIsPanelOpen(false);
-      setFormData({
-        name: '', type: 'Propietario', cuit: '', email: '', phone: '', address: '', priceList: 'Consumidor Final'
-      });
+      setEditingId(null);
+      setFormData({ name: '', type: 'Propietario', cuit: '', email: '', phone: '', address: '', priceList: 'Consumidor Final' });
     } catch (error) {
       console.error("Error al guardar cliente: ", error);
-      alert("Hubo un error al guardar el cliente.");
+      alert("Error: " + error.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -100,7 +146,7 @@ const Clientes = () => {
         const docRef = doc(collection(db, 'clientes'));
         currentBatch.set(docRef, { ...client, createdAt: new Date() });
         count++;
-        if (count === 400) { // Firebase max limit per batch is 500, we use 400 for safety
+        if (count === 400) {
           batches.push(currentBatch);
           currentBatch = writeBatch(db);
           count = 0;
@@ -134,50 +180,39 @@ const Clientes = () => {
           <button className="btn btn-secondary" onClick={handleImportGesdatta} disabled={isSubmitting}>
              Re-Importar Nube
           </button>
-          <button className="btn btn-primary" onClick={() => setIsPanelOpen(true)} disabled={isSubmitting}>
+          <button className="btn btn-primary" onClick={openNewPanel} disabled={isSubmitting}>
             <Plus size={18} />
             Nuevo Contacto
           </button>
         </div>
       </div>
 
-      {/* Toolbox (Buscador y Filtros) */}
+      {/* Toolbox */}
       <div className="card" style={{ padding: '1rem', marginBottom: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
         <div style={{ position: 'relative', flexGrow: 1, maxWidth: '400px' }}>
           <Search size={18} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
           <input 
             type="text" 
-            placeholder="Buscar por nombre, razón social o CUIT..." 
+            placeholder="Buscar por nombre, CUIT o teléfono..." 
             className="input-field"
             style={{ paddingLeft: '2.5rem' }}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <Filter size={18} color="var(--text-secondary)" />
-          <select 
-            className="input-field" 
-            style={{ width: 'auto' }}
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-          >
+          <select className="input-field" style={{ width: 'auto' }} value={filterType} onChange={(e) => setFilterType(e.target.value)}>
             {types.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
-          <select 
-            className="input-field" 
-            style={{ width: 'auto', marginLeft: '0.5rem' }}
-            value={sortOrder}
-            onChange={(e) => setSortOrder(e.target.value)}
-          >
+          <select className="input-field" style={{ width: 'auto', marginLeft: '0.5rem' }} value={sortOrder} onChange={(e) => setSortOrder(e.target.value)}>
             <option value="A-Z">A-Z</option>
             <option value="Z-A">Z-A</option>
           </select>
         </div>
       </div>
 
-      {/* Main Table */}
+      {/* Table */}
       <div className="card" style={{ padding: 0, overflow: 'hidden', flex: 1, display: 'flex', flexDirection: 'column' }}>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
@@ -226,10 +261,38 @@ const Clientes = () => {
                     </div>
                   </td>
 
-                  <td style={{ padding: '1rem', textAlign: 'center' }}>
-                    <button style={{ color: 'var(--text-tertiary)', padding: '0.5rem', borderRadius: '50%', transition: 'background-color 0.2s' }} className="btn-icon">
+                  <td style={{ padding: '1rem', textAlign: 'center', position: 'relative' }}>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === cliente.id ? null : cliente.id); }}
+                      style={{ color: 'var(--text-tertiary)', padding: '0.5rem', borderRadius: '50%', transition: 'background-color 0.2s' }} 
+                      className="btn-icon"
+                    >
                       <MoreVertical size={18} />
                     </button>
+                    
+                    {openMenuId === cliente.id && (
+                      <div style={{
+                        position: 'absolute', right: '1rem', top: '3rem', zIndex: 20,
+                        backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-light)',
+                        borderRadius: '8px', boxShadow: 'var(--shadow-lg)', minWidth: '160px',
+                        overflow: 'hidden'
+                      }}>
+                        <button 
+                          onClick={() => openEditPanel(cliente)}
+                          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', padding: '0.75rem 1rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.875rem', color: 'var(--text-primary)', textAlign: 'left' }}
+                          className="table-row-hover"
+                        >
+                          <Edit2 size={14} /> Editar
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteClient(cliente.id, cliente.name)}
+                          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', padding: '0.75rem 1rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.875rem', color: '#dc2626', textAlign: 'left' }}
+                          className="table-row-hover"
+                        >
+                          <Trash2 size={14} /> Eliminar
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -253,35 +316,27 @@ const Clientes = () => {
         />
       )}
 
-      {/* Side Panel (Slide out) */}
+      {/* Side Panel */}
       <div style={{
         position: 'fixed', top: 0, right: isPanelOpen ? 0 : '-500px', bottom: 0, width: '100%', maxWidth: '450px',
         backgroundColor: 'var(--bg-primary)', boxShadow: '-5px 0 25px rgba(0,0,0,0.1)', zIndex: 50,
         transition: 'right 0.3s cubic-bezier(0.4, 0, 0.2, 1)', display: 'flex', flexDirection: 'column'
       }}>
-        {/* Panel Header */}
         <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--bg-surface-hover)' }}>
           <h3 style={{ margin: 0, fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-primary)' }}>
             <User color="var(--primary-600)" />
-            Nuevo Contacto
+            {editingId ? 'Editar Contacto' : 'Nuevo Contacto'}
           </h3>
-          <button 
-            onClick={() => setIsPanelOpen(false)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)' }}
-            className="btn-icon"
-          >
+          <button onClick={() => setIsPanelOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)' }} className="btn-icon">
             <X size={24} />
           </button>
         </div>
 
-        {/* Panel Body (Form) */}
         <form onSubmit={handleSaveClient} style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label className="form-label">Nombre / Razón Social <span style={{color: 'var(--accent-600)'}}>*</span></label>
             <input type="text" name="name" value={formData.name} onChange={handleInputChange} className="input-field" placeholder="Ej: Constructora San Juan S.A." required />
           </div>
-
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label className="form-label">Tipo de Cliente</label>
@@ -289,28 +344,23 @@ const Clientes = () => {
                 {formTypes.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
-
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label className="form-label">CUIT / DNI</label>
               <input type="text" name="cuit" value={formData.cuit} onChange={handleInputChange} className="input-field" placeholder="30-12345678-9" />
             </div>
           </div>
-
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label className="form-label">Correo Electrónico</label>
             <input type="email" name="email" value={formData.email} onChange={handleInputChange} className="input-field" placeholder="contacto@empresa.com" />
           </div>
-
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label className="form-label">Teléfono</label>
             <input type="text" name="phone" value={formData.phone} onChange={handleInputChange} className="input-field" placeholder="+54 9 341 1234567" />
           </div>
-
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label className="form-label">Dirección Fiscal / Principal</label>
             <input type="text" name="address" value={formData.address} onChange={handleInputChange} className="input-field" placeholder="Calle Falsa 123, Ciudad" />
           </div>
-
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label className="form-label">Lista de Precios Base</label>
             <select name="priceList" value={formData.priceList} onChange={handleInputChange} className="input-field">
@@ -319,19 +369,14 @@ const Clientes = () => {
               <option value="Arquitectos">Arquitectos (Especial)</option>
             </select>
           </div>
-
-          {/* Panel Footer (Buttons inside form to act as submit) */}
           <div style={{ marginTop: 'auto', paddingTop: '1.5rem', display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-            <button type="button" className="btn btn-secondary" onClick={() => setIsPanelOpen(false)}>
-              Cancelar
-            </button>
+            <button type="button" className="btn btn-secondary" onClick={() => setIsPanelOpen(false)}>Cancelar</button>
             <button type="submit" className="btn btn-primary" disabled={isSubmitting} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: isSubmitting ? 0.7 : 1 }}>
               <Save size={18} />
-              {isSubmitting ? 'Guardando...' : 'Guardar Cliente'}
+              {isSubmitting ? 'Guardando...' : (editingId ? 'Actualizar' : 'Guardar Cliente')}
             </button>
           </div>
         </form>
-
       </div>
       
       <style>{`
@@ -342,7 +387,8 @@ const Clientes = () => {
           background-color: var(--border-light);
           color: var(--text-primary) !important;
         }
-      `}</style>
+      `}
+      </style>
     </div>
   );
 };

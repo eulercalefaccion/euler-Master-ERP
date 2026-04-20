@@ -2,7 +2,7 @@ import React from 'react';
 import { Draggable } from '@hello-pangea/dnd';
 import { MapPin, Calendar, CheckCircle, Tag, DollarSign } from 'lucide-react';
 
-const KanbanCard = ({ item, index }) => {
+const KanbanCard = ({ item, index, onCardClick }) => {
   const getPaymentBadge = (status) => {
     switch(status) {
       case 'Pago Completo':
@@ -21,6 +21,7 @@ const KanbanCard = ({ item, index }) => {
           ref={provided.innerRef}
           {...provided.draggableProps}
           {...provided.dragHandleProps}
+          onClick={() => onCardClick && onCardClick(item)}
           style={{
             ...provided.draggableProps.style,
             userSelect: 'none',
@@ -35,11 +36,11 @@ const KanbanCard = ({ item, index }) => {
             flexDirection: 'column',
             gap: '0.5rem',
             transition: 'background-color 0.2s',
+            cursor: 'pointer',
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <h4 style={{ fontSize: '0.875rem', fontWeight: '600', margin: 0, paddingRight: '1rem' }}>{item.name}</h4>
-            {/* Si tiene status de pago distinto a null o pendiente normal de inicio, mostrarlo (generalmente para Aprobado o Seguimiento Avanzado) */}
             {(item.paymentStatus && item.paymentStatus !== 'Pendiente' || item.amount) && (
                getPaymentBadge(item.paymentStatus)
             )}
@@ -48,18 +49,18 @@ const KanbanCard = ({ item, index }) => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-secondary)', fontSize: '0.75rem' }}>
               <MapPin size={12} />
-              <span>{item.location}</span>
+              <span>{item.location || 'S/D'}</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-secondary)', fontSize: '0.75rem' }}>
               <Calendar size={12} />
-              <span>{item.date} • {item.canal}</span>
+              <span>{item.date} • {item.source || item.canal || 'S/D'}</span>
             </div>
           </div>
           
           <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '0.7rem', padding: '0.1rem 0.5rem', borderRadius: '4px', backgroundColor: 'var(--primary-50)', color: 'var(--primary-700)', border: '1px solid var(--primary-100)', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
               <Tag size={10} />
-              {item.type}
+              {item.paramSistema || item.type || 'S/D'}
             </span>
             {item.amount && (
               <span style={{ fontSize: '0.7rem', fontWeight: '600', padding: '0.1rem 0.5rem', color: 'var(--text-secondary)' }}>
