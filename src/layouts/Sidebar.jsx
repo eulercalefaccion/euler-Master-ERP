@@ -9,6 +9,7 @@ const Sidebar = () => {
     { name: 'Presupuestos', icon: <Calculator size={20} />, path: '/presupuestos' },
     { name: 'Obras', icon: <ClipboardList size={20} />, path: '/obras' },
     { name: 'Stock', icon: <Package size={20} />, path: '/stock' },
+    { name: 'Personas', icon: <Users size={20} />, path: '/personas' },
     { name: 'Jornadas', icon: <MapPin size={20} />, path: '/jornadas' },
     { name: 'Sueldos', icon: <Receipt size={20} />, path: '/sueldos' },
     { name: 'Balance', icon: <Flame size={20} />, path: '/balance' },

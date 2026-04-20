@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { Home, Calculator, History, Settings, Users, Receipt } from 'lucide-react';
+import { Home, Calculator, History, Settings, Receipt } from 'lucide-react';
 import TabInicio from './tabs/TabInicio';
 import TabLiquidar from './tabs/TabLiquidar';
 import TabHistorial from './tabs/TabHistorial';
 import TabParitarias from './tabs/TabParitarias';
-import TabPersonas from './tabs/TabPersonas';
 
 const Sueldos = () => {
   const [activeTab, setActiveTab] = useState('inicio');
@@ -63,16 +62,6 @@ const Sueldos = () => {
              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Settings size={18}/> Paritarias</div>
           </button>
 
-          <button 
-            onClick={() => setActiveTab('personas')}
-            style={{ 
-               background: 'none', border: 'none', fontSize: '0.875rem', fontWeight: '600', cursor: 'pointer', padding: '0.5rem 0',
-               color: activeTab === 'personas' ? 'var(--primary-600)' : 'var(--text-secondary)',
-               borderBottom: activeTab === 'personas' ? '2px solid var(--primary-600)' : '2px solid transparent'
-            }}
-          >
-             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Users size={18}/> Personas</div>
-          </button>
         </div>
       </div>
 
@@ -82,7 +71,6 @@ const Sueldos = () => {
         {activeTab === 'liquidar' && <TabLiquidar onNavigate={setActiveTab} />}
         {activeTab === 'historial' && <TabHistorial />}
         {activeTab === 'paritarias' && <TabParitarias />}
-        {activeTab === 'personas' && <TabPersonas />}
       </div>
 
     </div>

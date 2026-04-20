@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { UserPlus, Edit2, Trash2, Shield } from 'lucide-react';
-import { db } from '../../../services/firebaseConfig';
+import { db } from '../../services/firebaseConfig';
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
 
 const TabPersonas = () => {
