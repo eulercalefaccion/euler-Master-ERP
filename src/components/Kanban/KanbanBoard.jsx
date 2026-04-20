@@ -158,14 +158,20 @@ const KanbanBoard = () => {
     setPaymentAmount('');
   };
 
+  const [isSavingLead, setIsSavingLead] = useState(false);
+
   const handleAddLead = async () => {
+    console.log('handleAddLead fired', { isNewClient, newLead });
     
+    if (isSavingLead) return;
+    setIsSavingLead(true);
+
     let finalClientId = newLead.clientId;
     let finalClientName = '';
 
-    if (isNewClient) {
-       if (!newLead.newClientName) return alert("Ingresa el nombre del cliente nuevo.");
-       try {
+    try {
+      if (isNewClient) {
+         if (!newLead.newClientName) { setIsSavingLead(false); return alert("Ingresa el nombre del cliente nuevo."); }
          const newClientRef = await addDoc(collection(db, 'clientes'), {
             name: newLead.newClientName,
             phone: newLead.newClientPhone || '',
@@ -175,21 +181,17 @@ const KanbanBoard = () => {
          });
          finalClientId = newClientRef.id;
          finalClientName = newLead.newClientName;
-       } catch (err) {
-         console.error("Error creando nuevo cliente:", err);
-         return alert("Fallo al crear el cliente en la base de datos.");
-       }
-    } else {
-       if (!newLead.clientId) return alert("Por favor seleccione un cliente de la lista.");
-       const selectedClient = clientesList.find(c => c.id === newLead.clientId);
-       finalClientName = selectedClient.name;
-    }
+         console.log('New client created:', finalClientId);
+      } else {
+         if (!newLead.clientId) { setIsSavingLead(false); return alert("Por favor seleccione un cliente de la lista."); }
+         const selectedClient = clientesList.find(c => c.id === newLead.clientId);
+         finalClientName = selectedClient.name;
+      }
 
-    try {
       await addDoc(collection(db, 'presupuestos'), {
         clientId: finalClientId,
         name: finalClientName,
-        location: newLead.location,
+        location: newLead.location || 'S/D',
         source: newLead.source,
         paramSistema: newLead.paramSistema,
         tags: [newLead.paramSistema],
@@ -200,13 +202,15 @@ const KanbanBoard = () => {
         createdAt: serverTimestamp()
       });
       
+      console.log('Lead created successfully');
       setIsLeadModalOpen(false);
       setIsNewClient(false);
       setNewLead({ clientId: '', newClientName: '', newClientPhone: '', location: '', source: 'WhatsApp', paramSistema: 'Radiadores' });
     } catch (err) {
-      console.error(err);
-      alert('Error guardando el lead.');
+      console.error('Error en handleAddLead:', err);
+      alert('Error: ' + err.message);
     }
+    setIsSavingLead(false);
   };
 
   return (
@@ -351,7 +355,9 @@ const KanbanBoard = () => {
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem' }}>
                 <button type="button" className="btn btn-secondary" onClick={() => setIsLeadModalOpen(false)}>Cancelar</button>
-                <button type="button" className="btn btn-primary" onClick={handleAddLead}>Crear Lead</button>
+                <button type="button" className="btn btn-primary" onClick={handleAddLead} disabled={isSavingLead}>
+                  {isSavingLead ? 'Guardando...' : 'Crear Lead'}
+                </button>
               </div>
             </div>
           </div>
