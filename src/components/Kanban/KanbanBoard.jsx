@@ -41,6 +41,54 @@ const KanbanBoard = () => {
     paramSistema: 'Radiadores' 
   });
 
+  useEffect(() => {
+    // Escuchar Clientes para el dropdown del Nuevo Lead
+    const qClientes = query(collection(db, 'clientes'));
+    const unsubClientes = onSnapshot(qClientes, (snapshot) => {
+      const c = snapshot.docs.map(d => ({ id: d.id, name: d.data().name }));
+      c.sort((a,b) => (a.name || '').localeCompare(b.name || ''));
+      setClientesList(c);
+    });
+
+    // Escuchar Presupuestos (Leads Kanban)
+    const qPresupuestos = query(collection(db, 'presupuestos'));
+    const unsubPresupuestos = onSnapshot(qPresupuestos, (snapshot) => {
+      const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      
+      const newColumns = {
+        'pendiente': { id: 'pendiente', title: 'Presupuesto Pendiente', itemsIds: [] },
+        'calculo': { id: 'calculo', title: 'En Cálculo', itemsIds: [] },
+        'enviado': { id: 'enviado', title: 'Enviado al Cliente', itemsIds: [] },
+        'seguimiento': { id: 'seguimiento', title: 'Seguimiento Activo', itemsIds: [] },
+        'aprobado': { id: 'aprobado', title: 'Aprobado', itemsIds: [] },
+        'rechazado': { id: 'rechazado', title: 'Rechazado / En Espera', itemsIds: [] }
+      };
+      
+      const newItems = {};
+      docs.forEach(d => {
+        const tags = Array.isArray(d.tags) ? d.tags : [d.paramSistema || 'S/D'];
+        newItems[d.id] = { ...d, tags };
+        
+        if (newColumns[d.status]) {
+          newColumns[d.status].itemsIds.push(d.id);
+        } else {
+          newColumns['pendiente'].itemsIds.push(d.id);
+        }
+      });
+
+      setData({
+        items: newItems,
+        columns: newColumns,
+        columnOrder: ['pendiente', 'calculo', 'enviado', 'seguimiento', 'aprobado', 'rechazado']
+      });
+    });
+
+    return () => {
+      unsubClientes();
+      unsubPresupuestos();
+    };
+  }, []);
+
   const onDragEnd = async (result) => {
     const { destination, source, draggableId } = result;
 
