@@ -41,6 +41,75 @@ const KanbanBoard = () => {
     paramSistema: 'Radiadores' 
   });
 
+  const onDragEnd = async (result) => {
+    const { destination, source, draggableId } = result;
+
+    if (!destination) return;
+    if (destination.droppableId === source.droppableId && destination.index === source.index) return;
+
+    const startColumn = data.columns[source.droppableId];
+    const finishColumn = data.columns[destination.droppableId];
+
+    if (startColumn === finishColumn) return;
+
+    if (finishColumn.id === 'aprobado') {
+      setPendingMove(result);
+      setIsModalOpen(true);
+      return;
+    }
+
+    try {
+      await updateDoc(doc(db, 'presupuestos', draggableId), {
+        status: finishColumn.id
+      });
+    } catch (err) {
+      console.error("Error al mover presupuesto", err);
+    }
+  };
+
+  const confirmMoveToAprobado = async () => {
+    if (!pendingMove) return;
+    const { draggableId, destination } = pendingMove;
+
+    try {
+      const itemToApprove = data.items[draggableId];
+      
+      await updateDoc(doc(db, 'presupuestos', draggableId), {
+        status: destination.droppableId,
+        paymentStatus: paymentStatus,
+        amount: paymentAmount ? parseInt(paymentAmount) : (itemToApprove.amount || 0)
+      });
+
+      await addDoc(collection(db, 'obras'), {
+        name: `Obra ${itemToApprove.name} - ${itemToApprove.paramSistema || ''}`,
+        location: itemToApprove.location || 'S/D',
+        clientId: itemToApprove.clientId || '',
+        clientName: itemToApprove.name || 'S/D',
+        system: itemToApprove.paramSistema || 'S/D',
+        phase: 'Obra',
+        estado: 'Pendiente de Inicio',
+        progress: 0,
+        operarios: '',
+        bitacoraPreview: 'Nacimiento de Obra. Generada automáticamente tras aprobar el Presupuesto comercial.',
+        createdAt: serverTimestamp(),
+        startDate: new Date().toLocaleDateString('es-AR')
+      });
+
+    } catch (err) {
+      console.error("Error al confirmar venta:", err);
+      alert("Hubo un fallo en la base de datos al cerrar el presupuesto.");
+    }
+
+    closeModal();
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setPendingMove(null);
+    setPaymentStatus('Pendiente');
+    setPaymentAmount('');
+  };
+
   const handleAddLead = async (e) => {
     e.preventDefault();
     
