@@ -11,7 +11,7 @@ const Stock = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [newItem, setNewItem] = useState({
-    name: '', category: 'Materiales', quantity: 0, minAlert: 5, unit: 'U'
+    name: '', category: 'Materiales', quantity: 0, minAlert: 5, unit: 'U', costUSD: 0, profitCF: 30
   });
 
   const categories = ['Todas', 'Equipos', 'Materiales', 'Herramientas', 'Repuestos SSTT'];
@@ -51,11 +51,13 @@ const Stock = () => {
         quantity: Number(newItem.quantity),
         minAlert: Number(newItem.minAlert),
         unit: newItem.unit,
+        costUSD: Number(newItem.costUSD) || 0,
+        profitCF: Number(newItem.profitCF) || 0,
         lastUpdated: new Date().toLocaleDateString('es-AR'),
         createdAt: serverTimestamp()
       });
       setIsModalOpen(false);
-      setNewItem({ name: '', category: 'Materiales', quantity: 0, minAlert: 5, unit: 'U' });
+      setNewItem({ name: '', category: 'Materiales', quantity: 0, minAlert: 5, unit: 'U', costUSD: 0, profitCF: 30 });
     } catch (e) {
       console.error(e);
       alert('Error al guardar en el inventario.');
@@ -137,6 +139,7 @@ const Stock = () => {
               <tr>
                 <th style={{ padding: '1rem', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Ítem / Descripción</th>
                 <th style={{ padding: '1rem', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Categoría</th>
+                <th style={{ padding: '1rem', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Precio Base</th>
                 <th style={{ padding: '1rem', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Cantidad Total</th>
                 <th style={{ padding: '1rem', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Estado</th>
                 <th style={{ padding: '1rem', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-secondary)', textAlign: 'right' }}>Acciones</th>
@@ -157,6 +160,11 @@ const Stock = () => {
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', backgroundColor: 'var(--primary-50)', color: 'var(--primary-700)', padding: '0.25rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: '500' }}>
                         {getCategoryIcon(item.category)} {item.category}
                       </span>
+                    </td>
+
+                    <td style={{ padding: '1rem' }}>
+                      {item.costUSD ? <div style={{ fontWeight: '600', color: 'var(--accent-600)' }}>U$D {item.costUSD}</div> : <div style={{ color: 'var(--text-tertiary)' }}>-</div>}
+                      {item.profitCF ? <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{item.profitCF}% Margen</div> : null}
                     </td>
 
                     <td style={{ padding: '1rem' }}>
@@ -250,6 +258,17 @@ const Stock = () => {
                     <option value="Kgs">Kilos (Kgs)</option>
                     <option value="Lts">Litros (Lts)</option>
                   </select>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '0.5rem' }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Costo en USD (Opcional)</label>
+                  <input type="number" min="0" step="0.01" className="input-field" value={newItem.costUSD} onChange={(e) => setNewItem({...newItem, costUSD: e.target.value})} placeholder="Ej: 120.50" />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">% Rentabilidad (Consumidor Final)</label>
+                  <input type="number" min="0" className="input-field" value={newItem.profitCF} onChange={(e) => setNewItem({...newItem, profitCF: e.target.value})} />
                 </div>
               </div>
 
