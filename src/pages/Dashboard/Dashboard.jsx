@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BadgeDollarSign, TrendingUp, Presentation, AlertCircle, Wrench, HardHat, Pickaxe, MapPin, Wallet } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import DatabaseWiper from '../../components/DatabaseWiper';
 import { db } from '../../services/firebaseConfig';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 
@@ -263,6 +264,8 @@ const Dashboard = () => {
         </div>
 
       </div>
+
+      <DatabaseWiper />
 
       {/* Alertas Post Venta */}
       <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>

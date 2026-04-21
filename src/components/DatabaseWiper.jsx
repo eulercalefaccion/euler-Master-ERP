@@ -72,6 +72,57 @@ const DatabaseWiper = () => {
         {isProcessing ? 'Procesando...' : '⚠️ ELIMINAR DATOS DE PRUEBA Y CARGAR GESDATTA'}
       </button>
     </div>
+      
+      {/* SECCIÓN MIGRAR STOCK GESDATTA */}
+      <hr style={{margin: '20px 0'}} />
+      <h3 style={{ color: '#047857', marginTop: 0 }}>📦 Migrar Stock de Gesdatta</h3>
+      <p style={{ fontSize: '0.875rem' }}>Añadirá los 533 elementos a la colección "stock". No borrará nada de lo que ya haya.</p>
+      <button 
+        onClick={async () => {
+          if(!window.confirm("¿Importar los 533 artículos de stock?")) return;
+          setIsProcessing(true);
+          try {
+            setStatus('Importando catalogo_limpio.json...');
+            const response = await fetch('/catalogo_limpio.json');
+            const data = await response.json();
+            
+            const batches = [];
+            let currentBatch = writeBatch(db);
+            let count = 0;
+            
+            data.forEach(item => {
+              const docRef = doc(collection(db, 'stock'));
+              currentBatch.set(docRef, { ...item, createdAt: new Date() });
+              count++;
+              if (count === 400) {
+                batches.push(currentBatch);
+                currentBatch = writeBatch(db);
+                count = 0;
+              }
+            });
+            if (count > 0) batches.push(currentBatch);
+            
+            for (const b of batches) {
+               await b.commit();
+            }
+            setStatus('¡Stock importado con éxito!');
+            alert('Stock cargado correctamente en Firebase.');
+          } catch(e) {
+            console.error(e);
+            setStatus('Error migrando stock');
+          } finally {
+            setIsProcessing(false);
+          }
+        }} 
+        disabled={isProcessing}
+        style={{ 
+          backgroundColor: '#059669', color: 'white', border: 'none', padding: '0.75rem 1rem', 
+          borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' 
+        }}
+      >
+        {isProcessing ? 'Procesando...' : 'INYECTAR STOCK AHORA'}
+      </button>
+    </div>
   );
 };
 

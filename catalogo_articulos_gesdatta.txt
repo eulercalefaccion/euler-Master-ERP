@@ -1,0 +1,556 @@
+
+Buscar...
+Código	Nombre	Estado	Cuenta Compras	Cuenta Ventas	Stock	Precio de Ultima Compra	Precio de Venta por Defecto	Etiqueta	Acciones
+5742918618285	KIT TUBOS SEPARADOS PARA VENTILACIÓN (ECO NOVA/MAIN 5)		Bienes de Cambio (Factura Recibida)	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+9457132680	PUESTA EN MARCHA SISTEMA DE CALEFACCIÓN		Ventas Brutas de Servicios	Ventas Brutas de Servicios		$ 0,00	$ 0,00		  
+4962073185	CALDERA FLOWING ADVANCE SC30 (SOLO CALEFACCIÓN BLANCA)		Bienes de Cambio (Factura Recibida)	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+456824718832	CALDERA FLOWING ADVANCE SC20 (SOLO CALEFACCIÓN)		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 2.242.746,00	$ 0,00		  
+3304867579270	Toallero Helical 800/450 Blanco Curvo (Euterma)		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 24.214,58	$ 0,00		  
+5146181362125	ELEMENTO DE RADIADOR CALDAIA 800MM		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+6669303468307	CABEZAL TERMOSTATIZABLE GIACOMINI		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+6881287937358	Llave T para armado radiadores		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 8.250,00	$ 0,00		  
+3294769289204	Coverthor blanco 1/2*2mts		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+502416715596	Útiles de Aseo y Limpieza		Artículos de Limpieza	Artículos de Limpieza		$ 55.709,92	$ 0,00		  
+1281390995004	Papelería y Útiles		Papelería y Útiles	Papelería y Útiles		$ 1.700,00	$ 0,00		  
+5358078296771	Abono Sistema Gestion		Abono Sistema Gestion	Abono Sistema Gestion		$ 160.600,00	$ 0,00		  
+6016833805703	Gas		Servicios Varios	Servicios Varios		$ 1,70	$ 0,00		  
+5688944732847	Electricidad		Servicios Varios	Servicios Varios		$ 0,00	$ 0,00		  
+2571336039927	Caja ($)		Caja ($)	Caja ($)		$ 0,00	$ 0,00		  
+5782321328323	Teflon 3/4*10mts de alta densidad		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 1.497,60	$ 0,00		  
+409844809877	Banco Santander Rio (Cta. Cte. $)		Banco Santander Rio (Cta. Cte. $)	Banco Santander Rio (Cta. Cte. $)		$ 0,00	$ 0,00		  
+4163627996232	Mantenimiento Rodados		Mantenimiento Rodados	Mantenimiento Rodados		$ 57.851,24	$ 0,00		  
+2072318714725	Mantenimiento Edificio		Mantenimiento Edificio	Mantenimiento Edificio		$ 6.082,68	$ 0,00		  
+7967358157313	Mantenimiento y Reparaciones Varias		Mantenimiento y Reparaciones Varias	Mantenimiento y Reparaciones Varias		$ 379.082,68	$ 0,00		  
+9418503646581	Combustibles		Combustibles	Combustibles		$ 6.478,50	$ 0,00		  
+7953862308948	Monotributo y Autónomos		Monotributo y Autónomos	Monotributo y Autónomos		$ 0,00	$ 0,00		  
+6347380625452	IVA a Pagar		IVA a Pagar	IVA a Pagar		$ 0,00	$ 0,00		  
+3427971380299	Sueldos a Pagar		Sueldos a Pagar	Sueldos a Pagar		$ 0,00	$ 0,00		  
+1739370862450	Movilidad y Viaticos		Movilidad y Viaticos	Movilidad y Viaticos		$ 0,00	$ 0,00		  
+4683839321134	Capacitación del Personal		Honorarios Profesionales	Honorarios Profesionales		$ 1.184.350,32	$ 0,00		  
+6614297163115	Comidas y Refrigerios		Movilidad y Viaticos	Movilidad y Viaticos		$ 3.006,72	$ 0,00		  
+7137327056860	Ropa y Elementos de Seguridad		Ropa y Elementos de Seguridad	Ropa y Elementos de Seguridad		$ 59.500,00	$ 0,00		  
+5282200950567	Activos Menores		Activos Menores	Activos Menores		$ 106.265,47	$ 0,00		  
+6423640779156	Publicidad y Propaganda		Publicidad y Propaganda	Publicidad y Propaganda		$ 90.000,00	$ 0,00		  
+9060532605481	Gastos de Celulares		Gastos de Celulares	Gastos de Celulares		$ 47.685,95	$ 0,00		  
+4193280886293	Gastos de Internet y Tecnologia		Gastos de Internet y Tecnologia	Gastos de Internet y Tecnologia		$ 76.761,52	$ 0,00		  
+6551521155896	Honorarios Contabilidad		Honorarios Administracion	Honorarios Administracion		$ 195.785,00	$ 0,00		  
+9738549350563	Mantenimiento de Cuenta y Otros Gastos		Gastos Bancarios	Gastos Bancarios		$ 0,00	$ 0,00		  
+7347414120679	Impuesto Credito Bancario Ley 25.413		Impuesto Debito/Credito Bancario Ley 25.413	Impuesto Debito/Credito Bancario Ley 25.413		$ 0,00	$ 0,00		  
+6548222196609	Impuesto Debito Bancario Ley 25.413		Impuesto Debito/Credito Bancario Ley 25.413	Impuesto Debito/Credito Bancario Ley 25.413		$ 0,00	$ 0,00		  
+3751921613851	Valores en Cartera 1		Valores en Cartera	Valores en Cartera		$ 0,00	$ 0,00		  
+7421341471583	Valores en Cartera (Electronicos)		Valores en Cartera (Electronicos)	Valores en Cartera (Electronicos)		$ 0,00	$ 0,00		  
+790876776983	Elemento de radiador TRIANGULAR SIRA Group Diamante 500		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 12.200,00	$ 22.212,30		  
+5283944171707	Caldera Luna 3 confort 310 FI		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 1.680.000,00	$ 0,00		  
+5263131785372	Bomba de calor modelo EP-75P		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+5511562067092	Valvula ESF.1/2 FUS. Doble union H3		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 5.385,60	$ 0,00		  
+7116420809137	Valvula ESF. 2 FUS. Doble Union H3		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 21.924,33	$ 0,00		  
+1925079369490	Caño aluminio F/CYC H3 2&quot;		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 44.870,74	$ 0,00		  
+4075742095510	Materiales varios de SSTT		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 3.200,00	$ 0,00		  
+3997066119741	Banco Santander Rio (Cta. Cte. $ - Valores Diferidos)		Banco Santander Rio (Cta. Cte. $ - Valores Diferidos)	Banco Santander Rio (Cta. Cte. $ - Valores Diferidos)		$ 0,00	$ 0,00		  
+9529924828843	Tarjeta de Credito VISA - Santander Credito		Banco Santander Rio (Cta. Cte. $)	Banco Santander Rio (Cta. Cte. $)		$ 0,00	$ 0,00		  
+4569058087029	Peajes		Movilidad y Viaticos	Movilidad y Viaticos		$ 0,00	$ 0,00		  
+7510141739943	seguros de retiro		Seguros a Pagar	Seguros a Pagar		$ 0,00	$ 0,00		  
+8682802415276	Materiales varios para mantenimiento, reparaciones y servicios técnicos		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 22.842,00	$ 0,00		  
+6380562019801	CALDERA BAXI ECO NOVA 24 F		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 1.228.250,00	$ 0,00	
+Triangular
+  
+3034247006316	CALDERA BAXI ECO NOVA 31 F		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 1.100.000,00	$ 1.650.000,00	
+Triangular
+  
+8009873275225	Caldera Caldaia DIGITAL Top Sa26 - DS / TF B		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 1.086.884,00	$ 0,00		  
+7955502426921	Caldera DemirDokum NEPTO 24 - DS / TF		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 946.009,97	$ 0,00		  
+2347557379350	ABRAZADERA TUBO 60MM		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 11.040,00	$ 0,00		  
+9473976562413	BLISTER KIT UNIVERSAL PARA RADIADORES		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 5.305,50	$ 0,00		  
+2909650698927	Toallero Kanah 800 BLANCO (450mm entre ejes )		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 83.164,98	$ 0,00		  
+7099911100064	Mano de obra Instalación de radiadores		Ventas Brutas de Servicios	Ventas Brutas de Servicios		$ 15.000,00	$ 0,00		  
+3662517632043	Mano de obra Instalación de caldera		Ventas Brutas de Servicios	Ventas Brutas de Servicios		$ 0,00	$ 0,00		  
+4857288537757	Agua Destilada para llenado de circuito		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+6431534215715	MANÓMETRO 0-4BAR 1/2&quot; CONEXIÓN INFERIOR - CUADRANTE 2&quot;		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 8.049,60	$ 0,00		  
+8156086371409	TERMÓMETRO 0-100° 1/2&quot; POST - V15CM		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+9287228169773	FILTRO BRONCE 2&quot; MALLA 50 MICRONES		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+8430734166723	REHAU - CURVA GUIA 90°- 16MM		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+8781475224715	REHAU - CURVA GUIA 90°- 25MM		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 2.831,09	$ 0,00		  
+2204381348665	VALVULA DE SEGURIDAD 3 BAR BRONCE RM		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+1162686794214	PURGA DE COLUMNA - DESAIREADOR- BRONCE 1/2&quot; INF		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 7.401,60	$ 0,00		  
+712786485231	Toallero Kanah 800 CROMADO (450mm entre ejes )		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 163.119,05	$ 0,00		  
+2778705702448	VALVULA DE RETENCIÓN BRONCE 1 1/2&quot;		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+4085128571963	TEE 16-16-16 TIEMME		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+5833668169222	Toallero Kanah Cromado 1200 (450mm ee)		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+2749965564355	TEE 16-20-16 TIEMME		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+8450517118170	TEE 20-16-16 TIEMME		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+9129027223661	TEE 20-16-20 TIEMME		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+776912742178	TEE 20-20-16 TIEMME		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 3.257,00	$ 0,00		  
+4183694637218	TEE 20-25-20 TIEMME		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+116510993752	TEE 20-20-20 TIEMME		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 256,74	$ 0,00		  
+9828440685392	TEE 25-16-16 TIEMME		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 3.145,25	$ 0,00		  
+4824939916891	BOMBA CIRCULADORA WILO TOP - S 30/10 EM		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 172.940,33	$ 0,00		  
+867650933426	CASQUILLO DE PRESION 25 TIEMME		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+6881555862911	CASQUILLO DE PRESION 20 TIEMME		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+9363903486370	CASQUILLO DE PRESION 16 TIEMME		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+2659208825060	UNIÓN 25-25 TIEMME		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+5073835726329	UNIÓN 20-20 TIEMME		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+7760285330236	UNIÓN 16-16 TIEMME		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+9797654228590	MANGUITO REDUCCIÓN 20-16 TIEMME		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+9724866727834	MANGUITO REDUCCIÓN 25-16 TIEMME		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+7638330739231	TERMINAL RECTO R.I. 3/4 x 25 TIEMME		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+7717926548020	CODO DE PARED 25 RP 3/4 TIEMME		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 5.625,98	$ 0,00		  
+9756365405279	CODO DE PARED 20RP 3/4 TIEMME		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 4.104,89	$ 0,00		  
+5280089915046	CODO DE PARED 16 RP 1/2 TIEMME		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 2.920,84	$ 0,00		  
+7288156301184	TEE 25-25-25 TIEMME		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+9665097237643	TEE 25-25-16 TIEMME		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 3.118,30	$ 0,00		  
+5214630341996	TEE 25-20-16 TIEMME		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+8598610131117	TEE 25-16-25 TIEMME		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+4131624615500	TEE 25-16-20 TIEMME		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+1229895576427	SEPARADOR HIDRÁULICO CALEFFI 56M3		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 3.715.200,00	$ 0,00		  
+3145576794258	VASO DE EXPANSIÓN ELBI - TRIANGULAR ER CE 50 (50 LITROS)		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 206.307,00	$ 0,00		  
+5478917262935	BOMBA CIRCULADORA WILO BM 40/120 - 1,2 - 2		Costo de Mercaderia Vendida	Ventas Brutas de Servicios		$ 1.386.312,48	$ 0,00		  
+2803967541	OBRAS		Costo de Mercaderia Vendida	Ventas Brutas de Servicios		$ 230.000,00	$ 0,00		  
+1952876166250	Mano de Obra Mantenimiento Preventivo servicio de calefacción		Ventas Brutas de Servicios	Ventas Brutas de Servicios		$ 0,00	$ 0,00		  
+305705478006	Descuentos por Ventas		Descuentos por Ventas	Descuentos por Ventas		$ 8,82	$ 0,00		  
+717535751348	Tarjetas de Credito a Cobrar		Créditos por Ventas	Créditos por Ventas		$ 0,00	$ 0,00		  
+8860699709177	VALVULA MICROMETRICA ESCUADRA - R705X013 - GIACOMINI		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 8.138,51	$ 0,00		  
+5872772756049	DETENTOR ESCUADRA GIACOMINI 1/2&quot; R16X033 (RETORNO)		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 7.559,09	$ 0,00		  
+1201321971756	Niple de acero Inoxidable 8cm 1/2&quot;		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 2.300,05	$ 0,00		  
+5569231475259	Roseta Embellecedor para niple de 1/2&quot;		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 293,00	$ 0,00		  
+6474032296387	TERMOSTATO TRIANGULAR DIGITAL STANDARD A PILAS MITRA 260S		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 46.494,00	$ 90.200,00		  
+9095287890622	Mano de obra y Materiales para cañería de calefacción por agua en sistema pressfitting de polietileno reticulado		Ventas Brutas de Servicios	Ventas Brutas de Servicios		$ 24.519,60	$ 0,00		  
+6809929430922	KIT DE FLEXIBLES HIDRÁULICOS PARA CALDERA DUAL		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 59.470,92	$ 0,00		  
+621188026875	Mano de obra diseño, proyecto y ejecución de sistema de climatización de Piscinas.		Ventas Brutas de Servicios	Ventas Brutas de Servicios		$ 0,00	$ 0,00		  
+7955936216461	Intercambiador de calor de placas soldadas TRIANGULAR código ICP20 de 20Kw.		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 36.720,00	$ 0,00		  
+7346639095419	Materiales varios de cañeria Pex		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+1961575457688	Teflon 1/2&quot;*10mts de alta densidad		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 806,40	$ 0,00		  
+7008197078198	EQUIPOS DE CALEFACCIÓN POR AGUA		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+3091670365969	COLECTOR DE 4 CIRCUITOS PARA PISO RADIANTE		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 298.545,67	$ 0,00		  
+8795097595748	COLECTOR DE 2 CIRCUITOS PARA PISO RADIANTE		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+8719917600653	Caño aluminio F/CYC H3 1 1/2&quot;		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+5656128287236	Anticipo financiero		Anticipo de Clientes	Anticipo de Clientes		$ 0,00	$ 0,00		  
+9912765790950	Mano de obra instalación piso radiante		Ventas Brutas de Servicios	Ventas Brutas de Servicios		$ 0,00	$ 0,00		  
+955884805125	Valvula de zona de 3 vias termostatizable p colectores		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+2800935079015	VALVULA RECTA LUXOR GRUPO LATYN		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+4362998910883	MANO DE OBRA MANTENIMIENTO PREVENTIVO		Ventas Brutas de Servicios	Ventas Brutas de Servicios		$ 0,00	$ 0,00		  
+7116358622471	Flete materiales varios		Fletes y Acarreos Varios	Ventas Brutas de Servicios		$ 18.363,64	$ 0,00		  
+1815961277564	Servicio Tecnico		Ventas Brutas de Servicios	Ventas Brutas de Servicios		$ 22.500,00	$ 0,00		  
+6187224490980	TERMOSTATO ASUA DIGITAL PROGRAMABLE HY02B05 (CUADRADO BLANCO-BOTONES)		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 22.046,16	$ 51.505,00		  
+4338464429256	Estacionamiento		Movilidad y Viaticos	Movilidad y Viaticos		$ 8.264,46	$ 0,00		  
+3508295904666	IIBB		Impuesto a los Ingresos Brutos	Impuesto a los Ingresos Brutos		$ 10.116,84	$ 0,00		  
+1069308643463	TERMINAL ANTIVIENTOS COAXIAL 60/100 PARA SALIDA DE HUMOS CALDERA		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 7.456,20	$ 0,00		  
+2671761823119	CAÑO COAXIAL 100/60 PARA SALIDA DE HUMOS X 3 METROS		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 162.000,00	$ 0,00		  
+5778590191907	Teflon 3/4*40mts alta densidad		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+451463893197	Tapon 1/2&quot;RM Galvanizado		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+5818498034193	ELEMENTO RADIADOR CALDAIA CLAN N500		Costo de Mercaderia Vendida	Ventas Brutas de Servicios		$ 193.086,00	$ 0,00		  
+6271589589844	Teflon 3/4*40mts de alta densidad		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+4956179037469	Separador hidráulico 50000 kcal		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 463.980,00	$ 0,00		  
+116030021631	Bomba circuladora grundfos 15/60		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+1086045574649	Toallero Kanah Blanco 1200 (450mm ee)		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 162.459,83	$ 0,00		  
+2971917735812	Alquiler Oficina		Alquileres y Expensas	Alquileres y Expensas		$ 120.000,00	$ 0,00		  
+6031798425	CODO COAXIAL 100/60 90° PARA SALIDA DE HUMOS CALDERA		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 18.632,50	$ 0,00		  
+6243791805	Sombrerete plastico		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 14.915,80	$ 0,00		  
+9813456720	Caño plastico ventilacion D 100mm* 1mts		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+6758042391	Caño plastico ventilacion D 100mm* 1mts		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,10	$ 0,00		  
+6402813579	Válvula +Detentor escuadra estándard Diamante		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+871148909820	PAR DE MENSULAS PARA RADIADOR TIPO L PARA CONSTRUCCION EN SECO		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 2.632,90	$ 0,00		  
+1949294017860	INTERCAMBIADOR DE CALOR DE PLACAS 20KW (22000 KCAL/H) CONEXIÓN 3/4&quot;H		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+4510604386658	VENTILACIONES PARA CALDERAS TIRO FORZADO BALANCEADO		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+7932864501	TUBO REDONDO 80mm *76*206063 T5 CRUDO PARA SALIDA DE HUMOS		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 3.756,57	$ 0,00		  
+8791036524	TERMOSTATO DE AMBIENTE CALDAIA		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+7853642109	REHAU CASQUILLO DE PRESION 16 x 2MM		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 423,85	$ 0,00		  
+6915408372	REHAU CASQUILLO DE PRESION 20 x 2MM		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 554,26	$ 0,00		  
+9146753802	REHAU CASQUILLO DE PRESION 25 x 2,3MM		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 789,76	$ 0,00		  
+1537284069	REHAU - RAUBASIC - CODO DE PARED, CORTO 16 - RP 1/2&quot;		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 6.303,38	$ 0,00		  
+8502734169	REHAU RAUBASIC TUBO PE-XA16*2.0MM*240MTS		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 1.626,56	$ 0,00		  
+9716532048	TUBO RAUBASIC PE-XA25*2.3MM*50MTS		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 3.245,03	$ 0,00		  
+8952314760	T 25-25-25 EX REHAU		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 3.834,46	$ 0,00		  
+7401935286	T 16-16-16 EX REHAU		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 1.564,63	$ 0,00		  
+5674138902	TEE 25-25-16 REHAU		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 5.600,63	$ 0,00		  
+3421659780	TEE 25-16-16 REHAU		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 5.645,13	$ 0,00		  
+6705194283	REHAU - RAUBASIC - CODO DE PARED, CORTO 25 - RP 3/4&quot;		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 8.549,19	$ 0,00		  
+5709632814	TUBO REDONDO 60*1.5mm CRUDO		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$- 1,46	$ 0,00		  
+42104026325	Descuentos por Compras		Descuentos por Compras	Descuentos por Compras		$- 1.133.978,40	$ 0,00		  
+4201875639	CURVA 90° M-F o 80MM ARISTON		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 21.016,25	$ 0,00		  
+2987140536	REHAU - RAUTHERM - S 25 X 2,3 ROLLO X 300 MTS. EVAL		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 3.319,49	$ 0,00		  
+8172650493	REHAU - RAUBASIC - CODO ROSCA INTERIOR 32 - RP 1&quot;		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+6751023498	TUBO PEX-XA 32 REHAU X MTR		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 2,53	$ 0,00		  
+9735206184	TEE 32-32-32 REHAU		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 5.417,73	$ 0,00		  
+2738105694	T 25-16-25		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 3.715,41	$ 0,00		  
+8971305264	REHAU - RAUBASIC - CODO ROSCA INTERIOR 20 - RP 3/4&quot;		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 6.822,23	$ 0,00		  
+3712058649	vaso de expansion 8 L		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 62.244,00	$ 0,00		  
+9758932721704	Retenciones Ganancias Sufridas		Retenciones Ganancias (Sufridas)	Retenciones Ganancias (Sufridas)		$ 0,00	$ 0,00		  
+1030493046922	Mano de obra instalacion cañeria para radiadores		Ventas Brutas de Servicios	Ventas Brutas de Servicios		$ 400.000,00	$ 0,00		  
+7806059779413	impuestos		Impuesto Credito Bancario Ley 25.413	Impuesto Credito Bancario Ley 25.413		$ 0,00	$ 0,00		  
+9073564821	CALDERA A LEÑA CBI 60		Costo de Mercaderia Vendida	Ventas Brutas de Servicios		$ 0,00	$ 0,00		  
+8239006831793	CUPLA UNION 60MM PARA SALIDA DE HUMOS CALDERA		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 12.960,00	$ 0,00		  
+5515625631616	CUPLA UNION 100MM PARA SALIDA DE HUMOS CALDERA		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 12.960,00	$ 0,00		  
+5071730879590	CLIMATIZADOR DE PISCINA DIGITAL CP 30		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 1.445.000,00	$ 0,00		  
+6191759751054	TUBO 5M x 80MM		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+3172442510196	TUBO 4M x 80MM		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+4988195243182	TUBO 2M x 80MM		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+9205463871	BOILER ACUMULADOR HEATCRAFT HAC-200SA CON DOBLE SERPENTINA		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 1.128.348,80	$ 0,00		  
+1309097445137	ARO DE TERMINACIÓN 100MM		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+9721054638	REHAU RAUBASIC PE-Xa25*2.3mmEVAL		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 3.037,48	$ 0,00		  
+232803.001	REHAU – RAUBASIC – PIEZA EN T20-25-20		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 4.378,47	$ 0,00		  
+232793.001	TEE 20-20-20 REHAU		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 3.417,78	$ 0,00		  
+3169930640608	TUBO COAXIAL 60/100 POR 5M		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+232783.001	TEE 16-RP1/2-16 REHAU		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 196,33	$ 0,00		  
+216779.001	TERMINAL RECTO R.I. 1/2 x 20 REHAU		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+216778.001	REHAU – RAUBASIC - ACOPLAMIENTO ROSCA EXT. 16 - R 1/2&quot;		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 4.288,35	$ 0,00		  
+216777.001	REHAU - RAUBASIC - CODO DE PARED, CORTO 20 - RP 1/2&quot;		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 4.104,89	$ 0,00		  
+216774.001	REHAU RAUBASIC CODO 90°32		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 5.991,97	$ 0,00		  
+216773.001	REHAU RAUBASIC CODO 90°25		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 4.559,08	$ 0,00		  
+216772.001	REHAU RAUBASIC CODO 90° 20		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 2.558,90	$ 0,00		  
+216771.001	REHAU RAUBASIC CODO 90°16		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 2.320,27	$ 0,00		  
+216768.001	REHAU - RAUBASIC - ACOPLAMIENTO ROSCA INT. 16 - RP 1/2&quot;		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 4.249,14	$ 0,00		  
+216762.001	REHAU Acoplamiento racor movil 25 G3/4&quot;		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 7.271,80	$ 0,00		  
+223646805679	REHAU Acoplamiento rosca ext. 32R 1&quot;		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+216753.001	REHAU Acoplamiento roca ext 25R 3/4		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+216734.001	REHAU RAUBASIC Pieza 20-16-20		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 3.143,76	$ 0,00		  
+216726.001	REHAU RAUBASIC Manguito reducción 32-25		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 3.083,24	$ 0,00		  
+216725.001	REHAU RAUBASIC Manguito reducción 25-20		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 1.629,25	$ 0,00		  
+216724.001	REHAU RAUBASIC Manguito reducción 20-16		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 1.328,15	$ 0,00		  
+216723.001	REHAU RAUBASIC Manguito acoplamiento32		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+216722.001	REHAU RAUBASIC Manguito acoplamiento 25		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 2.939,94	$ 0,00		  
+216721.001	REHAU RAUBASIC Manguito acoplamiento20		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 1.606,30	$ 0,00		  
+216720.001	REHAU RAUBASIC Manguito acoplamiento16		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 1.007,11	$ 0,00		  
+216644.050	REHAU RAUBASIC PE-Xa32*2.9mm EVAL		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+209203.001	REHAU – RAUBASIC – PIEZA EN T25-16-20		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 4.299,97	$ 0,00		  
+204932.050	REHAU REUBASIC PE-Xa25*2.3mmEVAL		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 3.474,04	$ 0,00		  
+204912.240	REHAU RAUBASIC PE-Xa 20*2.0mm EVAL		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 2.328,35	$ 0,00		  
+138063.001	REHAU Soporte media caña 32pres. 3 mts		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+138053.001	REHAU Soporte media caña 25 pres. 3 mts		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+138043.001	REHAU Soporte media caña 20pres.3mts		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+138033.001	REHAU Soporte media caña 16 pres. 3mts		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+9622644374104	TUBO COAXIAL 60/100 POR 4M		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+377686997513	Separador hidráulico TIEMME 2&quot; 8,5M3/H		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 39.555,00	$ 0,00		  
+9185555696633	Aislación Separador Hidráulico		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+9107248057166	Bomba presurizadora Pluvius 100W		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+3249187605	Ajuste		Caja ($)	Caja ($)		$ 16,12	$ 0,00		  
+1048379256	KIT SALIDA VERTICAL 80MM		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+6801325794	KIT ASPIRAC BITUBO TOP MAXX		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 23.538,20	$ 0,00		  
+4386917205	KIT SALIDA VERTICAL 80MM		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 23.538,20	$ 0,00		  
+147681746884	ELEMENTO PARA RADIADOR TRIANGULAR BJ 500		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 3.600,00	$ 0,00		  
+8523169975722	TUBO INTERPLAST PERT 20MM ROLLO X 400M		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+5473180926	RACOR MOVIL hembra 25*G3/4&quot;REHAU		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 6.940,00	$ 0,00		  
+4508162739	MANGUITO REDUCIDO 25-20 REHAU		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 1.455,25	$ 0,00		  
+9648371025	REHAU CASQUILLO DE PRESION 32 x 2,9MM		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 1.128,58	$ 0,00		  
+7032759731073	TUBO RAUBASIC PE-XA 20*2MM		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+9671781183263	TUBO PEX SALADILLO HIFROFLEX 20MM		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 824,72	$ 0,00		  
+790531767778	COLECTOR POLIAMIDA LUXUS SALADILLO H3 6 SALIDAS 20MM		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 112.208,65	$ 0,00		  
+4666577846212	COLECTOR POLIAMIDA LLUXUS SALADILLO H3 5 SALIDAS 20MM		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 100.982,22	$ 0,00		  
+5078812173075	REHAU - CURVA GUIA 90°- 20MM		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+2652784148060	REGLETA CENTRAL PARA AUTOMATIZACIÓN REHAU 7 VIAS		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 80.583,65	$ 0,00		  
+5245281473009	EPS 20MM X 25KG (AISLACION DE TELGOPOR)		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 11.578,75	$ 0,00		  
+1283551379673	BOMBA DE CALOR TRIANGULAR TRIPOOL 90		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 1.445.000,00	$ 0,00		  
+2560417398	Corr. 1&quot; rojo 16/19/25MM*25M		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 132.013,20	$ 0,00		  
+3896247015	Corr. 1&quot; AZUL 16/19/25MM*25M		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 132.013,20	$ 0,00		  
+6951837240	Corr. 1 1/4&quot; ROJO 20/25/32MM*25M		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 9.430,00	$ 0,00		  
+0167329584	Corr. 1 1/4&quot; AZUL 20/25/32MM*25M		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 9.430,00	$ 0,00		  
+2563019784	Corr. 1 1/2&quot; ROJO 26/32/38MM*25M		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 219.802,80	$ 0,00		  
+4783265109	Corr. 1 1/2&quot; AZUL 26/32/38MM*25M		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 219.802,80	$ 0,00		  
+9165748032	separador hidráulico multibombas para dos calderas y 3 bombas secundarias. Inox 304		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 800.000,00	$ 0,00		  
+2964175083	TEE 20-20-16 REHAU		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 3.061,85	$ 0,00		  
+9342056718	seguros en general		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 985,83	$ 0,00		  
+2467531980	RAUBASIC Press Tool set RB		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 256.463,16	$ 0,00		  
+9174063528	RAUBASIC Press Tool set RB		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 384.694,74	$ 0,00		  
+4689021375	REHAU RAUBASIC acoplamiento racor movil 16		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 2.859,02	$ 0,00		  
+3405861279	REHAU RAUBASIC acoplamiento racor movil 20		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 2.937,25	$ 0,00		  
+9243988762136	Elemento de radiador Peisa Broen 700 NEGRO		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 48.291,23	$ 0,00		  
+9873602415	gastos bancarios		Gastos Bancarios	Gastos Bancarios		$ 0,00	$ 0,00		  
+0952167843	PERSONAL		Sueldos Devengados	Sueldos Devengados		$ 0,00	$ 0,00		  
+6893154720	INTERCAMBIADOR DE CALOR 25KW 3/4&quot;		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 445.000,00	$ 0,00		  
+2596380741	REGALO EMPRESARIAL		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 407.055,37	$ 0,00		  
+0517834269	TEE 25-20-25 REHAU		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 4.896,45	$ 0,00		  
+2058493716	REHAU RAUBASIC TUBO pex A 20mm*2mm		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+2489067351	REHAU RAUBACIC TUBO pex A 20mm*2mm		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 725,33	$ 0,00		  
+5714903268	JUNTAS DE FIBRA RADIADORES		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 372,24	$ 0,00		  
+5932018764	MONOPLAQUETA UNICAL		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 114.036,00	$ 0,00		  
+0486139275	CABEZAL TERMOSTATICO HIDROFLEX 220V		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 20.974,82	$ 0,00		  
+6073985142	GABINETE PARA COLECTOR		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 46.462,17	$ 0,00		  
+8384374040049	COLECTOR DE 3 CIRCUITOS PARA PISO RADIANTE		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 245.188,66	$ 0,00		  
+1828300402116	COLECTOR DE 5 CIRCUITOS PARA PISO RADIANTE		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 501.630,00	$ 0,00		  
+7255065019310	COLECTOR DE 6 CIRCUITOS PARA PISO RADIANTE		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 273.060,59	$ 0,00		  
+2833497791920	CALEFÓN CALDAIA DIGITAL TOP 35 TBF		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+9205437618	REHAU - RAUTHERM - S 16 X 2,0 ROLLO X 400 MTS. EVAL		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 992,74	$ 0,00		  
+5438906712	REHAU - RAUTHERM - S 20 X 2,0 ROLLO X 400 MTS. EVAL		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 1.272,05	$ 0,00		  
+7869410523	Servicio financiero Getnet		Gastos Varios Administracion	Gastos Varios Administracion		$ 0,00	$ 0,00		  
+0957283461	Proyecto y Planimetria		Ventas Brutas de Servicios	Ventas Brutas de Servicios		$ 0,00	$ 0,00		  
+4843961404357	CABEZAL ELECTRICO TERMOSTATICO GIACOMINI R 473X221 NC- PARA COLECTOR		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+5586415564781	VALVULA DE ZONA DE 3 VIAS- R292Y005-GIACOMINI		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+9605037602541	KIT TUBO EXCENTRICO PARA INSTALACION DE VALVULA DE 3 VIAS R278 Y R292E R193Y011 GIACOMINI		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+2640157389	KIT SALIDA HUMOS COAX. 60/100 (CODO+0.8m CAÑO+TERMINAL ANTIV)		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,10	$ 0,00		  
+4263935013685	PLAQUETA ELECTRÓNICA CALDAIA DIGITAL TOP SA26F		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+7260838711772	FAN COIL SABIANA CARISMA MODELO CRC53 6550KCAL/H		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+7990723613420	FAN COIL SABIANA CARISMA MODELO CRC63 8140KCAL/H		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+6310895317023	CALDERA CALDAIA DIGITAL M70F TIRO FORZADO		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 2.665.008,00	$ 0,00		  
+7795677921181	ELEMENTO DE RADIADOR PEISA TROPICAL 500		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+9329845049237	REHAU RAUBASIC TUBO PE-RT 20mm*2.0mm		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 890,53	$ 0,00		  
+6970234697198	VALVULA SOLENOIDE SALADILLO		Bienes de Cambio (Factura Recibida)	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+6620583908503	Terminal toma de aire / Salida de humos - Vertical ITALIA		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+9174437361472	KIT DE SALIDA DE HUMOS VERTICAL COAXIAL 100/60		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+0983526147	TEE 16-25-16 TIEMME		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+0986517234	INTERCAMBIADOR DE CALOR IP 10 PLACAS		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+9073526148	INTERCAMBIADOR DE CALOR IP 14 PLACAS		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+5216954915890	ABRAZADERA TUBO 100MM		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 17.398,90	$ 0,00		  
+189819331428	ACUMULADOR ELBI/TERMICOL DOBLE SERPENTINA 200 LITROS		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00	
+Triangular
+  
+4502533106707	ACUMULADOR ELBI/TERMICOL SIMPLE SERPENTINA 150 LITROS		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00	
+Triangular
+  
+7136045982	SEPARADOR HIDRÁULICO CALEFFI 18M3/H		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+2195408376	TANQUE ACUMULADOR BOILER PARA AGUA HAC-500 DE 500LTS SIN SERPENTINA		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+7861059324	CODO COAXIAL 100/60 45° PARA SALIDA DE HUMOS CALDERA		Costo de Mercaderia Vendida	Ventas Brutas de Servicios		$ 48.510,00	$ 0,00		  
+5710151197175	TERMOTANQUE ELECTRICO BAXI TE680		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00	
+Triangular
+  
+7030840052156	ELEMENTO DE RADIADOR TRIANGULAR BJ600		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00	
+Triangular
+  
+1449218711552	Caldera Luna duo tec E 28		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00	
+Triangular
+  
+7526019483	TUBO Cobrapert TIEMME neutro 20mm		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+7464659670881	ABRAZADERA TUBO 80MM		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 16.255,86	$ 0,00		  
+1866355625498	ARO DE TERMINACIÓN 80MM		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+7156298297778	COLECTOR DE 8 CIRCUITOS PARA PISO RADIANTE		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00	
+Triangular
+  
+1319382655237	COLECTOR DE 9 CIRCUITOS PARA PISO RADIANTE		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00	
+Triangular
+  
+6300473085601	COLECTOR DE 7 CIRCUITOS PARA PISO RADIANTE		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+4899710983849	BOMBA CIRCULADORA WILO MODELO STAR RS 25/6-130		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+9114662973559	TERMOSTATO ASUA HY311WW WIFI (BLANCO) 2.4Ghz		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 50.082,96	$ 112.716,00		  
+5893562699109	TUBO RAUBASIC PE-XA 16*2MM		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+1519559105965	REHAU – RAUBASIC – PIEZA EN T20-16-20		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 2.593,31	$ 0,00		  
+3905162232578	REHAU – RAUBASIC – PIEZA EN T20-16-16		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 2.890,94	$ 0,00		  
+9932200486800	REHAU – RAUBASIC – PIEZA EN T16-16-16		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 3.459,38	$ 0,00		  
+5841456694929	VALVULA + DETENTOR ESCUADRA TERMOSTATIZABLE S/CABEZAL CALEFFI		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00	
+Triangular
+  
+3644392202118	ACUMULADOR PRESURISABLE SIN SERPENTINA 100 LTS HEATCRAFT HAC-100		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 513.678,00	$ 0,00		  
+9785146302	UNICAL DIGITAL G30/G30P 3.000/25.000 KCAL/H		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+9170562348	DISPLAY 7 SEGMENTOS GENIUS 3 CIFRAS CALDAIA		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+1480562397	VASO DE EXPANSSIÓN 14 LITROS RECTANGULAR M60/M70		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+8310479625	ENCENDEDOR REMOTO PARA CALDERA M60/M70 CALDAIA		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+4723516890	CABLE DE ENCENDIDO PARA CALDERA MURAL/M60/M70 CALDAIA		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+1593175141373	BOMBA CIRCULADORA WILO TOP RL 30/6.5		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 922.140,00	$ 0,00		  
+3023774712118	Sueldos Permanentes		Sueldos Devengados	Sueldos Devengados		$ 0,00	$ 0,00		  
+7395406128	CLIMAT. PISCINAS FLOWING LUXUS CL-60-S		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+2961078345	CLIMAT. PISCINAS FLOWING LUXUS CL-60-D		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+6950278431	TERMOSTATO TRIANGULAR WIFI HT500S SMART (INALAMBRICO)		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 279.400,00		  
+5254006639915	CABEZAL TERMOSTATICO REHAU		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 24.153,40	$ 0,00		  
+7681093542	CURVA CODO 90° 80MM PARA SALIDA DE HUMOS DESDOBLADA CALDERA		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 23.040,00	$ 0,00		  
+6743928105	CUPL 80MM PARA SALIDA UNIONA DE HUMOS CALDERA		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+5784912603	CURVA CODO 45° 80MM PARA SALIDA UNIONA DE HUMOS CALDERA		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 20.160,00	$ 0,00		  
+5047392186	CUPLA UNION 80MM PARA SALIDA DE HUMOS CALDERA		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 12.960,00	$ 0,00		  
+0258714396	TERMINAL ANTIVIENTOS 80MM PARA SALIDA DE HUMOS CALDERA		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 21.600,00	$ 0,00		  
+4786773484339	Créditos por venta a compensar		Créditos por Ventas	Créditos por Ventas		$ 0,00	$ 0,00		  
+8252572565138	UNIÓN 20-20 REHAU		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+6483751092	CAÑO PEX EVOH PRE AISLADO 16MM*1.8MM,AISLACION ROJA ROLLO		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+1543690287	CAÑO PEX EVOH PRE AISLADO 16MM*1.8MM,AISLACION ROJA ROLLO		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+7361508249	CAÑO PEX EVOH PRE AISLADO 16MM*1.8MM,AISLACION ROJA ROLLO		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+9058147236	CAÑO PEX EVOH PRE AISLADO 16MM*1.8MM,AISLACION ROJA ROLLO		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+1309576428	CAÑO PEX EVOH PRE AISLADO 20MM*1.9MM,AISLACION ROJA ROLLO		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+2450839617	CAÑO PEX EVOH PRE AISLADO 20MM*1.9MM,AISLACION ROJA ROLLO		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 2.070,00	$ 0,00		  
+5826109734	CAÑO PEX EVOH PRE AISLADO 20MM*1.9MM,AISLACION ROJA ROLLO		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 2.530,00	$ 0,00		  
+6253189047	CAÑO PEX EVOH PRE AISLADO 25MM*2.3MM,AISLACION ROJA ROLLO		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 3.507,50	$ 0,00		  
+1690428735	KIT 11*085		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 47.400,00	$ 0,00		  
+5670819342	KIT 11*085		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 47.400,00	$ 0,00		  
+9342605178	BOMBA DE CALOR HEATCRAFT HEC - 006 CS		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+0875124369	RADIADOR BJ BIMETALICO 500		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+1482375906	TEE 32-25-32 REHAU		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 12.600,00	$ 0,00		  
+5491607823	AIRE ACONDICIONADO PISO TECHO 3TR INVERTER BGH		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+0612487593	AIRE ACONDICIONADO PISO TECHO 3TR INVERTER YORK		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+4158032769	AIRE ACONDICIONADO PISO TECHO 3TR INVERTER BGH		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+3466915693765	AIRE ACONDICIONADO SPLIT ELECTRA INVERTER 3000		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+8386354679253	AIRE ACONDICIONADO SPLIT BGH COOLTIME INVERTER 3000		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+9528137406	ELEMENTO DE RADIADOR PEISA BROEN NEGRO 500MM		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+5047869231	ELEMENTO DE RADIADOR PEISA BROEN NEGRO 500MM		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+4275093681	kit completos para radiadores negros con válvulas cromadas		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+7046344395503	Ablandador de Agua TRIANGULAR (AAd001)		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 1.020.000,00	$ 0,00		  
+549473263390	UNIÓN 25-25 REHAU		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+7551489765898	UNIÓN 32-32 REHAU		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+6547398032826	UNIÓN 16-16 REHAU		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+7663049488496	VÁLVULA MEZCLADORA TERMOSTÁTICA GIACOMINI		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+2466101832355	TERMINAL RECTO R.E. 1/2 x 20 REHAU		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+9880605327750	TERMINAL RECTO R.I. 1/2 x 16 ROSCA LOCA REHAU		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+6526256076925	TERMINAL RECTO R.I. 1/2 x 20 ROSCA LOCA REHAU		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+8670637655782	TERMINAL RECTO R.I. 3/4 x 25 ROSCA LOCA REHAU		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+8475908943810	TERMINAL RECTO R.E. 3/4 x 20 REHAU		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+5476181563289	TERMINAL RECTO R.I. 3/4 x 25 REHAU		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+6176601628030	TERMINAL RECTO R.E. 3/4 x 25 REHAU		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+1792453957453	REHAU - RAUBASIC - ACOPLAMIENTO ROSCA INT. 32 - RP 1&quot;		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 6.975,11	$ 0,00		  
+1913342892952	TERMINAL RECTO R.E. 1 x 32 REHAU		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+5953111971042	TEE 25-25-25 REHAU		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 6.406,63	$ 0,00		  
+7070015600882	REHAU – RAUBASIC – PIEZA EN T25-20-20		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 4.378,47	$ 0,00		  
+9809364111901	REHAU – RAUBASIC – PIEZA EN T25-20-16		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 4.369,84	$ 0,00		  
+7069834681544	REHAU – RAUBASIC – PIEZA EN T25-16-25		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 5.461,59	$ 0,00		  
+3194598939291	BOMBA PRESURIZADORA WILO PB-S125EA		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+5719428603	LIBRERIA OFICINA		Papelería y Útiles	Papelería y Útiles		$ 22.222,93	$ 0,00		  
+9901158252357	CALEFON RINNAI RAR-E210 FEHB (TIRO FORZADO - CAMARA ABIERTA)		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 445.900,00	$ 0,00		  
+5842683543710	CALEFON RINNAI RAR-E330 FEHB		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 657.800,00	$ 0,00		  
+8195349791410	AIRE ACONDICIONADO SPLIT DAIKIN CONFORT F/C 3500 - R410A - (25JXV1G+FXV1G)		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+9595782709326	AIRE ACONDICIONADO SPLIT DAIKIN CONFORT F/C 6300 - R410A - (60JXV1G+FXV1G)		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+4908235120847	AIRE ACONDICIONADO SPLIT DAIKIN KIARA SENSE F/C 3500 - R410A - (FTXS35A+RXN35F))		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+8263444229568	AIRE ACONDICIONADO SPLIT DAIKIN KIARA SENSE F/C 6300 - R410A - (FTXS60A+RXN60C)		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+8282027362721	DETENTOR RECTO LUXOR GRUPO LATYN		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+9818527782519	CALDERA CALDAIA DIGITAL TOP X30F		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+8235146970	KIT DE FLEXIBLES PARA CALEFON		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 91.446,00		  
+5420898665171	BOMBA CIRCULADORA WILO STAR RS 25/6 - 130		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+7202114388053	BOMBA DE CALOR HEATCRAFT HEC - 005 CS		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+3875572482061	INTERCAMBIADOR DE CASCO Y TUBO TITANIO 25KW (22000 KCAL/H) - CONEXIÓN 3/4&quot;H		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+3814652970	REHAU - RAUBASIC - PE-Xa 16 X 2,0MM EVAL		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 1.697,31	$ 0,00		  
+2641753089	KIT DE TUBOS SEPARADOS ECO NOVA MAIN 5		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 114.660,00	$ 0,00		  
+2139411943451	TUBO 1M x 80MM		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+7149675898361	TUBO 3M x 80MM		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+7357636689857	TUBO COAXIAL 60/100 POR 1M		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+1201832528009	CALDERA FERROLI FORTUNA F 24		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 1.004.412,15	$ 0,00		  
+0741538692	REHAU SISTEMA SOLAR INTEGRADO SPM150L		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+5346879120	KIT DE FLEXIBLES HIDRÁULICOS PARA CALEFÓN		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+4233154489957	TERMOSTATO DE AMBIENTE ANALOGICO LATYNCLIMA		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 17.661,40	$ 0,00		  
+2092852423840	PURGADOR MANUAL MEDIA PULGADA CON LLAVE		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 1.502,85	$ 0,00		  
+4315274398114	CALDERA CALDAIA XA30C TIRO NATURAL (19800 KCAL/H)		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+2026221613734	CALDERA PEISA DIVA 24 DSN (DOBLE SERVICIO TIRO NATURAL)		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+1927793182810	CALEFON PEISA 14 LITROS TIRO FORZADO BALANCEADO		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+5478106448841	CALEFON RINNAI RAR-E210 (TIRO FORZADO BALANCEADO)		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 468.000,00	$ 0,00		  
+9737637307865	CALEFON ELECTRICO. Euterma 8kw - 5 lts/min Calefon Hadron Digital 8 Kw		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+0825139746	INTERCAMBIADOR DE CALOR FWC012 X 30 FLOWING 43000KCAL/H		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 290.440,50	$ 0,00		  
+1210495560864	AIRE ACONDICIONADO SPLIT MIDEA INVERTER 3096kCAL/H - R32 (MSNIC-12H-KN81F		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+2604973518	ROPA PERSONAL		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 29.204,00	$ 0,00		  
+9755688295712	Toallero Kanah 800 NEGRO (450mm entre ejes )		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 100.070,72	$ 0,00		  
+5563986551233	BOMBA PRESURIZADORA WILO PB-088 (DOS BAÑOS)		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+2416795038	VALVULA ESFERICA METAL 3/4		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 8.870,40	$ 0,00		  
+8491275360	RADIADOR MILANO 1000 NEGRO X ELEMENTO		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 66.422,65	$ 0,00		  
+5819037642	roseta acero inox p niple cromado de 1/2- nova clima		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 177,60	$ 0,00		  
+0492678153	INTERCAMBIADOR PLACA 40KW		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 55.309,10	$ 0,00		  
+1673954208	KIT DET+LLAVE 1/2 ESC NIK-CRO		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 74.620,70	$ 0,00		  
+6781249053	TERMOSTATO ASUA HY510WW WIFI (RECTANGULAR NEGRO)		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 66.372,10	$ 94.110,00		  
+42637736627	SHIMGE - Bomba presurizadora velocidad variable 1.35HP 8/10C		Bienes de Cambio (Factura Recibida)	Ventas Brutas de Bienes		$ 654.101,70	$ 0,00		  
+0197254836	REHAU-RAUBASIC-ACOPLAMIENTO ROSCA EXT 20 R 1/2&quot;		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 3.668,87	$ 0,00		  
+4369278015	REHAU-RAUBASIC-ACOPLAMIENTO ROSCA EXT 25 RP 3/4&quot;		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 6.785,28	$ 0,00		  
+2950761834	REHAU-RAUBASIC-ACOPLAMIENTO ROSCA INTER 20 RP 1/2&quot;		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 3.345,02	$ 0,00		  
+7456802913	REHAU-RAUBASIC-ACOPLAMIENTO ROSCA INTER 25 RP 3/4&quot;		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 4.644,02	$ 0,00		  
+4571632089	REHAU-RAUBASIC-ACOPLAMIENTO RACOR MOVIL 25 R- 3/4&quot;		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+8572043196	REHAU-RAUBASIC-ACOPLAMIENTO RACOR MOVIL 32 G- 1&quot;		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 12.181,72	$ 0,00		  
+9748310652	REHAU-RAUBASIC-CODO ROSCA INT.20-RP 1/2&quot;		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 5.415,16	$ 0,00		  
+5503986018024	TERMOSTATO ASUA HY316WW WIFI (CIRCULAR NEGRO CON FONDO BLANCO) 2.4Ghz Y 5.0Ghz		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 68.712,48	$ 153.967,00		  
+6888813590440	BOMBA PRESURIZADORA SHIMGE MODELO ECO 2 BAÑOS (ZP 15-90-16B)		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 81.876,00	$ 0,00		  
+8435796021	CENTRO DE CONTROL PARA TERMOSTATIZACION (ASUA)		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 48.915,33	$ 0,00		  
+4872651039	ASUA CODO ROSCA HEMBRA 16*1/2		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 2.434,82	$ 0,00		  
+6652555882921	SHIMGE - Bomba presurizadora Inteligente PW-550Z		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 427.637,19		  
+6579468902803	ELEMENTO DE RADIADOR RADIARTE MILANO 800MM BLANCO		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 72.000,00		  
+6009069537059	ABLANDADOR DE AGUA ELEKTRIM HF2100 - HASTA 900PPM DUREZA		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 768.760,23	$ 999.388,30		  
+3426327961270	GABINETE PARA ABLANDADORES ELEKTRIM 1600/2100//2500		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 185.514,00	$ 268.995,30		  
+5557240735246	CALDERA BAXI DUO TEC COMPACT (CONDENSACIÓN) DT28 (28.000Kcal/h)		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 1.848.000,00	$ 2.587.200,00		  
+6495595536932	ELEMENTO DE RADIADOR RADIATORI 2000 MODELO PLUSS 800MM		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 27.000,00	$ 39.150,00		  
+2233783568799	ELEMENTO DE RADIADOR RADIATORI 2000 MODELO PLUSS 600MM		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 22.000,00	$ 31.900,00		  
+3685929674659	ELEMENTO DE RADIADOR RADIATORI 2000 MODELO PLUSS 500MM		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 22.000,00	$ 31.900,00		  
+6554228699833	ELEMENTO DE RADIADOR RADIATORI 2000 MODELO PLUSS 700MM		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 22.000,00	$ 30.800,00		  
+9885838417205	CALDERA ELECTRICA FLOWING MINI SC-10 (COMPACTA)		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+8531067724158	CAÑO COAXIAL 100/60 PARA SALIDA DE HUMOS X 2 METROS		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 108.000,00	$ 165.600,00		  
+5841092367	VIAJES EMPRESARIALES		Movilidad y Viaticos	Movilidad y Viaticos		$ 143.030,91	$ 0,00		  
+8151214005446	Caldera DemirDokum ATRON 24 - DS / TF (Monotermica)		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 1.020.528,00	$ 1.428.739,20		  
+1219507336146	ELEMENTO DE RADIADOR PLUSS GRAFITO 500 (500MM ENTRE EJES)		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 1,00	$ 1,45		  
+1645920738	BLISTER NIPLE FLEXIBLE PARA RADIADOR X2		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 19.009,31	$ 0,00		  
+7532967219368	ELEMENTO DE RADIADOR TRIANGULAR PLUSS 500 (500MM ENTRE EJES)		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+4881718271836	ELEMENTO DE RADIADOR TRIANGULAR PLUSS 350 (350MM ENTRE EJES)		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+8222913645107	TOALLERO ELECTRICO EUTERMA MARTINA 115 BLANCO CON TERMOSTATO (600W)		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+3693825687982	SEPARADOR HIDRAÚLICO 180000 kcal/h		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+2167853094	KIT FLEXIBLES EXTENSIBLES GAS		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 40.549,08	$ 0,00		  
+6192900577784	ELEMENTO DE RADIADOR MILANO 1000MM BLANCO		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+7893460125	COLECTOR ITAP ACERO INOX PREMONTADO CON CAUDALIMETROS X 4 SALIDAS		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 652.844,50		  
+1080336014326	ITAP GRUPO TERMINAL ORIENTABLE CON DESCARGA Y PURGA AUTOMÁTICA 1”		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 104.051,00		  
+8193946676160	ITAP Kit válvula esfera rectas con unión y termómetro 1&quot;		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 298.048,00		  
+9571737108091	ELEMENTO DE RADIADOR TRIANGULAR PLUSS 800 (800MM ENTRE EJES)		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 27.000,00	$ 0,00		  
+3586107249	Honorarios profesionales		Honorarios Profesionales	Honorarios Profesionales		$ 350.000,00	$ 0,00		  
+9276804351	KIT ADAPTADOR SALIDA DE GASES ECO NOVA		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 30.246,14	$ 0,00		  
+6634097470587	Aporte de Obra Social a Pagar		Cargas Sociales a Pagar	Cargas Sociales a Pagar		$ 0,00	$ 0,00		  
+5865271060071	SUELDO EXTRAORDINARIO		Gratificaciones al Personal	Gratificaciones al Personal		$ 0,00	$ 0,00		  
+5474456814504	AGUINALDO		Aguinaldo SAC	Aguinaldo SAC		$ 0,00	$ 0,00		  
+9921766247123	OBRA SOCIAL A PAGAR		Cargas Sociales a Pagar	Cargas Sociales a Pagar		$ 0,00	$ 0,00		  
+7138865284920	ELEMENTO DE RADIADOR NEREUS 500MM		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 11.787,75	$ 16.502,85		  
+8933515574821	VALVULA TERMOSTÁTICA GIACOMINI		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+3292819124240	VACACIONES		Vacaciones	Vacaciones		$ 0,00	$ 0,00		  
+730952374446	CALDERA BAXI LUNA DUO TEC E (CONDENSACIÓN BOMBA MODULANTE) DT+33 (33.000Kcal/h)		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 2.440.875,00	$ 3.124.320,00		  
+345309934885	INTERCAMBIADOR DE CASCO Y TUBO BOWMAN (ACERO INOX 304) 80KW		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 1.103.363,00	$ 1.379.203,75		  
+1629310397491	ELEMENTO DE RADIADOR TRIANGULAR BEST 500MM		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+9592543851234	SERVICIO DE MANO DE OBRA		Ventas Brutas de Servicios	Ventas Brutas de Servicios		$ 400.000,00	$ 0,00		  
+0592143768	REHAU-ADAPTADOR DE CONEXION EUROKONUS 20		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 5.441,62	$ 0,00		  
+3015264897	RAUBASIC- PIEZA EN T HEMBRA 16-RP 1/2		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 4.182,85	$ 0,00		  
+4670213958	VALVULA PARA RADIADOR EN ANGULO 1/2&quot; ITAP		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 15.651,90	$ 0,00		  
+7960158432	DETENTOR PARA RADIADOR EN ANGULO1/2&quot; ITAP		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 14.077,80	$ 0,00		  
+5215110584860	TERMINAL RECTO R.I. 1 x 32 ROSCA LOCA REHAU		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+7843156290	SALIDA DE GASES 75 CM P/CALDERAS D		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 30.246,14	$ 0,00		  
+938034	UNIDAD CONDENSADORA BLUESTAR MOU36HRS ON/OFF LCAC 3TR 380V		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 1.178.793,00	$ 1.532.430,90		  
+938404	UNIDAD EVAPORADORA BLUESTAR MTB36HR ON/OFF B.S 3TR 220V		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 507.991,00	$ 660.388,30		  
+938038	UNIDAD CONDENSADORA BLUESTAR MOU60HRS ON/OFF LCAC 5TR 380V		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 1.421.064,00	$ 1.847.383,20		  
+938408	UNIDAD EVAPORADORA BLUESTAR MTB60HR ON/OFF B.S 5TR 220V		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 592.650,00	$ 770.445,00		  
+979043	UNIDAD CONDENSADORA BLUESTAR TOD30U36HDN1 INVERTER 3TR 380V		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 1.482.059,50	$ 1.926.677,35		  
+979023	UNIDAD EVAPORADORA BLUESTAR TTI-36HWDN1 B.S INVERTER 3TR 220		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 805.388,00	$ 1.047.004,40		  
+979045	UNIDAD CONDENSADORA BLUESTAR TOE30U55HDN1 INVERTER 5TR 380V		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 2.068.526,50	$ 2.689.084,45		  
+979025	UNIDAD EVAPORADORA BLUESTAR TTI-55HWDN1 B.S INVERTER 5TR 220		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 776.112,50	$ 1.008.946,25		  
+1534938010222	TIRA 2M C1-F-006 AISLACION ELASTOMERICA (PARA TUBO DE 1/4)		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 1.833,15	$ 2.291,44		  
+2950551261551	PIEZA (BARCO) 25-20-16-16-16 REHAU		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+3856828581679	PIEZA (BARCO) 25-20-16-16 REHAU		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+6504891327	BOMBA PRES. 4 BAÑOS 220V ZP 20-12-180		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 137.892,00	$ 0,00		  
+2099923286763	TIRA 2M C1-F-010 AISLACION ELASTOMERICA (PARA CAÑO DE 3/8)		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 1.359,00	$ 1.698,75		  
+9905198982020	TIRA 2M C1-F-012 AISLACION ELASTOMERICA (PARA CAÑO DE 1/2&quot;)		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 1.237,50	$ 1.546,87		  
+8660929256594	TIRA 2M C1-F-015 AISLACION ELASTOMERICA (PARA CAÑO DE 5/8&quot;)		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 2.891,00	$ 3.758,30		  
+7833376392838	CANO DE COBRE FRACCIONADO 1/4&quot; 6.35mm 0.13 KG/MT esp. 0.8mm		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 29.663,70	$ 37.079,63		  
+3682241225512	CANO DE COBRE FRACCIONADO 3/8&quot; 9.52mm 0.20 KG/MT esp. 0.8mm		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 29.663,70	$ 37.079,63		  
+8911330586348	CANO DE COBRE FRACCIONADO 1/2* 12.70mm 0.27KG/M esp. 0.8mm		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 29.663,70	$ 37.079,63		  
+837667687782	CANO DE COBRE FRACCIONADO 5/8*15.875MM* 0.34KG/M		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 29.663,70	$ 37.079,63		  
+8275083977667	CINTA PVC 20MTS X 7CM CON ADHESIVO - BLANCA -		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 3.636,00	$ 4.545,00		  
+3853497247525	CAJA EMPOTRAR 434x110x70 MM DESAG HORIZ - BLANCA - 70MM PROF		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 6.007,00	$ 7.508,75		  
+5128457333914	MANO DE OBRA PREINSTALACIÓN DE SISTEMA DE CAÑERÍA PARA AIRE ACONDICIONADO		Costo de Mercaderia Vendida	Ventas Brutas de Servicios		$ 0,00	$ 0,00		  
+9068223333346	BONO UOCRA		Sueldos Extraordinarios	Sueldos Extraordinarios		$ 0,00	$ 0,00		  
+7480312596	EUTERMA 200 CM ADICIONALES DE HUMMO TB(117002)		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 63.894,15	$ 0,00		  
+2491863075	EUTERMA 100 CM ADICIONALES DE HUMOS 80 MM(300049)(117002)		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 30.353,10	$ 0,00		  
+3497610582	EUTERMA KIT SALIDA DE HUMOS TF INOX 80(3000481)		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 55.570,50	$ 0,00		  
+4017869235	EUTERMA KIT COAXIAL SALIDA HUMOS TB 6(300046)		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 57.049,20	$ 0,00		  
+9213485607	RADIADOR ALUMINIO BEST BLANCO 500		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 18.060,00	$ 0,00		  
+8056493721	REHAU ADAPTADOR DE CONEXION EUROKONUS 16*2.0		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 5.940,64	$ 0,00		  
+5713240968	BOMBA DE CALOR ECOPOOL EP-50M		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+2591387064	50 CM ADICIONALES DE HUMOS TB		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 15.971,55	$ 0,00		  
+7061425983	100 CM ADICIONALES DE HUMOS TB		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 31.951,05	$ 0,00		  
+4051327689	KIT COAXIAL SALIDA HUMOS TB 6		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 57.049,20	$ 0,00		  
+2086513947	75 CM ADICIONALES DE HUMOS TF		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 23.166,30	$ 0,00		  
+1049357268	CAÑO CORRUGADO BLANCO 1´´ X MTS		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+7549203168	CAÑO CORRUGADO BLANCO 1 1/2´´ X MTS		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+1456372098	TOALLERO CURVO NEREUS 80 BLANCO (450MM ENTRE EJES)		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 52.426,20	$ 0,00		  
+3052891674	TOALLERO CURVO NEREUS 80 NEGRO (450MM ENTRE EJES)		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 62.839,26	$ 0,00		  
+7405239681	RADIADOR ALUMINIO BEST BLANCO 350		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 18.600,00	$ 0,00		  
+7074100364712	SHIMGE BOMBA presurizadora de velocidad variable PE404X		Bienes de Cambio (Factura Recibida)	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+2163262842083	RINNAI KIT CONVERSION GPL		Bienes de Cambio (Factura Recibida)	Ventas Brutas de Bienes		$ 79.424,00	$ 0,00		  
+4305148037731	Servicio externo - sistema de calefacción por agua		Monotributo y Autónomos	Monotributo y Autónomos		$ 218.800,00	$ 0,00		  
+5735933937241	CALDERA CALDAIA ECCO 24 GN		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+8645129307	MANTA AISLANTE ALUMINIO 10MM ESPESOR		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+5819625397068	BOMBA DE CALOR HEATCRAFT HEC - 007 CS		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+5783643929278	REGLETA CENTRAL PARA AUTOMATIZACIÓN TIEMME 7 VIAS		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+7301135885682	REGLETA CENTRAL PARA AUTOMATIZACIÓN IGSAN 2 VIAS		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+1709962096582	TERMOSTATO PRONTO HT-18 NP		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 17.661,40	$ 0,00		  
+2897888742151	TERMOSTATO AET7-BGL		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 17.661,40	$ 0,00		  
+3678420195	PRECINTO		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 6.392,88	$ 0,00		  
+1523905318308	EPS 20MM X 10KG (AISLACION DE TELGOPOR)		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 11.578,75	$ 0,00		  
+7034629518	TAPON MACHO 1/2&quot;		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 115,20	$ 0,00		  
+7953860142	TAPON MACHO 3/4&quot;		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 172,80	$ 0,00		  
+4137509682	CAÑAMO		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 374,40	$ 0,00		  
+5781429603	CORRUGADO 1&quot; AZUL 16-19-25 MM*25M		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 10.080,00	$ 0,00		  
+4152706389	CORRUGADO 1&quot; ROJO 16-19-25 MM*25M		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 10.080,00	$ 0,00		  
+3290845617	CORRUGADO 1 1/4&quot; AZUL 20-25-32 MM*25M		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 14.875,20	$ 0,00		  
+6459713082	CORRUGADO 1 1/4&quot; ROJO 20-25-32 MM*25M		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 14.875,20	$ 0,00		  
+6835197042	CORRUGADO 1 1/2&quot; AZUL 26--32-38 MM*25M		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 17.280,00	$ 0,00		  
+7092563841	CORRUGADO 1 1/2&quot; ROJO 26--32-38 MM*25M		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 17.280,00	$ 0,00		  
+4036969830517	ELEMENTO DE RADIADOR REHAU 500		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 111.557,69	$ 156.180,77		  
+2516094738	JUNTA 1&quot;		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 1.026,95	$ 0,00		  
+1673804529	JUNTA 3/4&quot;		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 780,90	$ 0,00		  
+7182693450	JUNTA 1/2&quot;		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+3602178549	JUNTA 1/2&quot;		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+9402351768	JUNTA 1/2&quot;		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 688,75	$ 0,00		  
+3149870526	JUNTA 3/8&quot;		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 593,75	$ 0,00		  
+7480361925	JUNTA 1/4&quot;		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 593,75	$ 0,00		  
+6045298317	CAÑO COAXIAL 1 METRO		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 92.541,00	$ 0,00		  
+2764930185	SEPARADOR HIDRAULICO TRIANGULAR 8.5M3/H		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 679.200,00	$ 0,00		  
+596073700548	SHIMGE-bomba presurizadora inteligente PW-125Z		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+4595710904316	TERMOSTATO INALAMBRICO		Costo de Mercaderia Vendida	Ventas Brutas de Bienes		$ 0,00	$ 279.400,00		  
+7218242509072	CALDERA FLOWING ADVANCE SC40 (SOLO CALEFACCIÓN BLANCA)		Bienes de Cambio (Factura Recibida)	Ventas Brutas de Bienes		$ 0,00	$ 0,00		  
+3735708046142	CALDERA FLOWING LUXUS SC50 (SOLO CALEFACCIÓN DE PIE GABINETE INOX.)		Bienes de Cambio (Factura Recibida)	Ventas Brutas de Bienes		$ 0,00	$ 0,00	
