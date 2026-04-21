@@ -58,6 +58,7 @@ const DatabaseWiper = () => {
   };
 
   return (
+    <>
     <div style={{ padding: '1rem', backgroundColor: '#fee2e2', border: '2px solid #ef4444', borderRadius: '8px', marginBottom: '2rem' }}>
       <h3 style={{ color: '#b91c1c', marginTop: 0 }}>🧹 Panel de Limpieza de Lanzamiento</h3>
       <p style={{ fontSize: '0.875rem' }}>Estado: <strong>{status || 'Esperando inicio...'}</strong></p>
@@ -73,10 +74,10 @@ const DatabaseWiper = () => {
       </button>
     </div>
       
+    <div style={{ padding: '1rem', backgroundColor: '#ecfdf5', border: '2px solid #10b981', borderRadius: '8px', marginBottom: '2rem' }}>
       {/* SECCIÓN MIGRAR STOCK GESDATTA */}
-      <hr style={{margin: '20px 0'}} />
       <h3 style={{ color: '#047857', marginTop: 0 }}>📦 Migrar Stock de Gesdatta</h3>
-      <p style={{ fontSize: '0.875rem' }}>Añadirá los 533 elementos a la colección "stock". No borrará nada de lo que ya haya.</p>
+      <p style={{ fontSize: '0.875rem' }}>Añadirá los {status ? '' : ''} 533 elementos a la colección "stock". No borrará nada de lo que ya haya.</p>
       <button 
         onClick={async () => {
           if(!window.confirm("¿Importar los 533 artículos de stock?")) return;
@@ -123,6 +124,7 @@ const DatabaseWiper = () => {
         {isProcessing ? 'Procesando...' : 'INYECTAR STOCK AHORA'}
       </button>
     </div>
+    </>
   );
 };
 
