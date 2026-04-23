@@ -118,10 +118,75 @@ const DatabaseWiper = () => {
         disabled={isProcessing}
         style={{ 
           backgroundColor: '#059669', color: 'white', border: 'none', padding: '0.75rem 1rem', 
-          borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' 
+          borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', width: '100%', marginBottom: '1rem'
         }}
       >
         {isProcessing ? 'Procesando...' : 'INYECTAR STOCK AHORA'}
+      </button>
+
+      <button 
+        onClick={async () => {
+          if(!window.confirm("¿Eliminar artículos repetidos en el stock?")) return;
+          setIsProcessing(true);
+          try {
+            setStatus('Buscando repetidos...');
+            const querySnapshot = await getDocs(collection(db, 'stock'));
+            const items = querySnapshot.docs;
+            const seen = new Set();
+            const toDelete = [];
+            
+            items.forEach(document => {
+               const data = document.data();
+               const key = data.name ? data.name.trim().toLowerCase() : '';
+               if (!key) return; // ignore unnamed items
+               
+               if(seen.has(key)) {
+                  toDelete.push(document.ref);
+               } else {
+                  seen.add(key);
+               }
+            });
+
+            if (toDelete.length === 0) {
+              alert("No hay artículos repetidos.");
+              return;
+            }
+
+            setStatus(`Eliminando ${toDelete.length} artículos repetidos...`);
+            const batches = [];
+            let batch = writeBatch(db);
+            let count = 0;
+            for(const ref of toDelete) {
+               batch.delete(ref);
+               count++;
+               if(count === 400) {
+                  batches.push(batch);
+                  batch = writeBatch(db);
+                  count = 0;
+               }
+            }
+            if(count > 0) batches.push(batch);
+            
+            for(const b of batches) {
+               await b.commit();
+            }
+
+            setStatus('¡Repetidos eliminados!');
+            alert(`Se eliminaron con éxito ${toDelete.length} artículos duplicados.`);
+          } catch(e) {
+            console.error(e);
+            setStatus('Error deduplicando');
+          } finally {
+            setIsProcessing(false);
+          }
+        }} 
+        disabled={isProcessing}
+        style={{ 
+          backgroundColor: '#d97706', color: 'white', border: 'none', padding: '0.75rem 1rem', 
+          borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', width: '100%'
+        }}
+      >
+        {isProcessing ? 'Procesando...' : '⚠️ ARREGLAR REPETIDOS AHORA'}
       </button>
     </div>
     </>
