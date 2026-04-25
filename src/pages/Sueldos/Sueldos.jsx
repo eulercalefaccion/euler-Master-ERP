@@ -1,80 +1,70 @@
+/**
+ * Sueldos — Módulo integrado desde Euler Sueldos
+ * Tabs: Inicio | Liquidar | Historial | Paritarias
+ */
 import React, { useState } from 'react';
-import { Home, Calculator, History, Settings, Receipt } from 'lucide-react';
-import TabInicio from './tabs/TabInicio';
-import TabLiquidar from './tabs/TabLiquidar';
-import TabHistorial from './tabs/TabHistorial';
-import TabParitarias from './tabs/TabParitarias';
+import { SueldosProvider } from './SueldosContext';
+import SueldosDashboard from './SueldosDashboard';
+import SueldosLiquidar from './SueldosLiquidar';
+import SueldosHistorial from './SueldosHistorial';
+import SueldosParitarias from './SueldosParitarias';
+import { Calendar, FileText, History, DollarSign } from 'lucide-react';
 
-const Sueldos = () => {
+const tabs = [
+  { id: 'inicio', label: 'Inicio', icon: Calendar },
+  { id: 'liquidar', label: 'Liquidar', icon: FileText },
+  { id: 'historial', label: 'Historial', icon: History },
+  { id: 'paritarias', label: 'Paritarias', icon: DollarSign },
+];
+
+function SueldosContent() {
   const [activeTab, setActiveTab] = useState('inicio');
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', height: '100%', paddingBottom: '2rem' }}>
-      
-      {/* Module Header & Tab Navigation */}
-      <div style={{ borderBottom: '1px solid var(--border-light)', paddingBottom: '1rem' }}>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: '600', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
-          <Receipt size={24} color="var(--primary-600)" /> Liquidación de Sueldos
-        </h2>
-        
-        <div style={{ display: 'flex', gap: '2rem', overflowX: 'auto', paddingBottom: '2px' }}>
-          <button 
-            onClick={() => setActiveTab('inicio')}
-            style={{ 
-               background: 'none', border: 'none', fontSize: '0.875rem', fontWeight: '600', cursor: 'pointer', padding: '0.5rem 0',
-               color: activeTab === 'inicio' ? 'var(--primary-600)' : 'var(--text-secondary)',
-               borderBottom: activeTab === 'inicio' ? '2px solid var(--primary-600)' : '2px solid transparent'
-            }}
-          >
-             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Home size={18}/> Inicio</div>
-          </button>
-          
-          <button 
-            onClick={() => setActiveTab('liquidar')}
-            style={{ 
-               background: 'none', border: 'none', fontSize: '0.875rem', fontWeight: '600', cursor: 'pointer', padding: '0.5rem 0',
-               color: activeTab === 'liquidar' ? 'var(--primary-600)' : 'var(--text-secondary)',
-               borderBottom: activeTab === 'liquidar' ? '2px solid var(--primary-600)' : '2px solid transparent'
-            }}
-          >
-             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Calculator size={18}/> Liquidar</div>
-          </button>
-          
-          <button 
-            onClick={() => setActiveTab('historial')}
-            style={{ 
-               background: 'none', border: 'none', fontSize: '0.875rem', fontWeight: '600', cursor: 'pointer', padding: '0.5rem 0',
-               color: activeTab === 'historial' ? 'var(--primary-600)' : 'var(--text-secondary)',
-               borderBottom: activeTab === 'historial' ? '2px solid var(--primary-600)' : '2px solid transparent'
-            }}
-          >
-             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><History size={18}/> Historial</div>
-          </button>
-
-          <button 
-            onClick={() => setActiveTab('paritarias')}
-            style={{ 
-               background: 'none', border: 'none', fontSize: '0.875rem', fontWeight: '600', cursor: 'pointer', padding: '0.5rem 0',
-               color: activeTab === 'paritarias' ? 'var(--primary-600)' : 'var(--text-secondary)',
-               borderBottom: activeTab === 'paritarias' ? '2px solid var(--primary-600)' : '2px solid transparent'
-            }}
-          >
-             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Settings size={18}/> Paritarias</div>
-          </button>
-
-        </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      {/* Tab Bar */}
+      <div style={{
+        display: 'flex', gap: '4px',
+        background: 'var(--bg-surface)', padding: '4px',
+        borderRadius: '12px', border: '1px solid var(--border-light)',
+        width: 'fit-content'
+      }}>
+        {tabs.map(tab => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                padding: '8px 16px', border: 'none', borderRadius: '8px',
+                fontSize: '0.875rem', fontWeight: '600', cursor: 'pointer',
+                background: isActive ? 'var(--primary-500)' : 'transparent',
+                color: isActive ? 'white' : 'var(--text-secondary)',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <Icon size={16} />
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Tab Content Rendering */}
-      <div style={{ flex: 1 }}>
-        {activeTab === 'inicio' && <TabInicio />}
-        {activeTab === 'liquidar' && <TabLiquidar onNavigate={setActiveTab} />}
-        {activeTab === 'historial' && <TabHistorial />}
-        {activeTab === 'paritarias' && <TabParitarias />}
-      </div>
-
+      {/* Content */}
+      {activeTab === 'inicio' && <SueldosDashboard />}
+      {activeTab === 'liquidar' && <SueldosLiquidar />}
+      {activeTab === 'historial' && <SueldosHistorial />}
+      {activeTab === 'paritarias' && <SueldosParitarias />}
     </div>
   );
-};
+}
 
-export default Sueldos;
+export default function Sueldos() {
+  return (
+    <SueldosProvider>
+      <SueldosContent />
+    </SueldosProvider>
+  );
+}
