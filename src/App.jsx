@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { JornadasProvider } from './context/JornadasContext';
 import { useAuth } from './context/AuthContext';
 import MainLayout from './layouts/MainLayout';
 import PresupuestosCRM from './pages/Presupuestos/PresupuestosCRM';
@@ -23,6 +24,7 @@ function App() {
   const { currentUser } = useAuth();
 
   return (
+    <JornadasProvider>
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={currentUser ? <Navigate to="/" /> : <Login />} />
@@ -37,6 +39,7 @@ function App() {
         <Route path="/sueldos" element={<PrivateRoute><Sueldos /></PrivateRoute>} />
       </Routes>
     </BrowserRouter>
+    </JornadasProvider>
   );
 }
 
