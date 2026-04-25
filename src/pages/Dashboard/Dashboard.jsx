@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { BadgeDollarSign, TrendingUp, Presentation, AlertCircle, Wrench, HardHat, Pickaxe, MapPin, Wallet } from 'lucide-react';
+import { BadgeDollarSign, TrendingUp, Presentation, HardHat, Pickaxe, MapPin, Wallet } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import DatabaseWiper from '../../components/DatabaseWiper';
 import { db } from '../../services/firebaseConfig';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 
@@ -15,7 +14,7 @@ const Dashboard = () => {
   const [presupuestosPendientes, setPresupuestosPendientes] = useState(0);
 
   // Estados vacíos por defecto hasta que se desarrollen los módulos financieros/SSTT
-  const [alertasSSTT, setAlertasSSTT] = useState([]);
+
   const [metricasKpi, setMetricasKpi] = useState({
     rentabilidadMesGloba: 0,
     obrasEnAprobacion: 0,
@@ -263,34 +262,6 @@ const Dashboard = () => {
           </div>
         </div>
 
-      </div>
-
-      <DatabaseWiper />
-
-      {/* Alertas Post Venta */}
-      <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', borderBottom: '1px solid var(--border-light)', paddingBottom: '0.75rem' }}>
-          <AlertCircle size={20} color="var(--accent-500)" />
-          <h3 style={{ fontSize: '1.125rem', margin: 0 }}>Asistencia y Post-Venta (SSTT Pendientes)</h3>
-        </div>
-        
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          {alertasSSTT.map(sstt => (
-            <div key={sstt.id} style={{ display: 'flex', alignItems: 'center', gap: '1rem', backgroundColor: '#fef2f2', padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid #fecaca' }}>
-              <Wrench size={18} color="var(--accent-600)" />
-              <div style={{ flex: 1 }}>
-                <h4 style={{ margin: 0, fontSize: '0.875rem', color: 'var(--accent-600)' }}>{sstt.problema}</h4>
-                <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Cliente: {sstt.cliente}</p>
-              </div>
-              <span className="badge badge-warning" style={{ backgroundColor: '#fee2e2', color: 'var(--accent-600)' }}>
-                Hace {sstt.dias} días
-              </span>
-            </div>
-          ))}
-          {alertasSSTT.length === 0 && (
-            <p style={{ fontSize: '0.875rem', color: 'var(--text-tertiary)', textAlign: 'center', padding: '1rem 0' }}>No existen servicios técnicos pendientes para hoy.</p>
-          )}
-        </div>
       </div>
 
     </div>

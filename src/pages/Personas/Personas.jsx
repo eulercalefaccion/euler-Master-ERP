@@ -126,7 +126,7 @@ const Personas = () => {
             {todosUnificados.length} personas ({empleadosJornadas.length} de Jornadas + {colaboradores.length} de ERP)
           </p>
         </div>
-        <button className="btn-primary" onClick={() => openModal()} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <button className="btn btn-primary" onClick={() => openModal()} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <UserPlus size={18} /> Nuevo
         </button>
       </div>
@@ -240,8 +240,8 @@ const Personas = () => {
                 </>
               )}
               <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
-                <button type="button" onClick={() => setIsModalOpen(false)} className="btn-secondary" style={{ flex: 1 }}>Cancelar</button>
-                <button type="submit" className="btn-primary" style={{ flex: 1 }}>Guardar</button>
+                <button type="button" onClick={() => setIsModalOpen(false)} className="btn btn-secondary" style={{ flex: 1 }}>Cancelar</button>
+                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Guardar</button>
               </div>
             </form>
           </div>

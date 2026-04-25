@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Archive, AlertTriangle, Package, Wrench, Thermometer, X, Save } from 'lucide-react';
+import { Search, Plus, Archive, AlertTriangle, Package, Wrench, Thermometer, X, Save, Edit2, Trash2 } from 'lucide-react';
 import { db } from '../../services/firebaseConfig';
-import { collection, onSnapshot, query, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, onSnapshot, query, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
 
 const Stock = () => {
   const [items, setItems] = useState([]);
@@ -13,6 +13,10 @@ const Stock = () => {
   const [newItem, setNewItem] = useState({
     name: '', category: 'Materiales', quantity: 0, minAlert: 5, unit: 'U', costUSD: 0, profitCF: 30
   });
+
+  // Edit state
+  const [editingItem, setEditingItem] = useState(null);
+  const [editForm, setEditForm] = useState({});
 
   const categories = ['Todas', 'Equipos', 'Materiales', 'Herramientas', 'Repuestos SSTT'];
 
@@ -75,6 +79,40 @@ const Stock = () => {
       });
     } catch (e) {
       console.error("Error adjusting stock:", e);
+    }
+  };
+
+  const openEdit = (item) => {
+    setEditingItem(item);
+    setEditForm({ name: item.name, category: item.category, quantity: item.quantity, minAlert: item.minAlert, unit: item.unit, costUSD: item.costUSD || 0, profitCF: item.profitCF || 0 });
+  };
+
+  const handleEditItem = async (e) => {
+    e.preventDefault();
+    if (!editingItem) return;
+    setIsSubmitting(true);
+    try {
+      await updateDoc(doc(db, 'stock', editingItem.id), {
+        ...editForm,
+        quantity: Number(editForm.quantity),
+        minAlert: Number(editForm.minAlert),
+        costUSD: Number(editForm.costUSD) || 0,
+        profitCF: Number(editForm.profitCF) || 0,
+        lastUpdated: new Date().toLocaleDateString('es-AR')
+      });
+      setEditingItem(null);
+    } catch (e) {
+      alert('Error al editar.');
+    }
+    setIsSubmitting(false);
+  };
+
+  const handleDeleteItem = async (item) => {
+    if (!window.confirm(`¿Eliminar "${item.name}"? Esta acción no se puede deshacer.`)) return;
+    try {
+      await deleteDoc(doc(db, 'stock', item.id));
+    } catch (e) {
+      alert('Error al eliminar.');
     }
   };
 
@@ -186,6 +224,8 @@ const Stock = () => {
                       <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                         <button className="btn btn-secondary" onClick={() => adjustStock(item, 1)} style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem' }}>+ Ingreso</button>
                         <button className="btn" onClick={() => adjustStock(item, -1)} style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', backgroundColor: '#f3f4f6', border: '1px solid #d1d5db' }}>- Salida</button>
+                        <button onClick={() => openEdit(item)} style={{ padding: '0.35rem', background: 'var(--bg-surface-hover)', border: 'none', borderRadius: '4px', cursor: 'pointer', color: 'var(--primary-600)', display: 'flex', alignItems: 'center' }} title="Editar"><Edit2 size={14} /></button>
+                        <button onClick={() => handleDeleteItem(item)} style={{ padding: '0.35rem', background: '#fee2e2', border: 'none', borderRadius: '4px', cursor: 'pointer', color: '#dc2626', display: 'flex', alignItems: 'center' }} title="Eliminar"><Trash2 size={14} /></button>
                       </div>
                     </td>
                   </tr>
@@ -193,7 +233,7 @@ const Stock = () => {
               })}
               {filteredItems.length === 0 && (
                 <tr>
-                  <td colSpan="5" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                  <td colSpan="6" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
                     No hay inventario cargado bajo este filtro en la Nube.
                   </td>
                 </tr>
@@ -276,6 +316,59 @@ const Stock = () => {
                 <button type="button" className="btn btn-secondary" onClick={() => setIsModalOpen(false)}>Cancelar</button>
                 <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
                   <Save size={16} style={{marginRight: '0.35rem'}} /> Guardar Ítem
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Editar Item */}
+      {editingItem && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex',
+          alignItems: 'center', justifyContent: 'center', zIndex: 1000
+        }}>
+          <div className="card" style={{ width: '450px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0 }}>Editar Ítem</h3>
+              <button onClick={() => setEditingItem(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)' }}><X size={20} /></button>
+            </div>
+            <form onSubmit={handleEditItem} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Nombre</label>
+                <input required type="text" className="input-field" value={editForm.name || ''} onChange={(e) => setEditForm({...editForm, name: e.target.value})} />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Categoría</label>
+                  <select className="input-field" value={editForm.category} onChange={(e) => setEditForm({...editForm, category: e.target.value})}>
+                    <option value="Equipos">Equipos</option>
+                    <option value="Materiales">Materiales</option>
+                    <option value="Herramientas">Herramientas</option>
+                    <option value="Repuestos SSTT">Repuestos SSTT</option>
+                  </select>
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Stock Mínimo</label>
+                  <input type="number" min="0" className="input-field" value={editForm.minAlert} onChange={(e) => setEditForm({...editForm, minAlert: e.target.value})} />
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Costo USD</label>
+                  <input type="number" min="0" step="0.01" className="input-field" value={editForm.costUSD} onChange={(e) => setEditForm({...editForm, costUSD: e.target.value})} />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">% Rentabilidad</label>
+                  <input type="number" min="0" className="input-field" value={editForm.profitCF} onChange={(e) => setEditForm({...editForm, profitCF: e.target.value})} />
+                </div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem' }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setEditingItem(null)}>Cancelar</button>
+                <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+                  <Save size={16} /> Guardar
                 </button>
               </div>
             </form>

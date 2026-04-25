@@ -80,7 +80,7 @@ const Balance = () => {
             Control financiero, ingresos, egresos y rentabilidad. Vista visible para toda la empresa.
           </p>
         </div>
-        <button className="btn-primary" onClick={() => setIsModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <button className="btn btn-primary" onClick={() => setIsModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <Plus size={18} /> Nueva Transacción
         </button>
       </div>
