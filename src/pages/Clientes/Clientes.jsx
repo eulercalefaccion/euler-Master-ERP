@@ -14,14 +14,33 @@ const Clientes = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
-    name: '', type: 'Propietario', cuit: '', email: '', phone: '', address: '', priceList: 'Consumidor Final'
+    name: '',
+    type: 'Propietario',
+    email: '',
+    phone: '',
+    address: '',
+    cuit: '',
+    dni: '',
+    contactoNombre: '',
+    contactoTelefono: '',
+    direccionObra: '',
+    location: '',
+    tipoObra: 'VIVIENDA UNIFAMILIAR',
+    estadoObra: 'OBRA NUEVA',
+    tipoProyecto: 'LLAVE EN MANO (CAÑERIA+EQUIPOS+MANO DE OBRA)',
+    priceList: 'Consumidor Final',
+    facturacionIgualCliente: true,
+    facturacionNombre: '',
+    facturacionCuit: '',
+    facturacionDni: '',
+    facturacionDireccion: '',
   });
 
   // Actions dropdown
   const [openMenuId, setOpenMenuId] = useState(null);
 
-  const types = ['Todos', 'Propietario', 'Arquitecto', 'Estudio de Arquitectura', 'Constructora', 'Cliente SSTT'];
-  const formTypes = ['Propietario', 'Arquitecto', 'Estudio de Arquitectura', 'Constructora', 'Cliente SSTT'];
+  const types = ['Todos', 'Propietario', 'Arquitecto', 'Estudio de Arquitectura', 'Constructora', 'Desarrolladora', 'Cliente SSTT'];
+  const formTypes = ['Propietario', 'Arquitecto', 'Estudio de Arquitectura', 'Constructora', 'Desarrolladora', 'Cliente SSTT'];
 
   useEffect(() => {
     const q = query(collection(db, 'clientes')); 
@@ -66,12 +85,55 @@ const Clientes = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => {
+      const next = { ...prev, [name]: value };
+      if (prev.facturacionIgualCliente) {
+        if (name === 'name') next.facturacionNombre = value;
+        if (name === 'cuit') next.facturacionCuit = value;
+        if (name === 'dni') next.facturacionDni = value;
+        if (name === 'address') next.facturacionDireccion = value;
+      }
+      return next;
+    });
+  };
+
+  const handleToggleFacturacionIgualCliente = (checked) => {
+    setFormData(prev => {
+      const next = { ...prev, facturacionIgualCliente: checked };
+      if (checked) {
+        next.facturacionNombre = prev.name;
+        next.facturacionCuit = prev.cuit;
+        next.facturacionDni = prev.dni;
+        next.facturacionDireccion = prev.address;
+      }
+      return next;
+    });
   };
 
   const openNewPanel = () => {
     setEditingId(null);
-    setFormData({ name: '', type: 'Propietario', cuit: '', email: '', phone: '', address: '', priceList: 'Consumidor Final' });
+    setFormData({
+      name: '',
+      type: 'Propietario',
+      email: '',
+      phone: '',
+      address: '',
+      cuit: '',
+      dni: '',
+      contactoNombre: '',
+      contactoTelefono: '',
+      direccionObra: '',
+      location: '',
+      tipoObra: 'VIVIENDA UNIFAMILIAR',
+      estadoObra: 'OBRA NUEVA',
+      tipoProyecto: 'LLAVE EN MANO (CAÑERIA+EQUIPOS+MANO DE OBRA)',
+      priceList: 'Consumidor Final',
+      facturacionIgualCliente: true,
+      facturacionNombre: '',
+      facturacionCuit: '',
+      facturacionDni: '',
+      facturacionDireccion: '',
+    });
     setIsPanelOpen(true);
   };
 
@@ -81,10 +143,23 @@ const Clientes = () => {
       name: cliente.name || '',
       type: cliente.type || 'Propietario',
       cuit: cliente.cuit || '',
+      dni: cliente.dni || '',
       email: cliente.email || '',
       phone: cliente.phone || '',
       address: cliente.address || '',
-      priceList: cliente.priceList || 'Consumidor Final'
+      contactoNombre: cliente.contactoNombre || '',
+      contactoTelefono: cliente.contactoTelefono || '',
+      direccionObra: cliente.direccionObra || '',
+      location: cliente.location || '',
+      tipoObra: cliente.tipoObra || 'VIVIENDA UNIFAMILIAR',
+      estadoObra: cliente.estadoObra || 'OBRA NUEVA',
+      tipoProyecto: cliente.tipoProyecto || 'LLAVE EN MANO (CAÑERIA+EQUIPOS+MANO DE OBRA)',
+      priceList: cliente.priceList || 'Consumidor Final',
+      facturacionIgualCliente: cliente.facturacionIgualCliente !== false,
+      facturacionNombre: cliente.facturacionNombre || '',
+      facturacionCuit: cliente.facturacionCuit || '',
+      facturacionDni: cliente.facturacionDni || '',
+      facturacionDireccion: cliente.facturacionDireccion || '',
     });
     setIsPanelOpen(true);
     setOpenMenuId(null);
@@ -111,11 +186,19 @@ const Clientes = () => {
     
     setIsSubmitting(true);
     try {
+      const payload = {
+        ...formData,
+        facturacionNombre: formData.facturacionIgualCliente ? formData.name : formData.facturacionNombre,
+        facturacionCuit: formData.facturacionIgualCliente ? formData.cuit : formData.facturacionCuit,
+        facturacionDni: formData.facturacionIgualCliente ? formData.dni : formData.facturacionDni,
+        facturacionDireccion: formData.facturacionIgualCliente ? formData.address : formData.facturacionDireccion,
+      };
+
       if (editingId) {
-        await updateDoc(doc(db, 'clientes', editingId), { ...formData });
+        await updateDoc(doc(db, 'clientes', editingId), payload);
       } else {
         await addDoc(collection(db, 'clientes'), {
-          ...formData,
+          ...payload,
           obrasCount: 0,
           ssttCount: 0,
           createdAt: new Date()
@@ -123,7 +206,28 @@ const Clientes = () => {
       }
       setIsPanelOpen(false);
       setEditingId(null);
-      setFormData({ name: '', type: 'Propietario', cuit: '', email: '', phone: '', address: '', priceList: 'Consumidor Final' });
+      setFormData({
+        name: '',
+        type: 'Propietario',
+        email: '',
+        phone: '',
+        address: '',
+        cuit: '',
+        dni: '',
+        contactoNombre: '',
+        contactoTelefono: '',
+        direccionObra: '',
+        location: '',
+        tipoObra: 'VIVIENDA UNIFAMILIAR',
+        estadoObra: 'OBRA NUEVA',
+        tipoProyecto: 'LLAVE EN MANO (CAÑERIA+EQUIPOS+MANO DE OBRA)',
+        priceList: 'Consumidor Final',
+        facturacionIgualCliente: true,
+        facturacionNombre: '',
+        facturacionCuit: '',
+        facturacionDni: '',
+        facturacionDireccion: '',
+      });
     } catch (error) {
       console.error("Error al guardar cliente: ", error);
       alert("Error: " + error.message);
@@ -316,10 +420,9 @@ const Clientes = () => {
         />
       )}
 
-      {/* Side Panel */}
       <div style={{
-        position: 'fixed', top: 0, right: isPanelOpen ? 0 : '-500px', bottom: 0, width: '100%', maxWidth: '450px',
-        backgroundColor: 'var(--bg-primary)', boxShadow: '-5px 0 25px rgba(0,0,0,0.1)', zIndex: 50,
+        position: 'fixed', top: 0, right: isPanelOpen ? 0 : '-700px', bottom: 0, width: '100%', maxWidth: '650px',
+        backgroundColor: 'var(--bg-primary)', boxShadow: '-5px 0 25px rgba(0,0,0,0.15)', zIndex: 50,
         transition: 'right 0.3s cubic-bezier(0.4, 0, 0.2, 1)', display: 'flex', flexDirection: 'column'
       }}>
         <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--bg-surface-hover)' }}>
@@ -332,44 +435,162 @@ const Clientes = () => {
           </button>
         </div>
 
-        <form onSubmit={handleSaveClient} style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Nombre / Razón Social <span style={{color: 'var(--accent-600)'}}>*</span></label>
-            <input type="text" name="name" value={formData.name} onChange={handleInputChange} className="input-field" placeholder="Ej: Constructora San Juan S.A." required />
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+        <form onSubmit={handleSaveClient} style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          
+          {/* SECCIÓN 1: Identidad del Contacto */}
+          <div style={{ borderBottom: '1px solid var(--border-light)', paddingBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <h4 style={{ margin: 0, color: 'var(--primary-700)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Identidad del Contacto</h4>
+            
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">Tipo de Cliente</label>
-              <select name="type" value={formData.type} onChange={handleInputChange} className="input-field">
-                {formTypes.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
+              <label className="form-label">Nombre o Razón Social del Cliente <span style={{ color: 'var(--accent-600)' }}>*</span></label>
+              <input type="text" name="name" value={formData.name} onChange={handleInputChange} className="input-field" placeholder="Ej: Constructora San Juan S.A." required />
             </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Tipo de Cliente</label>
+                <select name="type" value={formData.type} onChange={handleInputChange} className="input-field">
+                  {formTypes.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Lista de Precios Base</label>
+                <select name="priceList" value={formData.priceList} onChange={handleInputChange} className="input-field">
+                  <option value="Consumidor Final">Consumidor Final</option>
+                  <option value="Mayorista">Mayorista (Gremio)</option>
+                  <option value="Arquitectos">Arquitectos (Especial)</option>
+                </select>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">CUIT</label>
+                <input type="text" name="cuit" value={formData.cuit} onChange={handleInputChange} className="input-field" placeholder="30-12345678-9" />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">DNI</label>
+                <input type="text" name="dni" value={formData.dni} onChange={handleInputChange} className="input-field" placeholder="DNI del cliente" />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Teléfono Principal</label>
+                <input type="text" name="phone" value={formData.phone} onChange={handleInputChange} className="input-field" placeholder="+54 9 341 1234567" />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Correo Electrónico</label>
+                <input type="email" name="email" value={formData.email} onChange={handleInputChange} className="input-field" placeholder="contacto@empresa.com" />
+              </div>
+            </div>
+
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">CUIT / DNI</label>
-              <input type="text" name="cuit" value={formData.cuit} onChange={handleInputChange} className="input-field" placeholder="30-12345678-9" />
+              <label className="form-label">Dirección Principal / Comercial</label>
+              <input type="text" name="address" value={formData.address} onChange={handleInputChange} className="input-field" placeholder="Calle, Nro, Localidad del Cliente" />
             </div>
           </div>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Correo Electrónico</label>
-            <input type="email" name="email" value={formData.email} onChange={handleInputChange} className="input-field" placeholder="contacto@empresa.com" />
+
+          {/* SECCIÓN 2: Persona de Contacto */}
+          {formData.type !== 'Propietario' && (
+            <div style={{ borderBottom: '1px solid var(--border-light)', paddingBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <h4 style={{ margin: 0, color: 'var(--primary-700)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Persona de Contacto</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Nombre y Apellido</label>
+                  <input type="text" name="contactoNombre" value={formData.contactoNombre} onChange={handleInputChange} className="input-field" placeholder="Nombre del contacto" />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Teléfono de Contacto</label>
+                  <input type="text" name="contactoTelefono" value={formData.contactoTelefono} onChange={handleInputChange} className="input-field" placeholder="Móvil del contacto" />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* SECCIÓN 3: Detalles de Obra y Servicio */}
+          <div style={{ borderBottom: '1px solid var(--border-light)', paddingBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <h4 style={{ margin: 0, color: 'var(--primary-700)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Detalles de Obra y Servicio</h4>
+            
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">Dirección de la Obra</label>
+              <input type="text" name="direccionObra" value={formData.direccionObra} onChange={handleInputChange} className="input-field" placeholder="Calle, Nro, Piso, Localidad" />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Localidad / Zona (Obra)</label>
+                <input type="text" name="location" value={formData.location} onChange={handleInputChange} className="input-field" placeholder="Ej: Funes, Fisherton" />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Tipo de Obra</label>
+                <select name="tipoObra" value={formData.tipoObra} onChange={handleInputChange} className="input-field">
+                  <option value="VIVIENDA UNIFAMILIAR">VIVIENDA UNIFAMILIAR</option>
+                  <option value="EDIFICIO">EDIFICIO</option>
+                  <option value="LOCAL COMERCIAL">LOCAL COMERCIAL</option>
+                </select>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Estado de Obra</label>
+                <select name="estadoObra" value={formData.estadoObra} onChange={handleInputChange} className="input-field">
+                  <option value="OBRA NUEVA">OBRA NUEVA</option>
+                  <option value="OBRA REFACCION">OBRA REFACCION</option>
+                </select>
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Tipo de Proyecto / Servicio</label>
+                <select name="tipoProyecto" value={formData.tipoProyecto} onChange={handleInputChange} className="input-field">
+                  <option value="SOLO VENTA DE EQUIPOS">SOLO VENTA DE EQUIPOS</option>
+                  <option value="VENTA+INSTALACION DE EQUIPOS (TIENE CAÑERIA HECHA)">VENTA+INSTALACION DE EQUIPOS (TIENE CAÑERIA HECHA)</option>
+                  <option value="SOLO CAÑERIA">SOLO CAÑERIA</option>
+                  <option value="LLAVE EN MANO (CAÑERIA+EQUIPOS+MANO DE OBRA)">LLAVE EN MANO (CAÑERIA+EQUIPOS+MANO DE OBRA)</option>
+                  <option value="OTRO">OTRO</option>
+                </select>
+              </div>
+            </div>
           </div>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Teléfono</label>
-            <input type="text" name="phone" value={formData.phone} onChange={handleInputChange} className="input-field" placeholder="+54 9 341 1234567" />
+
+          {/* SECCIÓN 4: Facturación */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h4 style={{ margin: 0, color: 'var(--primary-700)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Datos de Facturación</h4>
+              <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem', fontWeight: '500' }}>
+                <input
+                  type="checkbox"
+                  checked={formData.facturacionIgualCliente}
+                  onChange={e => handleToggleFacturacionIgualCliente(e.target.checked)}
+                />
+                Igual que los datos del cliente
+              </label>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Nombre / Razón Social Facturación</label>
+                <input type="text" name="facturacionNombre" disabled={formData.facturacionIgualCliente} value={formData.facturacionNombre} onChange={handleInputChange} className="input-field" />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Dirección Facturación</label>
+                <input type="text" name="facturacionDireccion" disabled={formData.facturacionIgualCliente} value={formData.facturacionDireccion} onChange={handleInputChange} className="input-field" />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">CUIT Facturación</label>
+                <input type="text" name="facturacionCuit" placeholder="30-XXXXXX-X" disabled={formData.facturacionIgualCliente} value={formData.facturacionCuit} onChange={handleInputChange} className="input-field" />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">DNI Facturación</label>
+                <input type="text" name="facturacionDni" disabled={formData.facturacionIgualCliente} value={formData.facturacionDni} onChange={handleInputChange} className="input-field" />
+              </div>
+            </div>
           </div>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Dirección Fiscal / Principal</label>
-            <input type="text" name="address" value={formData.address} onChange={handleInputChange} className="input-field" placeholder="Calle Falsa 123, Ciudad" />
-          </div>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label">Lista de Precios Base</label>
-            <select name="priceList" value={formData.priceList} onChange={handleInputChange} className="input-field">
-              <option value="Consumidor Final">Consumidor Final</option>
-              <option value="Mayorista">Mayorista (Gremio)</option>
-              <option value="Arquitectos">Arquitectos (Especial)</option>
-            </select>
-          </div>
-          <div style={{ marginTop: 'auto', paddingTop: '1.5rem', display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+
+          <div style={{ marginTop: 'auto', paddingTop: '1.5rem', display: 'flex', gap: '1rem', justifyContent: 'flex-end', borderTop: '1px solid var(--border-light)' }}>
             <button type="button" className="btn btn-secondary" onClick={() => setIsPanelOpen(false)}>Cancelar</button>
             <button type="submit" className="btn btn-primary" disabled={isSubmitting} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: isSubmitting ? 0.7 : 1 }}>
               <Save size={18} />

@@ -67,10 +67,108 @@ const KanbanBoard = () => {
   // New lead form
   const [isNewClient, setIsNewClient] = useState(false);
   const [newLead, setNewLead] = useState({
-    clientId: '', newClientName: '', newClientPhone: '',
-    location: '', source: 'WhatsApp', paramSistema: 'Radiadores',
+    clientId: '',
+    tipoCliente: 'consumidor_final', // 'consumidor_final' | 'arquitecto' | 'constructora' | 'desarrolladora'
+    newClientName: '',
+    email: '',
+    telefono: '',
+    dni: '',
+    cuit: '',
+    direccionCliente: '',
+    contactoNombre: '',
+    contactoTelefono: '',
+    direccionObra: '',
+    location: '',
+    source: 'WhatsApp',
+    paramSistema: 'Radiadores',
+    tipoObra: 'VIVIENDA UNIFAMILIAR',
+    estadoObra: 'OBRA NUEVA',
+    tipoProyecto: 'LLAVE EN MANO (CAÑERIA+EQUIPOS+MANO DE OBRA)',
+    facturacionIgualCliente: true,
+    facturacionNombre: '',
+    facturacionCuit: '',
+    facturacionDni: '',
+    facturacionDireccion: '',
   });
   const [isSavingLead, setIsSavingLead] = useState(false);
+
+  const handleSelectClient = (clientId) => {
+    if (!clientId) {
+      setNewLead(prev => ({
+        ...prev,
+        clientId: '',
+        newClientName: '',
+        email: '',
+        telefono: '',
+        cuit: '',
+        direccionCliente: '',
+        dni: '',
+        facturacionNombre: '',
+        facturacionCuit: '',
+        facturacionDni: '',
+        facturacionDireccion: '',
+      }));
+      return;
+    }
+    const client = clientesList.find(c => c.id === clientId);
+    if (!client) return;
+    
+    let tipoCliente = 'consumidor_final';
+    if (client.type === 'Arquitecto' || client.type === 'Estudio de Arquitectura') {
+      tipoCliente = 'arquitecto';
+    } else if (client.type === 'Constructora') {
+      tipoCliente = 'constructora';
+    } else if (client.type === 'Desarrolladora') {
+      tipoCliente = 'desarrolladora';
+    }
+    
+    setNewLead(prev => {
+      const next = {
+        ...prev,
+        clientId: client.id,
+        tipoCliente,
+        newClientName: client.name || '',
+        email: client.email || '',
+        telefono: client.phone || '',
+        cuit: client.cuit || '',
+        dni: client.dni || '',
+        direccionCliente: client.address || '',
+      };
+      if (prev.facturacionIgualCliente) {
+        next.facturacionNombre = client.name || '';
+        next.facturacionCuit = client.cuit || '';
+        next.facturacionDni = client.dni || '';
+        next.facturacionDireccion = client.address || '';
+      }
+      return next;
+    });
+  };
+
+  const handleToggleFacturacionIgualCliente = (checked) => {
+    setNewLead(prev => {
+      const next = { ...prev, facturacionIgualCliente: checked };
+      if (checked) {
+        next.facturacionNombre = prev.newClientName;
+        next.facturacionCuit = prev.cuit;
+        next.facturacionDni = prev.dni;
+        next.facturacionDireccion = prev.direccionCliente;
+      }
+      return next;
+    });
+  };
+
+  const handleUpdateNewLeadField = (field, value) => {
+    setNewLead(prev => {
+      const next = { ...prev, [field]: value };
+      if (prev.facturacionIgualCliente) {
+        if (field === 'newClientName') next.facturacionNombre = value;
+        if (field === 'cuit') next.facturacionCuit = value;
+        if (field === 'dni') next.facturacionDni = value;
+        if (field === 'direccionCliente') next.facturacionDireccion = value;
+      }
+      return next;
+    });
+  };
 
   // Detail panel
   const [selectedLead, setSelectedLead]     = useState(null);
@@ -78,7 +176,8 @@ const KanbanBoard = () => {
   const [builderItems, setBuilderItems]     = useState([]);
   const [canal, setCanal]                   = useState('iva');   // 'iva' | 'canal2'
   const [isSavingDetail, setIsSavingDetail] = useState(false);
-  const [viewHistory, setViewHistory]       = useState(false);
+  const [detailTab, setDetailTab]           = useState('cotizador'); // 'cotizador' | 'datos' | 'historial'
+  const [editLeadFields, setEditLeadFields] = useState(null);
 
   // Revision modal
   const [revChangeNote, setRevChangeNote] = useState('');
@@ -105,7 +204,7 @@ const KanbanBoard = () => {
 
     // Clientes
     const unsubClientes = onSnapshot(query(collection(db, 'clientes')), snap => {
-      const c = snap.docs.map(d => ({ id: d.id, name: d.data().name }));
+      const c = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       c.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
       setClientesList(c);
     });
@@ -153,7 +252,30 @@ const KanbanBoard = () => {
     setDetailNotes(item.notas || '');
     setBuilderItems(item.quoteItems || []);
     setCanal(item.canal || 'iva');
-    setViewHistory(false);
+    setDetailTab('cotizador');
+    setEditLeadFields({
+      name: item.name || '',
+      tipoCliente: item.tipoCliente || 'consumidor_final',
+      email: item.email || '',
+      telefono: item.telefono || '',
+      dni: item.dni || '',
+      cuit: item.cuit || '',
+      direccionCliente: item.direccionCliente || '',
+      contactoNombre: item.contactoNombre || '',
+      contactoTelefono: item.contactoTelefono || '',
+      direccionObra: item.direccionObra || '',
+      location: item.location || '',
+      source: item.source || 'WhatsApp',
+      paramSistema: item.paramSistema || 'Radiadores',
+      tipoObra: item.tipoObra || 'VIVIENDA UNIFAMILIAR',
+      estadoObra: item.estadoObra || 'OBRA NUEVA',
+      tipoProyecto: item.tipoProyecto || 'LLAVE EN MANO (CAÑERIA+EQUIPOS+MANO DE OBRA)',
+      facturacionIgualCliente: item.facturacionIgualCliente !== false,
+      facturacionNombre: item.facturacionNombre || '',
+      facturacionCuit: item.facturacionCuit || '',
+      facturacionDni: item.facturacionDni || '',
+      facturacionDireccion: item.facturacionDireccion || '',
+    });
   };
 
   // ─── Canal 2 toggle ─────────────────────────────────────────────────────────
@@ -217,14 +339,45 @@ const KanbanBoard = () => {
 
   // ─── Save detail (without new revision) ─────────────────────────────────────
   const saveDetail = async () => {
-    if (!selectedLead) return;
+    if (!selectedLead || !editLeadFields) return;
     setIsSavingDetail(true);
     try {
       const amount = calcTotal(builderItems);
-      await updateDoc(doc(db, 'presupuestos', selectedLead.id), {
-        notas: detailNotes, amount, quoteItems: builderItems, canal,
-      });
-      setSelectedLead(prev => ({ ...prev, notas: detailNotes, amount, quoteItems: builderItems, canal }));
+      
+      const updatedFields = {
+        notas: detailNotes,
+        amount,
+        quoteItems: builderItems,
+        canal,
+        
+        name: editLeadFields.name,
+        tipoCliente: editLeadFields.tipoCliente,
+        email: editLeadFields.email,
+        telefono: editLeadFields.telefono,
+        dni: editLeadFields.dni,
+        cuit: editLeadFields.cuit,
+        direccionCliente: editLeadFields.direccionCliente,
+        contactoNombre: editLeadFields.contactoNombre,
+        contactoTelefono: editLeadFields.contactoTelefono,
+        direccionObra: editLeadFields.direccionObra,
+        location: editLeadFields.location,
+        source: editLeadFields.source,
+        paramSistema: editLeadFields.paramSistema,
+        tipoObra: editLeadFields.tipoObra,
+        estadoObra: editLeadFields.estadoObra,
+        tipoProyecto: editLeadFields.tipoProyecto,
+        tags: [editLeadFields.paramSistema],
+        
+        facturacionIgualCliente: editLeadFields.facturacionIgualCliente,
+        facturacionNombre: editLeadFields.facturacionIgualCliente ? editLeadFields.name : editLeadFields.facturacionNombre,
+        facturacionCuit: editLeadFields.facturacionIgualCliente ? editLeadFields.cuit : editLeadFields.facturacionCuit,
+        facturacionDni: editLeadFields.facturacionIgualCliente ? editLeadFields.dni : editLeadFields.facturacionDni,
+        facturacionDireccion: editLeadFields.facturacionIgualCliente ? editLeadFields.direccionCliente : editLeadFields.facturacionDireccion,
+      };
+
+      await updateDoc(doc(db, 'presupuestos', selectedLead.id), updatedFields);
+      setSelectedLead(prev => ({ ...prev, ...updatedFields }));
+      alert('Cambios guardados con éxito.');
     } catch (err) { alert('Error: ' + err.message); }
     setIsSavingDetail(false);
   };
@@ -237,7 +390,7 @@ const KanbanBoard = () => {
 
   const handleConfirmRevision = async () => {
     if (!revChangeNote.trim()) { alert('Describí brevemente qué cambió en esta revisión.'); return; }
-    if (!selectedLead) return;
+    if (!selectedLead || !editLeadFields) return;
     setIsSavingDetail(true);
     try {
       const amount = calcTotal(builderItems);
@@ -253,16 +406,45 @@ const KanbanBoard = () => {
         savedAt:          new Date().toISOString(),
       }];
       const newRevision = prevRev + 1;
-      await updateDoc(doc(db, 'presupuestos', selectedLead.id), {
-        notas: detailNotes, amount, quoteItems: builderItems, canal,
-        revision: newRevision, revisionsHistory: history,
-      });
-      setSelectedLead(prev => ({
-        ...prev, notas: detailNotes, amount, quoteItems: builderItems, canal,
-        revision: newRevision, revisionsHistory: history,
-      }));
+      
+      const updatedFields = {
+        notas: detailNotes,
+        amount,
+        quoteItems: builderItems,
+        canal,
+        revision: newRevision,
+        revisionsHistory: history,
+        
+        name: editLeadFields.name,
+        tipoCliente: editLeadFields.tipoCliente,
+        email: editLeadFields.email,
+        telefono: editLeadFields.telefono,
+        dni: editLeadFields.dni,
+        cuit: editLeadFields.cuit,
+        direccionCliente: editLeadFields.direccionCliente,
+        contactoNombre: editLeadFields.contactoNombre,
+        contactoTelefono: editLeadFields.contactoTelefono,
+        direccionObra: editLeadFields.direccionObra,
+        location: editLeadFields.location,
+        source: editLeadFields.source,
+        paramSistema: editLeadFields.paramSistema,
+        tipoObra: editLeadFields.tipoObra,
+        estadoObra: editLeadFields.estadoObra,
+        tipoProyecto: editLeadFields.tipoProyecto,
+        tags: [editLeadFields.paramSistema],
+        
+        facturacionIgualCliente: editLeadFields.facturacionIgualCliente,
+        facturacionNombre: editLeadFields.facturacionIgualCliente ? editLeadFields.name : editLeadFields.facturacionNombre,
+        facturacionCuit: editLeadFields.facturacionIgualCliente ? editLeadFields.cuit : editLeadFields.facturacionCuit,
+        facturacionDni: editLeadFields.facturacionIgualCliente ? editLeadFields.dni : editLeadFields.facturacionDni,
+        facturacionDireccion: editLeadFields.facturacionIgualCliente ? editLeadFields.direccionCliente : editLeadFields.facturacionDireccion,
+      };
+
+      await updateDoc(doc(db, 'presupuestos', selectedLead.id), updatedFields);
+      setSelectedLead(prev => ({ ...prev, ...updatedFields }));
       setIsRevModalOpen(false);
       setRevChangeNote('');
+      alert('Revisión guardada con éxito.');
     } catch (err) { alert('Error: ' + err.message); }
     setIsSavingDetail(false);
   };
@@ -343,7 +525,7 @@ const KanbanBoard = () => {
       // 4. Crear obra en ERP
       const obraRef = await addDoc(collection(db, 'obras'), {
         name:           obraNombre,
-        location:       item.location || 'S/D',
+        location:       item.direccionObra || item.location || 'S/D',
         clientId:       item.clientId || '',
         clientName:     item.name || 'S/D',
         system:         item.paramSistema || 'S/D',
@@ -364,6 +546,27 @@ const KanbanBoard = () => {
         fechaFinReal:   '',
         archivos:       [],
         createdAt:      serverTimestamp(),
+
+        // Copy new CRM fields to Obra
+        tipoCliente:    item.tipoCliente || 'consumidor_final',
+        email:          item.email || '',
+        telefono:       item.telefono || '',
+        dni:            item.dni || '',
+        cuit:           item.cuit || '',
+        direccionCliente: item.direccionCliente || '',
+        contactoNombre: item.contactoNombre || '',
+        contactoTelefono: item.contactoTelefono || '',
+        direccionObra:  item.direccionObra || '',
+        tipoObra:       item.tipoObra || 'VIVIENDA UNIFAMILIAR',
+        estadoObra:     item.estadoObra || 'OBRA NUEVA',
+        tipoProyecto:   item.tipoProyecto || 'LLAVE EN MANO (CAÑERIA+EQUIPOS+MANO DE OBRA)',
+        
+        // Facturación
+        facturacionIgualCliente: item.facturacionIgualCliente !== false,
+        facturacionNombre: item.facturacionNombre || '',
+        facturacionCuit: item.facturacionCuit || '',
+        facturacionDni: item.facturacionDni || '',
+        facturacionDireccion: item.facturacionDireccion || '',
       });
 
       // 5. Actualizar obra en Jornadas con el ID del ERP
@@ -396,9 +599,36 @@ const KanbanBoard = () => {
     try {
       if (isNewClient) {
         if (!newLead.newClientName) { setIsSavingLead(false); return alert('Ingresá el nombre del cliente nuevo.'); }
+        
+        let mappedType = 'Propietario';
+        if (newLead.tipoCliente === 'arquitecto') mappedType = 'Arquitecto';
+        else if (newLead.tipoCliente === 'constructora') mappedType = 'Constructora';
+        else if (newLead.tipoCliente === 'desarrolladora') mappedType = 'Constructora';
+        
         const ref = await addDoc(collection(db, 'clientes'), {
-          name: newLead.newClientName, phone: newLead.newClientPhone || '',
-          status: 'Lead', lastContact: new Date().toLocaleDateString('es-AR'), createdAt: serverTimestamp(),
+          name: newLead.newClientName,
+          phone: newLead.telefono || '',
+          email: newLead.email || '',
+          cuit: newLead.cuit || '',
+          dni: newLead.dni || '',
+          address: newLead.direccionCliente || '',
+          type: mappedType,
+          status: 'Lead',
+          lastContact: new Date().toLocaleDateString('es-AR'),
+          createdAt: serverTimestamp(),
+          // New mirrored fields
+          contactoNombre: newLead.contactoNombre || '',
+          contactoTelefono: newLead.contactoTelefono || '',
+          direccionObra: newLead.direccionObra || '',
+          location: newLead.location || '',
+          tipoObra: newLead.tipoObra,
+          estadoObra: newLead.estadoObra,
+          tipoProyecto: newLead.tipoProyecto,
+          facturacionIgualCliente: newLead.facturacionIgualCliente,
+          facturacionNombre: newLead.facturacionIgualCliente ? newLead.newClientName : (newLead.facturacionNombre || ''),
+          facturacionCuit: newLead.facturacionIgualCliente ? (newLead.cuit || '') : (newLead.facturacionCuit || ''),
+          facturacionDni: newLead.facturacionIgualCliente ? (newLead.dni || '') : (newLead.facturacionDni || ''),
+          facturacionDireccion: newLead.facturacionIgualCliente ? (newLead.direccionCliente || '') : (newLead.facturacionDireccion || ''),
         });
         finalClientId = ref.id;
         finalClientName = newLead.newClientName;
@@ -409,17 +639,73 @@ const KanbanBoard = () => {
       const now = new Date();
       const dateStr = `${now.getFullYear().toString().slice(-2)}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
       const presupuestoNumber = `PRE-${dateStr}-${Math.floor(Math.random()*1000).toString().padStart(3,'0')}`;
+      
       await addDoc(collection(db, 'presupuestos'), {
-        clientId: finalClientId, name: finalClientName, presupuestoNumber,
-        revision: 0, revisionsHistory: [], quoteItems: [], canal: 'iva',
-        location: newLead.location || 'S/D', source: newLead.source,
-        paramSistema: newLead.paramSistema, tags: [newLead.paramSistema],
-        status: 'pendiente', date: new Date().toLocaleDateString('es-AR'),
-        amount: 0, paymentStatus: 'Pendiente', createdAt: serverTimestamp(),
+        clientId: finalClientId,
+        name: finalClientName,
+        presupuestoNumber,
+        revision: 0,
+        revisionsHistory: [],
+        quoteItems: [],
+        canal: 'iva',
+        location: newLead.location || 'S/D',
+        source: newLead.source,
+        paramSistema: newLead.paramSistema,
+        tags: [newLead.paramSistema],
+        status: 'pendiente',
+        date: new Date().toLocaleDateString('es-AR'),
+        amount: 0,
+        paymentStatus: 'Pendiente',
+        createdAt: serverTimestamp(),
+        
+        // CRM fields
+        tipoCliente: newLead.tipoCliente,
+        email: newLead.email || '',
+        telefono: newLead.telefono || '',
+        dni: newLead.dni || '',
+        cuit: newLead.cuit || '',
+        direccionCliente: newLead.direccionCliente || '',
+        contactoNombre: newLead.contactoNombre || '',
+        contactoTelefono: newLead.contactoTelefono || '',
+        direccionObra: newLead.direccionObra || '',
+        tipoObra: newLead.tipoObra,
+        estadoObra: newLead.estadoObra,
+        tipoProyecto: newLead.tipoProyecto,
+        
+        // Facturación
+        facturacionIgualCliente: newLead.facturacionIgualCliente,
+        facturacionNombre: newLead.facturacionIgualCliente ? finalClientName : (newLead.facturacionNombre || ''),
+        facturacionCuit: newLead.facturacionIgualCliente ? (newLead.cuit || '') : (newLead.facturacionCuit || ''),
+        facturacionDni: newLead.facturacionIgualCliente ? (newLead.dni || '') : (newLead.facturacionDni || ''),
+        facturacionDireccion: newLead.facturacionIgualCliente ? (newLead.direccionCliente || '') : (newLead.facturacionDireccion || ''),
       });
+      
       setIsLeadModalOpen(false);
       setIsNewClient(false);
-      setNewLead({ clientId:'', newClientName:'', newClientPhone:'', location:'', source:'WhatsApp', paramSistema:'Radiadores' });
+      setNewLead({
+        clientId: '',
+        tipoCliente: 'consumidor_final',
+        newClientName: '',
+        email: '',
+        telefono: '',
+        dni: '',
+        cuit: '',
+        direccionCliente: '',
+        contactoNombre: '',
+        contactoTelefono: '',
+        direccionObra: '',
+        location: '',
+        source: 'WhatsApp',
+        paramSistema: 'Radiadores',
+        tipoObra: 'VIVIENDA UNIFAMILIAR',
+        estadoObra: 'OBRA NUEVA',
+        tipoProyecto: 'LLAVE EN MANO (CAÑERIA+EQUIPOS+MANO DE OBRA)',
+        facturacionIgualCliente: true,
+        facturacionNombre: '',
+        facturacionCuit: '',
+        facturacionDni: '',
+        facturacionDireccion: '',
+      });
     } catch (err) { console.error(err); alert('Error: ' + err.message); }
     setIsSavingLead(false);
   };
@@ -504,53 +790,330 @@ const KanbanBoard = () => {
           MODAL: Nuevo Lead
       ────────────────────────────────────────────────────────────────────── */}
       {isLeadModalOpen && (
-        <div style={{ position:'fixed',top:0,left:0,right:0,bottom:0,backgroundColor:'rgba(0,0,0,0.5)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000 }}>
-          <div className="card" style={{ width:'450px',display:'flex',flexDirection:'column',gap:'1rem' }}>
-            <h3 style={{ margin:0 }}>Ingresar Nuevo Lead Comercial</h3>
-            <div style={{ display:'flex',flexDirection:'column',gap:'1rem' }}>
-              <div className="form-group" style={{ marginBottom:0 }}>
-                <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.25rem' }}>
-                  <label className="form-label" style={{ margin:0 }}>Cliente <span style={{ color:'var(--accent-600)' }}>*</span></label>
-                  <label style={{ fontSize:'0.75rem',color:'var(--primary-600)',fontWeight:'600',cursor:'pointer',display:'flex',alignItems:'center',gap:'0.25rem' }}>
-                    <input type="checkbox" checked={isNewClient} onChange={e => setIsNewClient(e.target.checked)} /> Crear Nuevo
-                  </label>
-                </div>
-                {isNewClient ? (
-                  <div style={{ display:'flex',flexDirection:'column',gap:'0.5rem',padding:'0.75rem',backgroundColor:'var(--bg-surface-hover)',borderRadius:'8px',border:'1px dashed var(--primary-300)' }}>
-                    <input type="text" className="input-field" placeholder="Nombre completo" value={newLead.newClientName} onChange={e => setNewLead({...newLead, newClientName: e.target.value})} />
-                    <input type="text" className="input-field" placeholder="Teléfono" value={newLead.newClientPhone} onChange={e => setNewLead({...newLead, newClientPhone: e.target.value})} />
+        <div style={{ position:'fixed',top:0,left:0,right:0,bottom:0,backgroundColor:'rgba(0,0,0,0.6)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000 }}>
+          <div className="card" style={{ width:'700px',maxWidth:'95vw',maxHeight:'90vh',display:'flex',flexDirection:'column',gap:'1.25rem',overflowY:'auto' }}>
+            <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',borderBottom:'1px solid var(--border-light)',paddingBottom:'0.75rem' }}>
+              <h3 style={{ margin:0,fontSize:'1.25rem',fontWeight:'600' }}>Ingresar Nuevo Lead Comercial</h3>
+              <button onClick={() => setIsLeadModalOpen(false)} style={{ background:'none',border:'none',cursor:'pointer',color:'var(--text-tertiary)' }}><X size={20}/></button>
+            </div>
+            
+            <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1.25rem' }}>
+              
+              {/* COLUMNA IZQUIERDA: Identidad del Cliente */}
+              <div style={{ display:'flex',flexDirection:'column',gap:'1rem' }}>
+                <div style={{ background:'var(--bg-surface-hover)',padding:'0.75rem',borderRadius:'8px',border:'1px solid var(--border-light)' }}>
+                  <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.5rem' }}>
+                    <span style={{ fontSize:'0.85rem',fontWeight:'600',color:'var(--text-primary)' }}>Tipo de Cliente</span>
                   </div>
-                ) : (
-                  <select required className="input-field" value={newLead.clientId} onChange={e => setNewLead({...newLead, clientId: e.target.value})}>
-                    <option value="" disabled>-- Busca en el Directorio --</option>
-                    {clientesList.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
+                  <div style={{ display:'flex',gap:'0.5rem',flexWrap:'wrap' }}>
+                    {[
+                      { val: 'consumidor_final', label: 'Cons. Final / Dueño' },
+                      { val: 'arquitecto', label: 'Arquitecto' },
+                      { val: 'constructora', label: 'Constructora' },
+                      { val: 'desarrolladora', label: 'Desarrolladora' }
+                    ].map(opt => (
+                      <button
+                        key={opt.val}
+                        type="button"
+                        onClick={() => handleUpdateNewLeadField('tipoCliente', opt.val)}
+                        style={{
+                          padding:'0.35rem 0.65rem',
+                          borderRadius:'6px',
+                          fontSize:'0.75rem',
+                          fontWeight:'600',
+                          border:'1px solid',
+                          borderColor: newLead.tipoCliente === opt.val ? 'var(--primary-600)' : 'var(--border-strong)',
+                          background: newLead.tipoCliente === opt.val ? 'var(--primary-50)' : 'white',
+                          color: newLead.tipoCliente === opt.val ? 'var(--primary-700)' : 'var(--text-secondary)',
+                          cursor:'pointer',
+                          transition:'all 0.15s'
+                        }}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="form-group" style={{ marginBottom:0 }}>
+                  <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.25rem' }}>
+                    <label className="form-label" style={{ margin:0 }}>Cliente <span style={{ color:'var(--accent-600)' }}>*</span></label>
+                    <label style={{ fontSize:'0.75rem',color:'var(--primary-600)',fontWeight:'600',cursor:'pointer',display:'flex',alignItems:'center',gap:'0.25rem' }}>
+                      <input type="checkbox" checked={isNewClient} onChange={e => setIsNewClient(e.target.checked)} /> Crear Nuevo
+                    </label>
+                  </div>
+                  {isNewClient ? (
+                    <input
+                      type="text"
+                      className="input-field"
+                      placeholder="Nombre o Razón Social"
+                      value={newLead.newClientName}
+                      onChange={e => handleUpdateNewLeadField('newClientName', e.target.value)}
+                    />
+                  ) : (
+                    <select
+                      required
+                      className="input-field"
+                      value={newLead.clientId}
+                      onChange={e => handleSelectClient(e.target.value)}
+                    >
+                      <option value="" disabled>-- Selecciona de la lista --</option>
+                      {clientesList.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  )}
+                </div>
+
+                <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem' }}>
+                  <div className="form-group" style={{ marginBottom:0 }}>
+                    <label className="form-label">Teléfono principal</label>
+                    <input
+                      type="text"
+                      className="input-field"
+                      placeholder="Ej: +549..."
+                      value={newLead.telefono}
+                      onChange={e => handleUpdateNewLeadField('telefono', e.target.value)}
+                    />
+                  </div>
+                  <div className="form-group" style={{ marginBottom:0 }}>
+                    <label className="form-label">Email</label>
+                    <input
+                      type="email"
+                      className="input-field"
+                      placeholder="correo@ejemplo.com"
+                      value={newLead.email}
+                      onChange={e => handleUpdateNewLeadField('email', e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem' }}>
+                  <div className="form-group" style={{ marginBottom:0 }}>
+                    <label className="form-label">CUIT</label>
+                    <input
+                      type="text"
+                      className="input-field"
+                      placeholder="30-XXXXXX-X"
+                      value={newLead.cuit}
+                      onChange={e => handleUpdateNewLeadField('cuit', e.target.value)}
+                    />
+                  </div>
+                  <div className="form-group" style={{ marginBottom:0 }}>
+                    <label className="form-label">DNI</label>
+                    <input
+                      type="text"
+                      className="input-field"
+                      placeholder="DNI del cliente"
+                      value={newLead.dni}
+                      onChange={e => handleUpdateNewLeadField('dni', e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group" style={{ marginBottom:0 }}>
+                  <label className="form-label">Dirección Principal / Comercial</label>
+                  <input
+                    type="text"
+                    className="input-field"
+                    placeholder="Calle, Nro, Localidad del Cliente"
+                    value={newLead.direccionCliente}
+                    onChange={e => handleUpdateNewLeadField('direccionCliente', e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* COLUMNA DERECHA: Datos del Proyecto, Contacto y Obra */}
+              <div style={{ display:'flex',flexDirection:'column',gap:'1rem' }}>
+                
+                {/* Persona de contacto (condicional constructora/desarrolladora/arquitecto) */}
+                {newLead.tipoCliente !== 'consumidor_final' && (
+                  <div style={{ background:'var(--primary-50)',padding:'0.75rem',borderRadius:'8px',border:'1px solid var(--primary-100)',display:'flex',flexDirection:'column',gap:'0.75rem' }}>
+                    <span style={{ fontSize:'0.8rem',fontWeight:'700',color:'var(--primary-700)' }}>Persona de Contacto</span>
+                    <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.5rem' }}>
+                      <input
+                        type="text"
+                        className="input-field"
+                        placeholder="Nombre y Apellido"
+                        style={{ background:'white' }}
+                        value={newLead.contactoNombre}
+                        onChange={e => handleUpdateNewLeadField('contactoNombre', e.target.value)}
+                      />
+                      <input
+                        type="text"
+                        className="input-field"
+                        placeholder="Teléfono del contacto"
+                        style={{ background:'white' }}
+                        value={newLead.contactoTelefono}
+                        onChange={e => handleUpdateNewLeadField('contactoTelefono', e.target.value)}
+                      />
+                    </div>
+                  </div>
                 )}
-              </div>
-              <div className="form-group" style={{ marginBottom:0 }}>
-                <label className="form-label">Localidad / Zona</label>
-                <input type="text" className="input-field" value={newLead.location} onChange={e => setNewLead({...newLead, location: e.target.value})} placeholder="Ej: Funes, Fisherton" />
-              </div>
-              <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem' }}>
+
                 <div className="form-group" style={{ marginBottom:0 }}>
-                  <label className="form-label">Canal de Llegada</label>
-                  <select className="input-field" value={newLead.source} onChange={e => setNewLead({...newLead, source: e.target.value})}>
-                    <option>WhatsApp</option><option>Instagram</option><option>Referido</option><option>Arquitecto</option>
-                  </select>
+                  <label className="form-label">Dirección de la Obra</label>
+                  <input
+                    type="text"
+                    className="input-field"
+                    placeholder="Calle, Nro, Piso, Localidad"
+                    value={newLead.direccionObra}
+                    onChange={e => handleUpdateNewLeadField('direccionObra', e.target.value)}
+                  />
                 </div>
-                <div className="form-group" style={{ marginBottom:0 }}>
-                  <label className="form-label">Sistema Solicitado</label>
-                  <select className="input-field" value={newLead.paramSistema} onChange={e => setNewLead({...newLead, paramSistema: e.target.value})}>
-                    <option>Radiadores</option><option>Piso Radiante</option><option>SSTT Caldera</option><option>Híbrido</option>
-                  </select>
+
+                <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem' }}>
+                  <div className="form-group" style={{ marginBottom:0 }}>
+                    <label className="form-label">Localidad / Zona (Obra)</label>
+                    <input
+                      type="text"
+                      className="input-field"
+                      placeholder="Ej: Funes, Fisherton"
+                      value={newLead.location}
+                      onChange={e => handleUpdateNewLeadField('location', e.target.value)}
+                    />
+                  </div>
+                  <div className="form-group" style={{ marginBottom:0 }}>
+                    <label className="form-label">Sistema Solicitado</label>
+                    <select
+                      className="input-field"
+                      value={newLead.paramSistema}
+                      onChange={e => handleUpdateNewLeadField('paramSistema', e.target.value)}
+                    >
+                      <option>Radiadores</option>
+                      <option>Piso Radiante</option>
+                      <option>SSTT Caldera</option>
+                      <option>Híbrido</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem' }}>
+                  <div className="form-group" style={{ marginBottom:0 }}>
+                    <label className="form-label">Canal de Llegada</label>
+                    <select
+                      className="input-field"
+                      value={newLead.source}
+                      onChange={e => handleUpdateNewLeadField('source', e.target.value)}
+                    >
+                      <option>WhatsApp</option>
+                      <option>Instagram</option>
+                      <option>Referido</option>
+                      <option>Arquitecto</option>
+                    </select>
+                  </div>
+                  <div className="form-group" style={{ marginBottom:0 }}>
+                    <label className="form-label">Tipo de Obra</label>
+                    <select
+                      className="input-field"
+                      value={newLead.tipoObra}
+                      onChange={e => handleUpdateNewLeadField('tipoObra', e.target.value)}
+                    >
+                      <option value="VIVIENDA UNIFAMILIAR">VIVIENDA UNIFAMILIAR</option>
+                      <option value="EDIFICIO">EDIFICIO</option>
+                      <option value="LOCAL COMERCIAL">LOCAL COMERCIAL</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem' }}>
+                  <div className="form-group" style={{ marginBottom:0 }}>
+                    <label className="form-label">Estado de Obra</label>
+                    <select
+                      className="input-field"
+                      value={newLead.estadoObra}
+                      onChange={e => handleUpdateNewLeadField('estadoObra', e.target.value)}
+                    >
+                      <option value="OBRA NUEVA">OBRA NUEVA</option>
+                      <option value="OBRA REFACCION">OBRA REFACCION</option>
+                    </select>
+                  </div>
+                  <div className="form-group" style={{ marginBottom:0 }}>
+                    <label className="form-label">Tipo de Proyecto / Servicio</label>
+                    <select
+                      className="input-field"
+                      value={newLead.tipoProyecto}
+                      onChange={e => handleUpdateNewLeadField('tipoProyecto', e.target.value)}
+                    >
+                      <option value="SOLO VENTA DE EQUIPOS">SOLO VENTA DE EQUIPOS</option>
+                      <option value="VENTA+INSTALACION DE EQUIPOS (TIENE CAÑERIA HECHA)">VENTA+INSTALACION DE EQUIPOS (TIENE CAÑERIA HECHA)</option>
+                      <option value="SOLO CAÑERIA">SOLO CAÑERIA</option>
+                      <option value="LLAVE EN MANO (CAÑERIA+EQUIPOS+MANO DE OBRA)">LLAVE EN MANO (CAÑERIA+EQUIPOS+MANO DE OBRA)</option>
+                      <option value="OTRO">OTRO</option>
+                    </select>
+                  </div>
                 </div>
               </div>
-              <div style={{ display:'flex',justifyContent:'flex-end',gap:'0.5rem' }}>
-                <button className="btn btn-secondary" onClick={() => setIsLeadModalOpen(false)}>Cancelar</button>
-                <button className="btn btn-primary" onClick={handleAddLead} disabled={isSavingLead}>
-                  {isSavingLead ? 'Guardando...' : 'Crear Lead'}
-                </button>
+
+            </div>
+
+            {/* SECCIÓN FACTURACIÓN EN EL MODAL */}
+            <div style={{ borderTop:'1px solid var(--border-light)',paddingTop:'1rem',marginTop:'0.5rem' }}>
+              <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.75rem' }}>
+                <h4 style={{ margin:0,fontSize:'0.9rem',fontWeight:'600',color:'var(--text-primary)' }}>Datos de Facturación</h4>
+                <label style={{ fontSize:'0.8rem',color:'var(--text-secondary)',cursor:'pointer',display:'flex',alignItems:'center',gap:'0.35rem',fontWeight:'500' }}>
+                  <input
+                    type="checkbox"
+                    checked={newLead.facturacionIgualCliente}
+                    onChange={e => handleToggleFacturacionIgualCliente(e.target.checked)}
+                  />
+                  Igual que los datos del cliente
+                </label>
               </div>
+
+              <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1.25rem' }}>
+                <div style={{ display:'flex',flexDirection:'column',gap:'0.75rem' }}>
+                  <div className="form-group" style={{ marginBottom:0 }}>
+                    <label className="form-label">Nombre / Razón Social Facturación</label>
+                    <input
+                      type="text"
+                      className="input-field"
+                      disabled={newLead.facturacionIgualCliente}
+                      value={newLead.facturacionNombre}
+                      onChange={e => handleUpdateNewLeadField('facturacionNombre', e.target.value)}
+                    />
+                  </div>
+                  <div className="form-group" style={{ marginBottom:0 }}>
+                    <label className="form-label">Dirección Facturación</label>
+                    <input
+                      type="text"
+                      className="input-field"
+                      disabled={newLead.facturacionIgualCliente}
+                      value={newLead.facturacionDireccion}
+                      onChange={e => handleUpdateNewLeadField('facturacionDireccion', e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display:'flex',flexDirection:'column',gap:'0.75rem' }}>
+                  <div className="form-group" style={{ marginBottom:0 }}>
+                    <label className="form-label">CUIT Facturación</label>
+                    <input
+                      type="text"
+                      className="input-field"
+                      placeholder="30-XXXXXX-X"
+                      disabled={newLead.facturacionIgualCliente}
+                      value={newLead.facturacionCuit}
+                      onChange={e => handleUpdateNewLeadField('facturacionCuit', e.target.value)}
+                    />
+                  </div>
+                  <div className="form-group" style={{ marginBottom:0 }}>
+                    <label className="form-label">DNI Facturación</label>
+                    <input
+                      type="text"
+                      className="input-field"
+                      disabled={newLead.facturacionIgualCliente}
+                      value={newLead.facturacionDni}
+                      onChange={e => handleUpdateNewLeadField('facturacionDni', e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display:'flex',justifyContent:'flex-end',gap:'0.5rem',borderTop:'1px solid var(--border-light)',paddingTop:'0.75rem',marginTop:'0.5rem' }}>
+              <button className="btn btn-secondary" onClick={() => setIsLeadModalOpen(false)}>Cancelar</button>
+              <button className="btn btn-primary" onClick={handleAddLead} disabled={isSavingLead}>
+                {isSavingLead ? 'Guardando...' : 'Crear Lead'}
+              </button>
             </div>
           </div>
         </div>
@@ -614,15 +1177,55 @@ const KanbanBoard = () => {
                   )}
                 </h3>
               </div>
-              <div style={{ display:'flex',gap:'0.5rem' }}>
-                {/* Historial siempre visible */}
-                <button onClick={() => setViewHistory(!viewHistory)} style={{ display:'flex',alignItems:'center',gap:'0.25rem',padding:'0.25rem 0.5rem',backgroundColor: viewHistory ? '#4f46e5' : '#eef2ff',color: viewHistory ? 'white' : '#4f46e5',border:'1px solid #c7d2fe',borderRadius:'4px',cursor:'pointer',fontSize:'0.8rem',fontWeight:'600' }}>
-                  <History size={16} /> {viewHistory ? 'Ver Cotizador' : `Historial${(selectedLead.revisionsHistory?.length || 0) > 0 ? ` (${selectedLead.revisionsHistory.length})` : ''}`}
-                </button>
-                <button onClick={() => setSelectedLead(null)} style={{ background:'none',border:'none',cursor:'pointer',color:'var(--text-tertiary)',padding:'0.25rem' }}>
-                  <X size={22} />
-                </button>
-              </div>
+              <button onClick={() => setSelectedLead(null)} style={{ background:'none',border:'none',cursor:'pointer',color:'var(--text-tertiary)',padding:'0.25rem' }}>
+                <X size={22} />
+              </button>
+            </div>
+
+            {/* Navigation Tabs */}
+            <div style={{ display:'flex',borderBottom:'1px solid var(--border-light)',backgroundColor:'var(--bg-surface-hover)',padding:'0 1.5rem' }}>
+              <button
+                onClick={() => setDetailTab('cotizador')}
+                style={{
+                  padding:'0.75rem 1rem',
+                  fontSize:'0.875rem',
+                  fontWeight:'600',
+                  color: detailTab === 'cotizador' ? 'var(--primary-600)' : 'var(--text-secondary)',
+                  borderBottom: detailTab === 'cotizador' ? '2px solid var(--primary-600)' : '2px solid transparent',
+                  cursor:'pointer',
+                  transition:'all 0.2s',
+                }}
+              >
+                💰 Cotizador
+              </button>
+              <button
+                onClick={() => setDetailTab('datos')}
+                style={{
+                  padding:'0.75rem 1rem',
+                  fontSize:'0.875rem',
+                  fontWeight:'600',
+                  color: detailTab === 'datos' ? 'var(--primary-600)' : 'var(--text-secondary)',
+                  borderBottom: detailTab === 'datos' ? '2px solid var(--primary-600)' : '2px solid transparent',
+                  cursor:'pointer',
+                  transition:'all 0.2s',
+                }}
+              >
+                📋 Datos del Lead
+              </button>
+              <button
+                onClick={() => setDetailTab('historial')}
+                style={{
+                  padding:'0.75rem 1rem',
+                  fontSize:'0.875rem',
+                  fontWeight:'600',
+                  color: detailTab === 'historial' ? 'var(--primary-600)' : 'var(--text-secondary)',
+                  borderBottom: detailTab === 'historial' ? '2px solid var(--primary-600)' : '2px solid transparent',
+                  cursor:'pointer',
+                  transition:'all 0.2s',
+                }}
+              >
+                🕰️ Historial {(selectedLead.revisionsHistory?.length || 0) > 0 ? ` (${selectedLead.revisionsHistory.length})` : ''}
+              </button>
             </div>
 
             {/* Panel body */}
@@ -637,71 +1240,7 @@ const KanbanBoard = () => {
                 </div>
               </div>
 
-              {viewHistory ? (
-                /* ── Historial de revisiones ── */
-                <div style={{ border:'1px solid var(--border-light)',borderRadius:'8px',overflow:'hidden' }}>
-                  <div style={{ padding:'0.75rem 1rem',background:'var(--bg-surface-hover)',fontWeight:'700',fontSize:'0.875rem',color:'var(--text-primary)' }}>
-                    📋 Historial de Versiones
-                  </div>
-
-                  {/* Versión actual (siempre al tope) */}
-                  <div style={{ padding:'1rem',borderTop:'1px solid var(--border-light)',fontSize:'0.875rem',background:'#f0f9ff' }}>
-                    <div style={{ display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'0.5rem' }}>
-                      <div>
-                        <span style={{ fontWeight:'700',color:'#0369a1' }}>✏️ Versión actual (en edición)</span>
-                        <span style={{ marginLeft:'0.75rem',color:'var(--text-secondary)',fontSize:'0.75rem' }}>Rev {selectedLead.revision || 0}</span>
-                        {canal === 'canal2' && <span style={{ marginLeft:'0.5rem',fontSize:'0.7rem',backgroundColor:'#fef3c7',color:'#92400e',padding:'0.1rem 0.4rem',borderRadius:'8px' }}>Canal 2</span>}
-                      </div>
-                      <span style={{ fontWeight:'700',color:'#0369a1' }}>
-                        $ {calcTotal(builderItems || []).toLocaleString('es-AR')}
-                      </span>
-                    </div>
-                    <div style={{ fontSize:'0.75rem',color:'var(--text-secondary)' }}>
-                      {builderItems.length} ítems
-                      {builderItems.length > 0 && ': ' + builderItems.slice(0,3).map(i => `${i.descripcion} (×${i.quantity})`).join(' · ')}
-                      {builderItems.length > 3 && ` ... +${builderItems.length - 3} más`}
-                    </div>
-                    {detailNotes && (
-                      <div style={{ marginTop:'0.4rem',fontSize:'0.75rem',color:'#64748b',fontStyle:'italic' }}>📝 {detailNotes.substring(0, 120)}{detailNotes.length > 120 ? '...' : ''}</div>
-                    )}
-                  </div>
-
-                  {/* Versiones anteriores */}
-                  {(selectedLead.revisionsHistory?.length || 0) === 0 ? (
-                    <div style={{ padding:'1rem',textAlign:'center',color:'#94a3b8',fontSize:'0.875rem',fontStyle:'italic' }}>
-                      Aún no hay revisiones anteriores guardadas.
-                      <br/><span style={{ fontSize:'0.75rem' }}>Usá "Guardar Nueva Revisión" para crear una nueva versión.</span>
-                    </div>
-                  ) : (
-                    selectedLead.revisionsHistory.slice().reverse().map((rev, idx) => (
-                      <div key={idx} style={{ padding:'1rem',borderTop:'1px solid var(--border-light)',fontSize:'0.875rem' }}>
-                        <div style={{ display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'0.5rem' }}>
-                          <div>
-                            <span style={{ fontWeight:'700',color:'var(--primary-700)' }}>{rev.revisionTitle}</span>
-                            <span style={{ marginLeft:'0.75rem',color:'var(--text-secondary)',fontSize:'0.75rem' }}>
-                              {new Date(rev.savedAt).toLocaleString('es-AR')}
-                            </span>
-                            {rev.canal === 'canal2' && <span style={{ marginLeft:'0.5rem',fontSize:'0.7rem',backgroundColor:'#fef3c7',color:'#92400e',padding:'0.1rem 0.4rem',borderRadius:'8px' }}>Canal 2</span>}
-                          </div>
-                          <span style={{ fontWeight:'700',color:'var(--primary-600)' }}>
-                            $ {(rev.amount || 0).toLocaleString('es-AR')}
-                          </span>
-                        </div>
-                        {rev.cambiosRealizados && (
-                          <div style={{ background:'#fefce8',border:'1px solid #fde68a',borderRadius:'6px',padding:'0.5rem 0.75rem',fontSize:'0.8rem',color:'#92400e',marginBottom:'0.5rem' }}>
-                            <strong>Cambios:</strong> {rev.cambiosRealizados}
-                          </div>
-                        )}
-                        <div style={{ fontSize:'0.75rem',color:'var(--text-secondary)' }}>
-                          {(rev.quoteItems || []).length} ítems cotizados
-                          {rev.quoteItems?.length > 0 && ': ' + rev.quoteItems.slice(0,3).map(i => `${i.descripcion} (×${i.quantity})`).join(' · ')}
-                          {rev.quoteItems?.length > 3 && ` ... +${rev.quoteItems.length - 3} más`}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              ) : (
+              {detailTab === 'cotizador' && (
                 <>
                   {/* ── Canal 2 toggle ── */}
                   <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',background:'var(--bg-surface)',border:'1px solid var(--border-light)',borderRadius:'10px',padding:'0.75rem 1rem' }}>
@@ -809,7 +1348,7 @@ const KanbanBoard = () => {
                                 </div>
                               </td>
                               <td style={{ padding:'0.5rem',textAlign:'center' }}>
-                                <span style={{ fontSize:'0.65rem',padding:'0.1rem 0.4rem',borderRadius:'8px',backgroundColor: (item.tipo === 'mano_de_obra' || item.tipo === 'servicio') ? '#dbeafe' : '#f0fdf4',color:(item.tipo === 'mano_de_obra' || item.tipo === 'servicio') ? '#1d4ed8':'#166534',fontWeight:'600' }}>
+                                <span style={{ fontSize:'0.65rem',padding:'0.1rem 0.4rem',borderRadius:'8px',backgroundColor: (item.tipo === 'mano_de_obra' || item.tipo === 'servicio' ? '#dbeafe' : '#f0fdf4'),color:(item.tipo === 'mano_de_obra' || item.tipo === 'servicio' ? '#1d4ed8':'#166534'),fontWeight:'600' }}>
                                   {(item.tipo === 'mano_de_obra' || item.tipo === 'servicio') ? 'MO' : 'Mat'}
                                 </span>
                               </td>
@@ -862,6 +1401,390 @@ const KanbanBoard = () => {
                   </div>
                 </>
               )}
+
+              {detailTab === 'datos' && editLeadFields && (
+                <div style={{ display:'flex',flexDirection:'column',gap:'1.25rem' }}>
+                  
+                  {/* SECCIÓN 1: Identidad del Cliente */}
+                  <div style={{ borderBottom:'1px solid var(--border-light)',paddingBottom:'1rem' }}>
+                    <h4 style={{ margin:'0 0 0.75rem 0',color:'var(--primary-700)',fontSize:'0.9rem',textTransform:'uppercase',letterSpacing:'0.05em' }}>Identidad del Cliente</h4>
+                    
+                    <div className="form-group">
+                      <label className="form-label">Nombre / Razón Social del Cliente</label>
+                      <input
+                        type="text"
+                        className="input-field"
+                        value={editLeadFields.name}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setEditLeadFields(prev => {
+                            const next = { ...prev, name: val };
+                            if (prev.facturacionIgualCliente) next.facturacionNombre = val;
+                            return next;
+                          });
+                        }}
+                      />
+                    </div>
+                    
+                    <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem',marginTop:'0.75rem' }}>
+                      <div className="form-group" style={{ marginBottom:0 }}>
+                        <label className="form-label">Tipo de Cliente</label>
+                        <select
+                          className="input-field"
+                          value={editLeadFields.tipoCliente}
+                          onChange={e => setEditLeadFields({ ...editLeadFields, tipoCliente: e.target.value })}
+                        >
+                          <option value="consumidor_final">Consumidor Final / Dueño</option>
+                          <option value="arquitecto">Arquitecto</option>
+                          <option value="constructora">Constructora</option>
+                          <option value="desarrolladora">Desarrolladora</option>
+                        </select>
+                      </div>
+                      <div className="form-group" style={{ marginBottom:0 }}>
+                        <label className="form-label">CUIT</label>
+                        <input
+                          type="text"
+                          className="input-field"
+                          placeholder="30-XXXXXX-X"
+                          value={editLeadFields.cuit}
+                          onChange={e => {
+                            const val = e.target.value;
+                            setEditLeadFields(prev => {
+                              const next = { ...prev, cuit: val };
+                              if (prev.facturacionIgualCliente) next.facturacionCuit = val;
+                              return next;
+                            });
+                          }}
+                        />
+                      </div>
+                    </div>
+                    
+                    <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem',marginTop:'1rem' }}>
+                      <div className="form-group" style={{ marginBottom:0 }}>
+                        <label className="form-label">DNI</label>
+                        <input
+                          type="text"
+                          className="input-field"
+                          placeholder="DNI de la persona"
+                          value={editLeadFields.dni}
+                          onChange={e => {
+                            const val = e.target.value;
+                            setEditLeadFields(prev => {
+                              const next = { ...prev, dni: val };
+                              if (prev.facturacionIgualCliente) next.facturacionDni = val;
+                              return next;
+                            });
+                          }}
+                        />
+                      </div>
+                      <div className="form-group" style={{ marginBottom:0 }}>
+                        <label className="form-label">Email</label>
+                        <input
+                          type="email"
+                          className="input-field"
+                          placeholder="correo@ejemplo.com"
+                          value={editLeadFields.email}
+                          onChange={e => setEditLeadFields({ ...editLeadFields, email: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    
+                    <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem',marginTop:'1rem' }}>
+                      <div className="form-group" style={{ marginBottom:0 }}>
+                        <label className="form-label">Teléfono / Móvil</label>
+                        <input
+                          type="text"
+                          className="input-field"
+                          placeholder="Teléfono principal"
+                          value={editLeadFields.telefono}
+                          onChange={e => setEditLeadFields({ ...editLeadFields, telefono: e.target.value })}
+                        />
+                      </div>
+                      <div className="form-group" style={{ marginBottom:0 }}>
+                        <label className="form-label">Dirección Principal/Comercial</label>
+                        <input
+                          type="text"
+                          className="input-field"
+                          placeholder="Dirección del cliente"
+                          value={editLeadFields.direccionCliente}
+                          onChange={e => {
+                            const val = e.target.value;
+                            setEditLeadFields(prev => {
+                              const next = { ...prev, direccionCliente: val };
+                              if (prev.facturacionIgualCliente) next.facturacionDireccion = val;
+                              return next;
+                            });
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* SECCIÓN 2: Persona de Contacto */}
+                  {editLeadFields.tipoCliente !== 'consumidor_final' && (
+                    <div style={{ borderBottom:'1px solid var(--border-light)',paddingBottom:'1rem' }}>
+                      <h4 style={{ margin:'0 0 0.75rem 0',color:'var(--primary-700)',fontSize:'0.9rem',textTransform:'uppercase',letterSpacing:'0.05em' }}>Persona de Contacto</h4>
+                      <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem' }}>
+                        <div className="form-group" style={{ marginBottom:0 }}>
+                          <label className="form-label">Nombre y Apellido</label>
+                          <input
+                            type="text"
+                            className="input-field"
+                            placeholder="Nombre del contacto"
+                            value={editLeadFields.contactoNombre}
+                            onChange={e => setEditLeadFields({ ...editLeadFields, contactoNombre: e.target.value })}
+                          />
+                        </div>
+                        <div className="form-group" style={{ marginBottom:0 }}>
+                          <label className="form-label">Teléfono de Contacto</label>
+                          <input
+                            type="text"
+                            className="input-field"
+                            placeholder="Móvil del contacto"
+                            value={editLeadFields.contactoTelefono}
+                            onChange={e => setEditLeadFields({ ...editLeadFields, contactoTelefono: e.target.value })}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* SECCIÓN 3: Detalles de la Obra y Comercial */}
+                  <div style={{ borderBottom:'1px solid var(--border-light)',paddingBottom:'1rem' }}>
+                    <h4 style={{ margin:'0 0 0.75rem 0',color:'var(--primary-700)',fontSize:'0.9rem',textTransform:'uppercase',letterSpacing:'0.05em' }}>Ubicación y Sistema</h4>
+                    <div className="form-group">
+                      <label className="form-label">Dirección de la Obra</label>
+                      <input
+                        type="text"
+                        className="input-field"
+                        placeholder="Calle, nro y localidad de la obra"
+                        value={editLeadFields.direccionObra}
+                        onChange={e => setEditLeadFields({ ...editLeadFields, direccionObra: e.target.value })}
+                      />
+                    </div>
+                    <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem',marginTop:'0.75rem' }}>
+                      <div className="form-group" style={{ marginBottom:0 }}>
+                        <label className="form-label">Localidad / Zona de Obra</label>
+                        <input
+                          type="text"
+                          className="input-field"
+                          placeholder="Ej: Funes"
+                          value={editLeadFields.location}
+                          onChange={e => setEditLeadFields({ ...editLeadFields, location: e.target.value })}
+                        />
+                      </div>
+                      <div className="form-group" style={{ marginBottom:0 }}>
+                        <label className="form-label">Sistema Solicitado</label>
+                        <select
+                          className="input-field"
+                          value={editLeadFields.paramSistema}
+                          onChange={e => setEditLeadFields({ ...editLeadFields, paramSistema: e.target.value })}
+                        >
+                          <option>Radiadores</option>
+                          <option>Piso Radiante</option>
+                          <option>SSTT Caldera</option>
+                          <option>Híbrido</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem',marginTop:'1rem' }}>
+                      <div className="form-group" style={{ marginBottom:0 }}>
+                        <label className="form-label">Canal de Llegada</label>
+                        <select
+                          className="input-field"
+                          value={editLeadFields.source}
+                          onChange={e => setEditLeadFields({ ...editLeadFields, source: e.target.value })}
+                        >
+                          <option>WhatsApp</option>
+                          <option>Instagram</option>
+                          <option>Referido</option>
+                          <option>Arquitecto</option>
+                        </select>
+                      </div>
+                      <div className="form-group" style={{ marginBottom:0 }}>
+                        <label className="form-label">Tipo de Obra</label>
+                        <select
+                          className="input-field"
+                          value={editLeadFields.tipoObra}
+                          onChange={e => setEditLeadFields({ ...editLeadFields, tipoObra: e.target.value })}
+                        >
+                          <option value="VIVIENDA UNIFAMILIAR">VIVIENDA UNIFAMILIAR</option>
+                          <option value="EDIFICIO">EDIFICIO</option>
+                          <option value="LOCAL COMERCIAL">LOCAL COMERCIAL</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem',marginTop:'1rem' }}>
+                      <div className="form-group" style={{ marginBottom:0 }}>
+                        <label className="form-label">Estado de Obra</label>
+                        <select
+                          className="input-field"
+                          value={editLeadFields.estadoObra}
+                          onChange={e => setEditLeadFields({ ...editLeadFields, estadoObra: e.target.value })}
+                        >
+                          <option value="OBRA NUEVA">OBRA NUEVA</option>
+                          <option value="OBRA REFACCION">OBRA REFACCION</option>
+                        </select>
+                      </div>
+                      <div className="form-group" style={{ marginBottom:0 }}>
+                        <label className="form-label">Tipo de Proyecto / Servicio</label>
+                        <select
+                          className="input-field"
+                          value={editLeadFields.tipoProyecto}
+                          onChange={e => setEditLeadFields({ ...editLeadFields, tipoProyecto: e.target.value })}
+                        >
+                          <option value="SOLO VENTA DE EQUIPOS">SOLO VENTA DE EQUIPOS</option>
+                          <option value="VENTA+INSTALACION DE EQUIPOS (TIENE CAÑERIA HECHA)">VENTA+INSTALACION DE EQUIPOS (TIENE CAÑERIA HECHA)</option>
+                          <option value="SOLO CAÑERIA">SOLO CAÑERIA</option>
+                          <option value="LLAVE EN MANO (CAÑERIA+EQUIPOS+MANO DE OBRA)">LLAVE EN MANO (CAÑERIA+EQUIPOS+MANO DE OBRA)</option>
+                          <option value="OTRO">OTRO</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* SECCIÓN 4: Facturación */}
+                  <div>
+                    <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.75rem' }}>
+                      <h4 style={{ margin:0,color:'var(--primary-700)',fontSize:'0.9rem',textTransform:'uppercase',letterSpacing:'0.05em' }}>Datos de Facturación</h4>
+                      <label style={{ fontSize:'0.8rem',display:'flex',alignItems:'center',gap:'0.35rem',cursor:'pointer',fontWeight:'500',color:'var(--text-secondary)' }}>
+                        <input
+                          type="checkbox"
+                          checked={editLeadFields.facturacionIgualCliente}
+                          onChange={e => {
+                            const checked = e.target.checked;
+                            setEditLeadFields(prev => {
+                              const next = { ...prev, facturacionIgualCliente: checked };
+                              if (checked) {
+                                next.facturacionNombre = prev.name;
+                                next.facturacionCuit = prev.cuit;
+                                next.facturacionDni = prev.dni;
+                                next.facturacionDireccion = prev.direccionCliente;
+                              }
+                              return next;
+                            });
+                          }}
+                        />
+                        Igual que los datos del cliente
+                      </label>
+                    </div>
+                    
+                    <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem' }}>
+                      <div className="form-group" style={{ marginBottom:0 }}>
+                        <label className="form-label">Nombre / Razón Social Facturación</label>
+                        <input
+                          type="text"
+                          className="input-field"
+                          disabled={editLeadFields.facturacionIgualCliente}
+                          value={editLeadFields.facturacionNombre}
+                          onChange={e => setEditLeadFields({ ...editLeadFields, facturacionNombre: e.target.value })}
+                        />
+                      </div>
+                      <div className="form-group" style={{ marginBottom:0 }}>
+                        <label className="form-label">Dirección de Facturación</label>
+                        <input
+                          type="text"
+                          className="input-field"
+                          disabled={editLeadFields.facturacionIgualCliente}
+                          value={editLeadFields.facturacionDireccion}
+                          onChange={e => setEditLeadFields({ ...editLeadFields, facturacionDireccion: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    
+                    <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem',marginTop:'1rem' }}>
+                      <div className="form-group" style={{ marginBottom:0 }}>
+                        <label className="form-label">CUIT Facturación</label>
+                        <input
+                          type="text"
+                          className="input-field"
+                          placeholder="30-XXXXXX-X"
+                          disabled={editLeadFields.facturacionIgualCliente}
+                          value={editLeadFields.facturacionCuit}
+                          onChange={e => setEditLeadFields({ ...editLeadFields, facturacionCuit: e.target.value })}
+                        />
+                      </div>
+                      <div className="form-group" style={{ marginBottom:0 }}>
+                        <label className="form-label">DNI Facturación</label>
+                        <input
+                          type="text"
+                          className="input-field"
+                          disabled={editLeadFields.facturacionIgualCliente}
+                          value={editLeadFields.facturacionDni}
+                          onChange={e => setEditLeadFields({ ...editLeadFields, facturacionDni: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              )}
+
+              {detailTab === 'historial' && (
+                <div style={{ border:'1px solid var(--border-light)',borderRadius:'8px',overflow:'hidden' }}>
+                  <div style={{ padding:'0.75rem 1rem',background:'var(--bg-surface-hover)',fontWeight:'700',fontSize:'0.875rem',color:'var(--text-primary)' }}>
+                    📋 Historial de Versiones
+                  </div>
+
+                  {/* Versión actual (siempre al tope) */}
+                  <div style={{ padding:'1rem',borderTop:'1px solid var(--border-light)',fontSize:'0.875rem',background:'#f0f9ff' }}>
+                    <div style={{ display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'0.5rem' }}>
+                      <div>
+                        <span style={{ fontWeight:'700',color:'#0369a1' }}>✏️ Versión actual (en edición)</span>
+                        <span style={{ marginLeft:'0.75rem',color:'var(--text-secondary)',fontSize:'0.75rem' }}>Rev {selectedLead.revision || 0}</span>
+                        {canal === 'canal2' && <span style={{ marginLeft:'0.5rem',fontSize:'0.7rem',backgroundColor:'#fef3c7',color:'#92400e',padding:'0.1rem 0.4rem',borderRadius:'8px' }}>Canal 2</span>}
+                      </div>
+                      <span style={{ fontWeight:'700',color:'#0369a1' }}>
+                        $ {calcTotal(builderItems || []).toLocaleString('es-AR')}
+                      </span>
+                    </div>
+                    <div style={{ fontSize:'0.75rem',color:'var(--text-secondary)' }}>
+                      {builderItems.length} ítems
+                      {builderItems.length > 0 && ': ' + builderItems.slice(0,3).map(i => `${i.descripcion} (×${i.quantity})`).join(' · ')}
+                      {builderItems.length > 3 && ` ... +${builderItems.length - 3} más`}
+                    </div>
+                    {detailNotes && (
+                      <div style={{ marginTop:'0.4rem',fontSize:'0.75rem',color:'#64748b',fontStyle:'italic' }}>📝 {detailNotes.substring(0, 120)}{detailNotes.length > 120 ? '...' : ''}</div>
+                    )}
+                  </div>
+
+                  {/* Versiones anteriores */}
+                  {(selectedLead.revisionsHistory?.length || 0) === 0 ? (
+                    <div style={{ padding:'1rem',textAlign:'center',color:'#94a3b8',fontSize:'0.875rem',fontStyle:'italic' }}>
+                      Aún no hay revisiones anteriores guardadas.
+                      <br/><span style={{ fontSize:'0.75rem' }}>Usá "Guardar Nueva Revisión" para crear una nueva versión.</span>
+                    </div>
+                  ) : (
+                    selectedLead.revisionsHistory.slice().reverse().map((rev, idx) => (
+                      <div key={idx} style={{ padding:'1rem',borderTop:'1px solid var(--border-light)',fontSize:'0.875rem' }}>
+                        <div style={{ display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'0.5rem' }}>
+                          <div>
+                            <span style={{ fontWeight:'700',color:'var(--primary-700)' }}>{rev.revisionTitle}</span>
+                            <span style={{ marginLeft:'0.75rem',color:'var(--text-secondary)',fontSize:'0.75rem' }}>
+                              {new Date(rev.savedAt).toLocaleString('es-AR')}
+                            </span>
+                            {rev.canal === 'canal2' && <span style={{ marginLeft:'0.5rem',fontSize:'0.7rem',backgroundColor:'#fef3c7',color:'#92400e',padding:'0.1rem 0.4rem',borderRadius:'8px' }}>Canal 2</span>}
+                          </div>
+                          <span style={{ fontWeight:'700',color:'var(--primary-600)' }}>
+                            $ {(rev.amount || 0).toLocaleString('es-AR')}
+                          </span>
+                        </div>
+                        {rev.cambiosRealizados && (
+                          <div style={{ background:'#fefce8',border:'1px solid #fde68a',borderRadius:'6px',padding:'0.5rem 0.75rem',fontSize:'0.8rem',color:'#92400e',marginBottom:'0.5rem' }}>
+                            <strong>Cambios:</strong> {rev.cambiosRealizados}
+                          </div>
+                        )}
+                        <div style={{ fontSize:'0.75rem',color:'var(--text-secondary)' }}>
+                          {(rev.quoteItems || []).length} ítems cotizados
+                          {rev.quoteItems?.length > 0 && ': ' + rev.quoteItems.slice(0,3).map(i => `${i.descripcion} (×${i.quantity})`).join(' · ')}
+                          {rev.quoteItems?.length > 3 && ` ... +${rev.quoteItems.length - 3} más`}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Panel footer */}
@@ -869,7 +1792,7 @@ const KanbanBoard = () => {
               <button onClick={deleteLead} style={{ display:'flex',alignItems:'center',gap:'0.35rem',background:'none',border:'none',color:'#dc2626',cursor:'pointer',fontSize:'0.8rem',fontWeight:'600' }}>
                 <Trash2 size={16}/> Eliminar Lead
               </button>
-              {!viewHistory && (
+              {detailTab !== 'historial' && (
                 <div style={{ display:'flex',gap:'0.5rem',flexWrap:'wrap' }}>
                   {/* Botón Generar PDF */}
                   <button
