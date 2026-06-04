@@ -1,380 +1,300 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Plus, Archive, AlertTriangle, Package, Wrench, Thermometer, X, Save, Edit2, Trash2 } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Search, Package, AlertTriangle, Wrench, Thermometer, Archive, Minus, Plus, Edit2, TrendingDown, CheckCircle, XCircle, DollarSign } from 'lucide-react';
 import { db } from '../../services/firebaseConfig';
-import { collection, onSnapshot, query, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, onSnapshot, updateDoc, doc } from 'firebase/firestore';
+import { getTipoCambio, calcularPrecios, calcularPrecioManoDeObra } from '../../services/tipoCambioService';
+
+const formatARS = (n) => n != null ? `$ ${n.toLocaleString('es-AR')}` : '—';
 
 const Stock = () => {
   const [items, setItems] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('Todas');
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  const [newItem, setNewItem] = useState({
-    name: '', category: 'Materiales', quantity: 0, minAlert: 5, unit: 'U', costUSD: 0, profitCF: 30
-  });
+  const [filterStock, setFilterStock] = useState('todos'); // todos, bajo, sinstock
+  const [editingId, setEditingId] = useState(null);
+  const [editValues, setEditValues] = useState({});
+  const [tc, setTc] = useState(null);
 
-  // Edit state
-  const [editingItem, setEditingItem] = useState(null);
-  const [editForm, setEditForm] = useState({});
-
-  const categories = ['Todas', 'Equipos', 'Materiales', 'Herramientas', 'Repuestos SSTT'];
-
+  // Unified collection — same as Lista de Precios
   useEffect(() => {
-    const q = query(collection(db, 'stock'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setItems(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    const unsub = onSnapshot(collection(db, 'lista_precios'), (snap) => {
+      setItems(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
-    return () => unsubscribe();
+    return unsub;
   }, []);
 
-  const filteredItems = items.filter(item => {
-    const matchesSearch = item.name && item.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesTab = activeTab === 'Todas' || item.category === activeTab;
-    return matchesSearch && matchesTab;
-  });
+  // Load TC for inventory value
+  useEffect(() => {
+    (async () => {
+      try { setTc(await getTipoCambio()); } catch (e) { console.error(e); }
+    })();
+  }, []);
 
-  const getCategoryIcon = (cat) => {
-    switch (cat) {
-      case 'Equipos': return <Thermometer size={16} />;
-      case 'Materiales': return <Package size={16} />;
-      case 'Herramientas': return <Wrench size={16} />;
-      case 'Repuestos SSTT': return <Archive size={16} />;
-      default: return <Package size={16} />;
+  // Categories from data
+  const categories = useMemo(() => {
+    const cats = [...new Set(items.map(i => i.categoria).filter(Boolean))].sort();
+    return ['Todas', ...cats];
+  }, [items]);
+
+  // Filtered
+  const filtered = useMemo(() => {
+    return items.filter(item => {
+      // Only show materials/kits (skip mano_de_obra/servicio for stock)
+      if (item.tipo === 'mano_de_obra' || item.tipo === 'servicio') return false;
+
+      const term = searchTerm.toLowerCase();
+      const matchSearch = !term || item.descripcion?.toLowerCase().includes(term) || item.proveedor?.toLowerCase().includes(term);
+      const matchCat = activeTab === 'Todas' || item.categoria === activeTab;
+      
+      const stock = item.stock ?? 0;
+      const minimo = item.stockMinimo ?? 0;
+      let matchStock = true;
+      if (filterStock === 'bajo') matchStock = stock > 0 && stock <= minimo;
+      if (filterStock === 'sinstock') matchStock = stock === 0;
+      
+      return matchSearch && matchCat && matchStock;
+    });
+  }, [items, searchTerm, activeTab, filterStock]);
+
+  // Stats
+  const stats = useMemo(() => {
+    const materiales = items.filter(i => i.tipo !== 'mano_de_obra' && i.tipo !== 'servicio');
+    const conStock = materiales.filter(i => (i.stock ?? 0) > 0);
+    const bajoStock = materiales.filter(i => {
+      const s = i.stock ?? 0;
+      const m = i.stockMinimo ?? 0;
+      return s > 0 && m > 0 && s <= m;
+    });
+    const sinStock = materiales.filter(i => (i.stock ?? 0) === 0 && (i.stockMinimo ?? 0) > 0);
+
+    // Inventory value
+    let valorTotal = 0;
+    if (tc) {
+      for (const item of conStock) {
+        if (item.costoUSD) {
+          valorTotal += item.costoUSD * (item.stock ?? 0) * tc.valor;
+        }
+      }
     }
-  };
 
-  const handleSaveItem = async (e) => {
-    e.preventDefault();
-    if (!newItem.name) return;
-    setIsSubmitting(true);
-    try {
-      await addDoc(collection(db, 'stock'), {
-        name: newItem.name,
-        category: newItem.category,
-        quantity: Number(newItem.quantity),
-        minAlert: Number(newItem.minAlert),
-        unit: newItem.unit,
-        costUSD: Number(newItem.costUSD) || 0,
-        profitCF: Number(newItem.profitCF) || 0,
-        lastUpdated: new Date().toLocaleDateString('es-AR'),
-        createdAt: serverTimestamp()
-      });
-      setIsModalOpen(false);
-      setNewItem({ name: '', category: 'Materiales', quantity: 0, minAlert: 5, unit: 'U', costUSD: 0, profitCF: 30 });
-    } catch (e) {
-      console.error(e);
-      alert('Error al guardar en el inventario.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+    return { total: materiales.length, conStock: conStock.length, bajoStock: bajoStock.length, sinStock: sinStock.length, valorTotal };
+  }, [items, tc]);
 
+  // Quick stock adjust
   const adjustStock = async (item, amount) => {
+    const newQty = Math.max(0, (item.stock ?? 0) + amount);
     try {
-      const newQuantity = Number(item.quantity) + amount;
-      await updateDoc(doc(db, 'stock', item.id), {
-        quantity: newQuantity,
-        lastUpdated: new Date().toLocaleDateString('es-AR')
+      await updateDoc(doc(db, 'lista_precios', item.id), {
+        stock: newQty,
+        stockActualizadoEn: new Date().toISOString()
       });
-    } catch (e) {
-      console.error("Error adjusting stock:", e);
-    }
+    } catch (e) { console.error(e); }
   };
 
-  const openEdit = (item) => {
-    setEditingItem(item);
-    setEditForm({ name: item.name, category: item.category, quantity: item.quantity, minAlert: item.minAlert, unit: item.unit, costUSD: item.costUSD || 0, profitCF: item.profitCF || 0 });
+  // Inline edit
+  const startEdit = (item) => {
+    setEditingId(item.id);
+    setEditValues({ stock: item.stock ?? 0, stockMinimo: item.stockMinimo ?? 0 });
   };
 
-  const handleEditItem = async (e) => {
-    e.preventDefault();
-    if (!editingItem) return;
-    setIsSubmitting(true);
+  const saveEdit = async (itemId) => {
     try {
-      await updateDoc(doc(db, 'stock', editingItem.id), {
-        ...editForm,
-        quantity: Number(editForm.quantity),
-        minAlert: Number(editForm.minAlert),
-        costUSD: Number(editForm.costUSD) || 0,
-        profitCF: Number(editForm.profitCF) || 0,
-        lastUpdated: new Date().toLocaleDateString('es-AR')
+      await updateDoc(doc(db, 'lista_precios', itemId), {
+        stock: Number(editValues.stock) || 0,
+        stockMinimo: Number(editValues.stockMinimo) || 0,
+        stockActualizadoEn: new Date().toISOString()
       });
-      setEditingItem(null);
-    } catch (e) {
-      alert('Error al editar.');
-    }
-    setIsSubmitting(false);
+    } catch (e) { console.error(e); }
+    setEditingId(null);
   };
 
-  const handleDeleteItem = async (item) => {
-    if (!window.confirm(`¿Eliminar "${item.name}"? Esta acción no se puede deshacer.`)) return;
-    try {
-      await deleteDoc(doc(db, 'stock', item.id));
-    } catch (e) {
-      alert('Error al eliminar.');
-    }
+  const cancelEdit = () => setEditingId(null);
+
+  const getStockStatus = (item) => {
+    const stock = item.stock ?? 0;
+    const reservado = item.stockReservado ?? 0;
+    const disponible = Math.max(0, stock - reservado);
+    const minimo = item.stockMinimo ?? 0;
+    if (minimo === 0 && stock === 0) return { label: 'Sin datos', color: 'gray', icon: null };
+    if (disponible === 0 && stock === 0) return { label: 'Sin stock', color: 'red', icon: <XCircle size={14} /> };
+    if (disponible === 0 && stock > 0) return { label: 'Todo reservado', color: 'orange', icon: <AlertTriangle size={14} /> };
+    if (minimo > 0 && disponible <= minimo) return { label: 'Bajo', color: 'orange', icon: <AlertTriangle size={14} /> };
+    return { label: 'OK', color: 'green', icon: <CheckCircle size={14} /> };
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <div>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: '600', margin: 0 }}>Stock del Galpón</h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginTop: '0.25rem' }}>
-            Control de inventario físico y alertas de compras
-          </p>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Stats */}
+      <div className="lp-stats" style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}>
+        <div className="lp-stat-card">
+          <div className="lp-stat-icon blue"><Package size={18} /></div>
+          <div className="lp-stat-content"><div className="lp-stat-value">{stats.total}</div><div className="lp-stat-label">Artículos</div></div>
         </div>
-        <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
-          <Plus size={18} />
-          Nuevo Ítem
-        </button>
-      </div>
-
-      {/* Toolbox (Buscador y Pestañas) */}
-      <div className="card" style={{ padding: '1rem', marginBottom: '1.5rem', display: 'flex', gap: '1rem', flexDirection: 'column' }}>
-        <div style={{ position: 'relative', width: '100%', maxWidth: '400px' }}>
-          <Search size={18} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
-          <input 
-            type="text" 
-            placeholder="Buscar por código o nombre..." 
-            className="input-field"
-            style={{ paddingLeft: '2.5rem' }}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+        <div className="lp-stat-card">
+          <div className="lp-stat-icon green"><CheckCircle size={18} /></div>
+          <div className="lp-stat-content"><div className="lp-stat-value">{stats.conStock}</div><div className="lp-stat-label">Con stock</div></div>
         </div>
-
-        <div style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid var(--border-light)', overflowX: 'auto' }}>
-          {categories.map(cat => (
-            <button 
-              key={cat}
-              onClick={() => setActiveTab(cat)}
-              style={{
-                background: 'none',
-                border: 'none',
-                borderBottom: activeTab === cat ? '2px solid var(--primary-600)' : '2px solid transparent',
-                color: activeTab === cat ? 'var(--primary-600)' : 'var(--text-secondary)',
-                fontWeight: activeTab === cat ? '600' : '500',
-                padding: '0.5rem 0.5rem 0.75rem',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              {cat}
-            </button>
-          ))}
+        <div className="lp-stat-card">
+          <div className="lp-stat-icon orange"><AlertTriangle size={18} /></div>
+          <div className="lp-stat-content"><div className="lp-stat-value">{stats.bajoStock}</div><div className="lp-stat-label">Stock bajo</div></div>
+        </div>
+        <div className="lp-stat-card">
+          <div className="lp-stat-icon" style={{ background: '#fef2f2', color: '#dc2626' }}><XCircle size={18} /></div>
+          <div className="lp-stat-content"><div className="lp-stat-value">{stats.sinStock}</div><div className="lp-stat-label">Sin stock</div></div>
+        </div>
+        <div className="lp-stat-card">
+          <div className="lp-stat-icon purple"><DollarSign size={18} /></div>
+          <div className="lp-stat-content"><div className="lp-stat-value">{formatARS(Math.round(stats.valorTotal))}</div><div className="lp-stat-label">Valor inventario</div></div>
         </div>
       </div>
 
-      {/* Tabla de Stock */}
-      <div className="card" style={{ padding: 0, overflow: 'hidden', flex: 1, display: 'flex', flexDirection: 'column' }}>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-            <thead style={{ backgroundColor: 'var(--bg-surface-hover)', borderBottom: '1px solid var(--border-light)' }}>
+      {/* Toolbar */}
+      <div className="lp-toolbar">
+        <div className="lp-toolbar-row">
+          <div className="lp-search">
+            <Search size={18} className="lp-search-icon" />
+            <input type="text" className="input-field" style={{ paddingLeft: '2.5rem' }} placeholder="Buscar artículo o proveedor..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+          </div>
+          <select className="input-field lp-filter-select" value={filterStock} onChange={e => setFilterStock(e.target.value)}>
+            <option value="todos">Todos</option>
+            <option value="bajo">⚠ Stock bajo</option>
+            <option value="sinstock">✕ Sin stock</option>
+          </select>
+        </div>
+        <div className="lp-tabs">
+          {categories.map(cat => {
+            const count = cat === 'Todas'
+              ? items.filter(i => i.tipo !== 'mano_de_obra' && i.tipo !== 'servicio').length
+              : items.filter(i => i.categoria === cat && i.tipo !== 'mano_de_obra' && i.tipo !== 'servicio').length;
+            return (
+              <button key={cat} className={`lp-tab ${activeTab === cat ? 'active' : ''}`} onClick={() => setActiveTab(cat)}>
+                {cat}<span className="lp-tab-count">({count})</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="lp-table-container">
+        <div className="lp-table-scroll">
+          <table className="lp-table">
+            <thead>
               <tr>
-                <th style={{ padding: '1rem', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Ítem / Descripción</th>
-                <th style={{ padding: '1rem', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Categoría</th>
-                <th style={{ padding: '1rem', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Precio Base</th>
-                <th style={{ padding: '1rem', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Cantidad Total</th>
-                <th style={{ padding: '1rem', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Estado</th>
-                <th style={{ padding: '1rem', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-secondary)', textAlign: 'right' }}>Acciones</th>
+                <th className="col-desc">Artículo</th>
+                <th>Proveedor</th>
+                <th>Categoría</th>
+                <th style={{ textAlign: 'center' }}>Estado</th>
+                <th style={{ textAlign: 'center' }}>Stock Total</th>
+                <th style={{ textAlign: 'center', background: '#fef9c3', color: '#92400e' }}>Reservado</th>
+                <th style={{ textAlign: 'center', background: '#f0fdf4', color: '#166534' }}>Disponible</th>
+                <th style={{ textAlign: 'center' }}>Mínimo</th>
+                <th>Unidad</th>
+                <th className="col-price">Costo USD</th>
+                <th className="col-price">Valor stock ARS</th>
+                <th style={{ textAlign: 'center' }}>Ajustar</th>
               </tr>
             </thead>
             <tbody>
-              {filteredItems.map(item => {
-                const isCritical = item.quantity <= item.minAlert;
+              {filtered.map(item => {
+                const status = getStockStatus(item);
+                const stock = item.stock ?? 0;
+                const minimo = item.stockMinimo ?? 0;
+                const isEditing = editingId === item.id;
+                const valorLinea = tc && item.costoUSD ? Math.round(item.costoUSD * stock * tc.valor) : null;
 
                 return (
-                  <tr key={item.id} style={{ borderBottom: '1px solid var(--border-light)', backgroundColor: isCritical ? '#fef2f2' : 'transparent' }}>
-                    <td style={{ padding: '1rem' }}>
-                      <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{item.name}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '0.125rem' }}>Última act: {item.lastUpdated}</div>
+                  <tr key={item.id} style={status.color === 'red' ? { background: 'rgba(220,38,38,0.04)' } : status.color === 'orange' ? { background: 'rgba(245,158,11,0.04)' } : {}}>
+                    <td className="col-desc">
+                      <div className="lp-item-name">{item.descripcion}</div>
+                      {item.codigoGesdatta && <div className="lp-item-code">{item.codigoGesdatta}</div>}
                     </td>
-                    
-                    <td style={{ padding: '1rem' }}>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', backgroundColor: 'var(--primary-50)', color: 'var(--primary-700)', padding: '0.25rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: '500' }}>
-                        {getCategoryIcon(item.category)} {item.category}
+                    <td><span className="lp-badge-cat">{item.proveedor || '—'}</span></td>
+                    <td><span className="lp-badge-cat">{item.categoria || '—'}</span></td>
+                    <td style={{ textAlign: 'center' }}>
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
+                        padding: '0.15rem 0.5rem', borderRadius: '9999px', fontSize: '0.7rem', fontWeight: 600,
+                        background: status.color === 'green' ? '#ecfdf5' : status.color === 'orange' ? '#fff7ed' : status.color === 'red' ? '#fef2f2' : '#f8fafc',
+                        color: status.color === 'green' ? '#059669' : status.color === 'orange' ? '#d97706' : status.color === 'red' ? '#dc2626' : '#94a3b8',
+                      }}>
+                        {status.icon} {status.label}
                       </span>
                     </td>
-
-                    <td style={{ padding: '1rem' }}>
-                      {item.costUSD ? <div style={{ fontWeight: '600', color: 'var(--accent-600)' }}>U$D {item.costUSD}</div> : <div style={{ color: 'var(--text-tertiary)' }}>-</div>}
-                      {item.profitCF ? <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{item.profitCF}% Margen</div> : null}
-                    </td>
-
-                    <td style={{ padding: '1rem' }}>
-                      <span style={{ fontSize: '1.125rem', fontWeight: '700', color: 'var(--text-primary)' }}>{item.quantity}</span>
-                      <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginLeft: '0.25rem' }}>{item.unit}</span>
-                    </td>
-
-                    <td style={{ padding: '1rem' }}>
-                      {isCritical ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--accent-600)', fontWeight: '600', fontSize: '0.875rem' }}>
-                          <AlertTriangle size={16} /> Reponer URG. (Mín: {item.minAlert})
-                        </div>
+                    {/* Stock Total */}
+                    <td style={{ textAlign: 'center' }}>
+                      {isEditing ? (
+                        <input type="number" min="0" className="input-field" style={{ width: '70px', textAlign: 'center', padding: '0.25rem' }}
+                          value={editValues.stock} onChange={e => setEditValues({ ...editValues, stock: e.target.value })}
+                          onKeyDown={e => { if (e.key === 'Enter') saveEdit(item.id); if (e.key === 'Escape') cancelEdit(); }}
+                          autoFocus />
                       ) : (
-                        <span style={{ color: 'var(--success)', fontWeight: '500', fontSize: '0.875rem' }}>Stock Sano</span>
+                        <span style={{ fontWeight: 700, fontSize: '0.9rem', color: status.color === 'red' ? '#dc2626' : status.color === 'orange' ? '#d97706' : 'var(--text-primary)' }}>{stock}</span>
                       )}
                     </td>
-
-                    <td style={{ padding: '1rem', textAlign: 'right' }}>
-                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                        <button className="btn btn-secondary" onClick={() => adjustStock(item, 1)} style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem' }}>+ Ingreso</button>
-                        <button className="btn" onClick={() => adjustStock(item, -1)} style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', backgroundColor: '#f3f4f6', border: '1px solid #d1d5db' }}>- Salida</button>
-                        <button onClick={() => openEdit(item)} style={{ padding: '0.35rem', background: 'var(--bg-surface-hover)', border: 'none', borderRadius: '4px', cursor: 'pointer', color: 'var(--primary-600)', display: 'flex', alignItems: 'center' }} title="Editar"><Edit2 size={14} /></button>
-                        <button onClick={() => handleDeleteItem(item)} style={{ padding: '0.35rem', background: '#fee2e2', border: 'none', borderRadius: '4px', cursor: 'pointer', color: '#dc2626', display: 'flex', alignItems: 'center' }} title="Eliminar"><Trash2 size={14} /></button>
-                      </div>
+                    {/* Reservado */}
+                    <td style={{ textAlign: 'center', background: reservado > 0 ? '#fefce8' : 'transparent' }}>
+                      {reservado > 0 ? (
+                        <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#92400e', background: '#fef3c7', padding: '0.1rem 0.4rem', borderRadius: '6px' }}>
+                          {reservado}
+                        </span>
+                      ) : (
+                        <span style={{ color: '#cbd5e1', fontSize: '0.8rem' }}>—</span>
+                      )}
+                    </td>
+                    {/* Disponible */}
+                    <td style={{ textAlign: 'center', background: disponible === 0 && stock > 0 ? '#fef2f2' : disponible <= minimo && minimo > 0 ? '#fff7ed' : 'transparent' }}>
+                      <span style={{ fontWeight: 700, fontSize: '0.9rem', color: disponible === 0 ? '#dc2626' : disponible <= minimo && minimo > 0 ? '#d97706' : '#059669' }}>
+                        {disponible}
+                      </span>
+                    </td>
+                    {/* Mínimo */}
+                    <td style={{ textAlign: 'center' }}>
+                      {isEditing ? (
+                        <input type="number" min="0" className="input-field" style={{ width: '70px', textAlign: 'center', padding: '0.25rem' }}
+                          value={editValues.stockMinimo} onChange={e => setEditValues({ ...editValues, stockMinimo: e.target.value })}
+                          onKeyDown={e => { if (e.key === 'Enter') saveEdit(item.id); if (e.key === 'Escape') cancelEdit(); }} />
+                      ) : (
+                        <span style={{ color: 'var(--text-secondary)' }}>{minimo || '—'}</span>
+                      )}
+                    </td>
+                    <td><span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>{item.unidad || 'unidad'}</span></td>
+                    <td className="col-price">
+                      {item.costoUSD ? <span className="lp-price-usd">U$D {item.costoUSD.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</span> : <span className="lp-price-null">—</span>}
+                    </td>
+                    <td className="col-price">
+                      {valorLinea ? <span className="lp-price-ars">{formatARS(valorLinea)}</span> : <span className="lp-price-null">—</span>}
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      {isEditing ? (
+                        <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'center' }}>
+                          <button className="lp-action-btn edit" onClick={() => saveEdit(item.id)} title="Guardar" style={{ color: '#059669' }}>✓</button>
+                          <button className="lp-action-btn delete" onClick={cancelEdit} title="Cancelar">✕</button>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'center', alignItems: 'center' }}>
+                          <button className="lp-action-btn delete" onClick={() => adjustStock(item, -1)} title="-1" style={{ color: '#dc2626', fontWeight: 700 }}><Minus size={14} /></button>
+                          <button className="lp-action-btn edit" onClick={() => startEdit(item)} title="Editar stock"><Edit2 size={13} /></button>
+                          <button className="lp-action-btn edit" onClick={() => adjustStock(item, 1)} title="+1" style={{ color: '#059669', fontWeight: 700 }}><Plus size={14} /></button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 );
               })}
-              {filteredItems.length === 0 && (
-                <tr>
-                  <td colSpan="6" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                    No hay inventario cargado bajo este filtro en la Nube.
-                  </td>
-                </tr>
+              {filtered.length === 0 && (
+                <tr><td colSpan="10" className="lp-empty">No se encontraron artículos con los filtros aplicados.</td></tr>
               )}
             </tbody>
           </table>
         </div>
+        {filtered.length > 0 && (
+          <div className="lp-table-footer">
+            <span>Mostrando {filtered.length} artículos</span>
+            <span>{stats.bajoStock} con stock bajo · {stats.sinStock} sin stock</span>
+          </div>
+        )}
       </div>
-
-      {/* Modal Nuevo Item */}
-      {isModalOpen && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex',
-          alignItems: 'center', justifyContent: 'center', zIndex: 1000
-        }}>
-          <div className="card" style={{ width: '450px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0 }}>Crear Ítem en Inventario</h3>
-              <button 
-                onClick={() => setIsModalOpen(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)' }}
-              >
-                <X size={20} />
-              </button>
-            </div>
-            
-            <form onSubmit={handleSaveItem} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">Nombre del Material/Equipo <span style={{color: 'var(--accent-600)'}}>*</span></label>
-                <input required type="text" className="input-field" value={newItem.name} onChange={(e) => setNewItem({...newItem, name: e.target.value})} placeholder="Ej: Caldera Baxi Eco Nova" />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Categoría</label>
-                  <select className="input-field" value={newItem.category} onChange={(e) => setNewItem({...newItem, category: e.target.value})}>
-                    <option value="Equipos">Equipos</option>
-                    <option value="Materiales">Materiales</option>
-                    <option value="Herramientas">Herramientas</option>
-                    <option value="Repuestos SSTT">Repuestos SSTT</option>
-                  </select>
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Alarma de Stock Mínimo</label>
-                  <input required type="number" min="0" className="input-field" value={newItem.minAlert} onChange={(e) => setNewItem({...newItem, minAlert: e.target.value})} />
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Stock Inicial Físico</label>
-                  <input required type="number" min="0" className="input-field" value={newItem.quantity} onChange={(e) => setNewItem({...newItem, quantity: e.target.value})} />
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Unidad de Medida</label>
-                  <select className="input-field" value={newItem.unit} onChange={(e) => setNewItem({...newItem, unit: e.target.value})}>
-                    <option value="U">Unidad (U)</option>
-                    <option value="Mts">Metros (Mts)</option>
-                    <option value="Rollos">Rollos</option>
-                    <option value="Kgs">Kilos (Kgs)</option>
-                    <option value="Lts">Litros (Lts)</option>
-                  </select>
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '0.5rem' }}>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Costo en USD (Opcional)</label>
-                  <input type="number" min="0" step="0.01" className="input-field" value={newItem.costUSD} onChange={(e) => setNewItem({...newItem, costUSD: e.target.value})} placeholder="Ej: 120.50" />
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">% Rentabilidad (Consumidor Final)</label>
-                  <input type="number" min="0" className="input-field" value={newItem.profitCF} onChange={(e) => setNewItem({...newItem, profitCF: e.target.value})} />
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem' }}>
-                <button type="button" className="btn btn-secondary" onClick={() => setIsModalOpen(false)}>Cancelar</button>
-                <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
-                  <Save size={16} style={{marginRight: '0.35rem'}} /> Guardar Ítem
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Editar Item */}
-      {editingItem && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex',
-          alignItems: 'center', justifyContent: 'center', zIndex: 1000
-        }}>
-          <div className="card" style={{ width: '450px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0 }}>Editar Ítem</h3>
-              <button onClick={() => setEditingItem(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)' }}><X size={20} /></button>
-            </div>
-            <form onSubmit={handleEditItem} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">Nombre</label>
-                <input required type="text" className="input-field" value={editForm.name || ''} onChange={(e) => setEditForm({...editForm, name: e.target.value})} />
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Categoría</label>
-                  <select className="input-field" value={editForm.category} onChange={(e) => setEditForm({...editForm, category: e.target.value})}>
-                    <option value="Equipos">Equipos</option>
-                    <option value="Materiales">Materiales</option>
-                    <option value="Herramientas">Herramientas</option>
-                    <option value="Repuestos SSTT">Repuestos SSTT</option>
-                  </select>
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Stock Mínimo</label>
-                  <input type="number" min="0" className="input-field" value={editForm.minAlert} onChange={(e) => setEditForm({...editForm, minAlert: e.target.value})} />
-                </div>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Costo USD</label>
-                  <input type="number" min="0" step="0.01" className="input-field" value={editForm.costUSD} onChange={(e) => setEditForm({...editForm, costUSD: e.target.value})} />
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">% Rentabilidad</label>
-                  <input type="number" min="0" className="input-field" value={editForm.profitCF} onChange={(e) => setEditForm({...editForm, profitCF: e.target.value})} />
-                </div>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem' }}>
-                <button type="button" className="btn btn-secondary" onClick={() => setEditingItem(null)}>Cancelar</button>
-                <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
-                  <Save size={16} /> Guardar
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

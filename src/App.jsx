@@ -13,6 +13,7 @@ import Jornadas from './pages/Jornadas/Jornadas';
 import Personas from './pages/Personas/Personas';
 import Balance from './pages/Balance/Balance';
 import Sueldos from './pages/Sueldos/Sueldos';
+import ListaPrecios from './pages/ListaPrecios/ListaPrecios';
 
 // Rutas Privadas
 const PrivateRoute = ({ children }) => {
@@ -33,6 +34,7 @@ function App() {
         <Route path="/presupuestos" element={<PrivateRoute><PresupuestosCRM /></PrivateRoute>} />
         <Route path="/obras" element={<PrivateRoute><Obras /></PrivateRoute>} />
         <Route path="/stock" element={<PrivateRoute><Stock /></PrivateRoute>} />
+        <Route path="/lista-precios" element={<PrivateRoute><ListaPrecios /></PrivateRoute>} />
         <Route path="/jornadas" element={<PrivateRoute><Jornadas /></PrivateRoute>} />
         <Route path="/personas" element={<PrivateRoute><Personas /></PrivateRoute>} />
         <Route path="/balance" element={<PrivateRoute><Balance /></PrivateRoute>} />

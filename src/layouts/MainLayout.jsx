@@ -9,7 +9,7 @@ const MainLayout = ({ children }) => {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <Header />
         <main style={{ flex: 1, overflowY: 'auto', padding: '2rem', backgroundColor: 'var(--bg-primary)' }}>
-          <div style={{ maxWidth: '1400px', margin: '0 auto', height: '100%' }}>
+          <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', flexDirection: 'column', minHeight: 'calc(100vh - 130px)' }}>
             {children}
           </div>
         </main>

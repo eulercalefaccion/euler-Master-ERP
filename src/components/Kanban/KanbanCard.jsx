@@ -10,9 +10,12 @@ const KanbanCard = ({ item, index, onCardClick }) => {
       case 'Seña Abonada':
         return <span className="badge badge-warning" style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}><DollarSign size={12}/> Seña</span>;
       default:
-        return <span className="badge badge-neutral" style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>Pendiente</span>;
+        return null;
     }
   };
+
+  const hasRevisions = (item.revision || 0) > 0;
+  const isCanal2 = item.canal === 'canal2';
 
   return (
     <Draggable draggableId={item.id} index={index}>
@@ -37,13 +40,26 @@ const KanbanCard = ({ item, index, onCardClick }) => {
             gap: '0.5rem',
             transition: 'background-color 0.2s',
             cursor: 'pointer',
+            position: 'relative',
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <h4 style={{ fontSize: '0.875rem', fontWeight: '600', margin: 0, paddingRight: '1rem' }}>{item.name}</h4>
-            {(item.paymentStatus && item.paymentStatus !== 'Pendiente' || item.amount) && (
-               getPaymentBadge(item.paymentStatus)
+          {/* Badges de revisión y canal arriba a la derecha */}
+          <div style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', display: 'flex', gap: '0.25rem' }}>
+            {hasRevisions && (
+              <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem', backgroundColor: '#e0e7ff', color: '#3730a3', borderRadius: '8px', fontWeight: '700' }}>
+                Rev {item.revision}
+              </span>
             )}
+            {isCanal2 && (
+              <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem', backgroundColor: '#fef3c7', color: '#92400e', borderRadius: '8px', fontWeight: '700' }}>
+                💵 Ch2
+              </span>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', paddingRight: hasRevisions || isCanal2 ? '3rem' : '0' }}>
+            <h4 style={{ fontSize: '0.875rem', fontWeight: '600', margin: 0 }}>{item.name}</h4>
+            {getPaymentBadge(item.paymentStatus)}
           </div>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
@@ -53,17 +69,17 @@ const KanbanCard = ({ item, index, onCardClick }) => {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-secondary)', fontSize: '0.75rem' }}>
               <Calendar size={12} />
-              <span>{item.date} • {item.source || item.canal || 'S/D'}</span>
+              <span>{item.date} • {item.source || 'S/D'}</span>
             </div>
           </div>
           
-          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '0.7rem', padding: '0.1rem 0.5rem', borderRadius: '4px', backgroundColor: 'var(--primary-50)', color: 'var(--primary-700)', border: '1px solid var(--primary-100)', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
               <Tag size={10} />
               {item.paramSistema || item.type || 'S/D'}
             </span>
-            {item.amount && (
-              <span style={{ fontSize: '0.7rem', fontWeight: '600', padding: '0.1rem 0.5rem', color: 'var(--text-secondary)' }}>
+            {item.amount > 0 && (
+              <span style={{ fontSize: '0.7rem', fontWeight: '600', padding: '0.1rem 0.5rem', color: 'var(--primary-700)', backgroundColor: '#f0f9ff', borderRadius: '4px', border: '1px solid #bae6fd' }}>
                 $ {item.amount.toLocaleString('es-AR')}
               </span>
             )}
