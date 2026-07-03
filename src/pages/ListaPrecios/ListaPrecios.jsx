@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Plus, DollarSign, RefreshCw, X, Save, Edit2, Trash2, Package, Wrench, Upload, Tag, TrendingUp, Layers, AlertCircle } from 'lucide-react';
+import { Search, Plus, DollarSign, RefreshCw, X, Save, Edit2, Trash2, Package, Wrench, Upload, Tag, TrendingUp, Layers, AlertCircle, FileText } from 'lucide-react';
 import { db } from '../../services/firebaseConfig';
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, getDocs, writeBatch } from 'firebase/firestore';
 import { getTipoCambio, forzarActualizacionTC, calcularPrecios, calcularPrecioManoDeObra, getEstadoTC } from '../../services/tipoCambioService';
@@ -27,7 +27,7 @@ const ListaPrecios = () => {
   const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
 
-  const emptyForm = { descripcion: '', proveedor: '', categoria: '', tipo: 'material', costoUSD: '', markup: '1.4', precioVentaUSD: '', unidad: 'unidad', activo: true };
+  const emptyForm = { descripcion: '', proveedor: '', categoria: '', tipo: 'material', costoUSD: '', markup: '1.4', precioVentaUSD: '', unidad: 'unidad', activo: true, folletoUrl: '' };
   const [formData, setFormData] = useState(emptyForm);
 
   // Load items
@@ -102,6 +102,7 @@ const ListaPrecios = () => {
       descripcion: item.descripcion || '', proveedor: item.proveedor || '', categoria: item.categoria || '',
       tipo: item.tipo || 'material', costoUSD: item.costoUSD ?? '', markup: item.markup ?? '',
       precioVentaUSD: item.precioVentaUSD ?? '', unidad: item.unidad || 'unidad', activo: item.activo !== false,
+      folletoUrl: item.folletoUrl || '',
     });
     setIsModalOpen(true);
   };
@@ -117,6 +118,7 @@ const ListaPrecios = () => {
       costoUSD: isMO ? null : (formData.costoUSD ? Number(formData.costoUSD) : null),
       markup: isMO ? null : (formData.markup ? Number(formData.markup) : null),
       precioVentaUSD: isMO ? (formData.precioVentaUSD ? Number(formData.precioVentaUSD) : null) : null,
+      folletoUrl: formData.folletoUrl || null,
       actualizadoEn: new Date().toISOString(),
     };
     try {
@@ -307,7 +309,14 @@ const ListaPrecios = () => {
                 return (
                   <tr key={item.id}>
                     <td className="col-desc">
-                      <div className="lp-item-name">{item.descripcion}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span className="lp-item-name">{item.descripcion}</span>
+                        {item.folletoUrl && (
+                          <a href={item.folletoUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--primary-600)', textDecoration: 'none' }} title="Ver folleto PDF">
+                            <FileText size={13} />
+                          </a>
+                        )}
+                      </div>
                       {item.codigoGesdatta && <div className="lp-item-code">{item.codigoGesdatta}</div>}
                     </td>
                     <td><span className="lp-badge-cat">{item.proveedor || '—'}</span></td>
@@ -425,6 +434,17 @@ const ListaPrecios = () => {
                   </div>
                 </div>
               )}
+
+              <div className="form-group" style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+                <label className="form-label">URL del Folleto PDF</label>
+                <input
+                  type="text"
+                  className="input-field"
+                  value={formData.folletoUrl}
+                  onChange={e => setFormData({ ...formData, folletoUrl: e.target.value })}
+                  placeholder="Ej: https://firebasestorage.googleapis.com/.../folleto.pdf"
+                />
+              </div>
 
               {previewPrices && (
                 <div className="lp-preview-prices">

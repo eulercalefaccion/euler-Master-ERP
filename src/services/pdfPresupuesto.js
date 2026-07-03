@@ -69,11 +69,15 @@ const buildPortada = (doc, presupuesto) => {
   const campos = [
     ['Cliente:',           presupuesto.clientName || presupuesto.name || '—'],
     ['N° Presupuesto:',    presupuesto.presupuestoNumber || '—'],
-    ['Revisión:',          `Rev ${presupuesto.revision || 0}`],
+    ['Revisión:',          presupuesto.revision ? `V${presupuesto.revision}` : 'Original'],
     ['Dirección de obra:', presupuesto.location || '—'],
     ['Fecha:',             presupuesto.date || new Date().toLocaleDateString('es-AR')],
-    ['Modo de precios:',   presupuesto.canal === 'canal2' ? 'Sin IVA (Canal 2)' : 'Con IVA 21% discriminado'],
+    ['Modo de precios:',   presupuesto.canal === 'canal2' ? 'Sin Factura (Canal 2)' : 'Con IVA 21% discriminado'],
   ];
+
+  if (presupuesto.revision > 0 && presupuesto.cambiosRealizados) {
+    campos.push(['Cambio realizado:', presupuesto.cambiosRealizados]);
+  }
 
   const labelColor = [106, 159, 192];
   let yPos = 140;
@@ -86,8 +90,13 @@ const buildPortada = (doc, presupuesto) => {
     doc.text(label, W / 2 - 5, yPos, { align: 'right' });
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...WHITE);
-    doc.text(String(valor), W / 2 + 8, yPos);
-    yPos += 14;
+    
+    // Wrap text dynamically to prevent overflow
+    const maxTextWidth = W / 2 - 20;
+    const lines = doc.splitTextToSize(String(valor), maxTextWidth);
+    doc.text(lines, W / 2 + 8, yPos);
+    
+    yPos += Math.max(14, lines.length * 5 + 4);
   });
 
   // Footer
@@ -105,7 +114,7 @@ const buildTablaItems = (doc, presupuesto) => {
   doc.setFontSize(8);
   doc.setFont('helvetica', 'italic');
   doc.setTextColor(...EULER_MID);
-  doc.text(`EULER Calefacción por Agua  |  ${presupuesto.presupuestoNumber || ''}  Rev ${presupuesto.revision || 0}`, W - 14, 14, { align: 'right' });
+  doc.text(`EULER Calefacción por Agua  |  ${presupuesto.presupuestoNumber || ''}  V${presupuesto.revision || 0}`, W - 14, 14, { align: 'right' });
 
   // Título de sección
   doc.setFontSize(16);
@@ -177,22 +186,46 @@ const buildTablaItems = (doc, presupuesto) => {
 
   // Total
   const total = quoteItems.reduce((s, i) => s + (i.subtotal || 0), 0);
-  const modoLabel = presupuesto.canal === 'canal2'
-    ? 'TOTAL — Precios sin IVA (Canal 2)'
-    : 'TOTAL — Precios con IVA 21% discriminado';
 
-  doc.setFillColor(...EULER_LIGHT);
-  doc.roundedRect(14, startY, W - 28, 14, 2, 2, 'F');
-  doc.setFontSize(11);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...EULER_DARK);
-  doc.text(modoLabel, 20, startY + 9.5);
-  doc.setTextColor(...EULER_MID);
-  doc.text(formatARS(total), W - 14, startY + 9.5, { align: 'right' });
+  if (presupuesto.canal === 'canal2') {
+    doc.setFillColor(...EULER_LIGHT);
+    doc.roundedRect(14, startY, W - 28, 14, 2, 2, 'F');
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...EULER_DARK);
+    doc.text('TOTAL — Precios sin Factura (Canal 2)', 20, startY + 9.5);
+    doc.setTextColor(...EULER_MID);
+    doc.text(formatARS(total), W - 14, startY + 9.5, { align: 'right' });
+    startY += 20;
+  } else {
+    const subtotalSinIva = Math.round(total / 1.21);
+    const iva = total - subtotalSinIva;
+
+    doc.setFillColor(...EULER_LIGHT);
+    doc.roundedRect(14, startY, W - 28, 28, 2, 2, 'F');
+
+    doc.setFontSize(9.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...GRAY_TEXT);
+    doc.text('Precio sin IVA:', 20, startY + 8);
+    doc.text(formatARS(subtotalSinIva), W - 14, startY + 8, { align: 'right' });
+
+    doc.text('IVA (21%):', 20, startY + 14);
+    doc.text(formatARS(iva), W - 14, startY + 14, { align: 'right' });
+
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...EULER_DARK);
+    doc.text('TOTAL (Precio IVA incluido):', 20, startY + 22);
+    doc.setTextColor(...EULER_MID);
+    doc.text(formatARS(total), W - 14, startY + 22, { align: 'right' });
+
+    startY += 34;
+  }
 
   // Notas
   if (presupuesto.notas) {
-    const notasY = startY + 22;
+    const notasY = startY + 2;
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...EULER_DARK);
@@ -245,50 +278,155 @@ const buildCondiciones = (doc, presupuesto) => {
   let y = 38;
 
   y = addSection('1) FORMA DE PAGO', [
-    'Efectivo, transferencia, cheques/echeqs. (Consultar por tarjetas de crédito).',
+    'Efectivo, transferencia, cheques/echeqs. (consultar por tarjetas de credito).',
     'Cañería: Al aprobar la oferta.',
     'Equipos: A convenir.',
     'Mano de obra de instalación de equipos: A convenir.',
   ], y);
 
   y = addSection('2) PLAZO DE ENTREGA', [
-    'Provisión de equipos: inmediato.',
+    'Provision de equipos: inmediato.',
     'Cañería: Hasta 15 días hábiles a partir del comienzo del trabajo.',
-    'Instalación de caldera y radiadores: 3 días hábiles según tiempos de construcción.',
+    'Instalación de caldera y radiadores: 3 días hábiles segun tiempos de construcción.',
   ], y);
 
   const notas = [
     'El presente presupuesto tiene validez de 10 días hábiles a partir de la fecha de confeccionado.',
-    'Los valores están expresados en pesos argentinos, calculados según el dólar oficial BNA (tipo vendedor) al día de emisión. Estos valores se actualizarán según la cotización vigente al momento del pago o avance de obra.',
-    'Para la instalación del termostato de ambiente, se debe dejar un cableado desde la caldera hasta la ubicación del mismo según instrucciones nuestras.',
-    'Para el funcionamiento de la caldera se debe dejar una conexión de entrada de agua con presión igual o superior a 1 kg/cm². De no conseguir dicha presión, se debe adicionar una bomba presurizadora.',
-    'La instalación no incluye la instalación eléctrica del tomacorriente necesaria para el funcionamiento de la caldera.',
-    'El presente presupuesto NO incluye ningún trabajo ni material relacionado con la cañería de GAS, agua fría ni agua caliente sanitaria.',
+    'Los valores están expresados en pesos argentinos, calculados según el dólar oficial BNA (tipo vendedor) al día de emisión de éste presupuesto, éstos valores se actualizarán según la cotización vigente al momento del pago o avance de obra.',
+    'Para la instalación del termostato de ambiente, se debe dejar un cableado desde la caldera hasta la ubicacion del mismo segun instrucciones nuestras.',
+    'Para el funcionamiento de la caldera se debe dejar una conexión de entrada de agua (a realizar por el cliente segun instrucciones nuestras) y es excluyente que la presion de agua a la entrada sea igual o superior a 1 kg/cm2. De no conseguir dicha presion por altura del tanque, se debe adicionar una bomba presurizadora.',
+    'La instalación no incluye la instalación eléctrica del tomacorriente, necesaria para el funcionamiento de la caldera.',
+    'El presente presupuesto NO incluye ningun trabajo ni material relacionado con la cañería de GAS, agua fria ni agua caliente sanitaria necesaria y excluyente para el funcionamiento de la caldera.',
     'El trabajo de instalación de cañería incluye el canaleteo de pisos y paredes y se entrega con la misma amurada y fijada, quedando a cargo del cliente el posterior tapado de las canaletas.',
-    'Puesta en marcha inicial (PEMIO): se realiza inmediatamente después de finalizar la instalación. Requiere todos los servicios (electricidad, gas y agua) y presencia de los propietarios.',
-    'Condiciones de garantía — Calderas: 12 meses a partir de la PEMIO (extendible a 24 meses). Radiadores: 10 años a partir de la PEMIO.',
+    'Puesta en marcha inicial (PEMIO): tiene por objetivo probar el sistema, ponerlo a punto, explicar el funcionamiento a los propietarios y activar la garantía de los equipos. Se realiza inmediatamente despues de finalizar la instalación. Para realizarla se debe contar con todos los servicios (energía eléctrica, gas y agua) y con la presencia de los propietarios o responsables. De no cumplirse alguno de estos requisitos, la PEMIO se realizara en el momento que se cumplan dichos requisitos, con costo a cargo del cliente.',
+    'Condiciones de garantía: Calderas: 12 meses a partir de la PEMIO. La garantía puede extenderse 12 meses adicionales (logrando 24 meses totales) contratando un servicio de mantenimiento preventivo autorizado. Radiadores: 10 años a partir de la PEMIO.',
   ];
 
   y = addSection('3) NOTAS', notas.map((n, i) => `${String.fromCharCode(97 + i)}) ${n}`), y);
+};
+
+// ─── PÁGINA 4: Garantías y Cierre ─────────────────────────────────────────────
+const buildGarantiasYCierre = (doc, presupuesto) => {
+  doc.addPage();
+  const W = doc.internal.pageSize.getWidth();
+
+  // Mini header
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'italic');
+  doc.setTextColor(...EULER_MID);
+  doc.text('www.euler.com.ar  |  info@euler.com.ar', W - 14, 14, { align: 'right' });
+
+  // Título
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...EULER_DARK);
+  doc.text('EULER — Garantías y Cierre', 14, 25);
+
+  // Línea dorada
+  doc.setFillColor(...EULER_GOLD);
+  doc.rect(14, 28, W - 28, 1.5, 'F');
+
+  const addGarantia = (titulo, desc, yStart) => {
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...EULER_DARK);
+    doc.text(titulo, 14, yStart);
+    
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...GRAY_TEXT);
+    const lines = doc.splitTextToSize(desc, W - 28);
+    doc.text(lines, 14, yStart + 5.5);
+    return yStart + 5.5 + (lines.length * 5) + 6;
+  };
+
+  let y = 38;
+  
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...EULER_MID);
+  doc.text('GARANTÍAS', 14, y);
+  
+  y = addGarantia(
+    'Calderas:',
+    '12 meses de garantía a partir de la puesta en marcha inicial obligatoria (PEMIO). Extendible a 24 meses totales contratando servicio de mantenimiento preventivo autorizado.',
+    y + 8
+  );
+
+  y = addGarantia(
+    'Radiadores:',
+    '10 años de garantía a partir de la PEMIO.',
+    y
+  );
+
+  y = addGarantia(
+    'Instalación:',
+    'Euler garantiza la correcta ejecución de los trabajos. La garantía de la mano de obra es de 6 meses a partir de la puesta en marcha. Cualquier inconveniente derivado de la instalación será atendido sin cargo durante el periodo de garantía.',
+    y
+  );
+
+  // Proyecto
+  y += 4;
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...EULER_MID);
+  doc.text('PROYECTO', 14, y);
+
+  const quoteItems = presupuesto.quoteItems || [];
+  const total = quoteItems.reduce((s, i) => s + (i.subtotal || 0), 0);
+  
+  let totalText = '';
+  if (presupuesto.canal === 'canal2') {
+    totalText = `${formatARS(total)} (sin factura)`;
+  } else {
+    const subtotalSinIva = Math.round(total / 1.21);
+    const iva = total - subtotalSinIva;
+    totalText = `${formatARS(subtotalSinIva)} + IVA = ${formatARS(total)}`;
+  }
+
+  const projFields = [
+    ['Cliente:',           presupuesto.clientName || presupuesto.name || '—'],
+    ['Direccion de obra:',  presupuesto.location || '—'],
+    ['N° Presupuesto:',    presupuesto.presupuestoNumber || '—'],
+    ['Fecha:',             presupuesto.date || new Date().toLocaleDateString('es-AR')],
+    ['Total:',             totalText],
+  ];
+
+  autoTable(doc, {
+    startY: y + 4,
+    body: projFields,
+    theme: 'plain',
+    bodyStyles: { fontSize: 9.5, textColor: GRAY_TEXT, cellPadding: 3.5 },
+    columnStyles: {
+      0: { cellWidth: 40, fontStyle: 'bold', textColor: EULER_DARK },
+      1: { cellWidth: 'auto' }
+    },
+    alternateRowStyles: { fillColor: GRAY_LIGHT },
+    margin: { left: 14, right: 14 }
+  });
+
+  y = doc.lastAutoTable.finalY + 15;
 
   // Firma
-  const H = doc.internal.pageSize.getHeight();
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(...GRAY_TEXT);
-  doc.text('Sin más, saluda Atte.', W - 14, H - 35, { align: 'right' });
+  doc.text('Sin más, saluda Atte.', W - 14, y, { align: 'right' });
+  
   doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...EULER_DARK);
-  doc.text('Ing. Nicolas F. Ayala', W - 14, H - 25, { align: 'right' });
+  doc.text('Ing. Nicolas F. Ayala', W - 14, y + 10, { align: 'right' });
+  
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...EULER_MID);
-  doc.text('EULER CALEFACCIÓN POR AGUA', W - 14, H - 18, { align: 'right' });
+  doc.text('EULER CALEFACCIÓN POR AGUA', W - 14, y + 16, { align: 'right' });
+  
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(...GRAY_TEXT);
-  doc.text('CEL 3415695849  |  www.euler.com.ar', W - 14, H - 12, { align: 'right' });
+  doc.text('CEL 3415695849  |  www.euler.com.ar', W - 14, y + 22, { align: 'right' });
 };
 
 // ─── FUNCIÓN PRINCIPAL ───────────────────────────────────────────────────────
@@ -302,13 +440,15 @@ const buildCondiciones = (doc, presupuesto) => {
 export async function generarPDFPresupuesto(presupuesto, folletoUrls = [], onProgress = null) {
   const jspdfInstance = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
-  // Paso 1-3: páginas del presupuesto
+  // Paso 1-4: páginas del presupuesto
   onProgress?.(0.1);
   buildPortada(jspdfInstance, presupuesto);
-  onProgress?.(0.25);
+  onProgress?.(0.2);
   buildTablaItems(jspdfInstance, presupuesto);
-  onProgress?.(0.4);
+  onProgress?.(0.3);
   buildCondiciones(jspdfInstance, presupuesto);
+  onProgress?.(0.4);
+  buildGarantiasYCierre(jspdfInstance, presupuesto);
   onProgress?.(0.5);
 
   // Serializar el PDF principal
@@ -330,10 +470,26 @@ export async function generarPDFPresupuesto(presupuesto, folletoUrls = [], onPro
       const { url } = folletoUrls[i];
       try {
         const res = await fetch(url);
+        const contentType = res.headers.get('content-type') || '';
         const bytes = await res.arrayBuffer();
-        const folletoDoc = await PDFDocument.load(bytes, { ignoreEncryption: true });
-        const pages = await mainDoc.copyPages(folletoDoc, folletoDoc.getPageIndices());
-        pages.forEach(p => mainDoc.addPage(p));
+        
+        const isPng = contentType.includes('image/png') || url.toLowerCase().includes('.png');
+        const isJpg = contentType.includes('image/jpeg') || contentType.includes('image/jpg') || url.toLowerCase().includes('.jpg') || url.toLowerCase().includes('.jpeg');
+        
+        if (isPng || isJpg) {
+          // Embed image onto a new A4 page
+          const img = isPng ? await mainDoc.embedPng(bytes) : await mainDoc.embedJpg(bytes);
+          const page = mainDoc.addPage([595.27, 841.89]); // A4 size in points
+          const { width, height } = img.scaleToFit(595.27, 841.89);
+          const x = (595.27 - width) / 2;
+          const y = (841.89 - height) / 2;
+          page.drawImage(img, { x, y, width, height });
+        } else {
+          // Load as PDF
+          const folletoDoc = await PDFDocument.load(bytes, { ignoreEncryption: true });
+          const pages = await mainDoc.copyPages(folletoDoc, folletoDoc.getPageIndices());
+          pages.forEach(p => mainDoc.addPage(p));
+        }
       } catch (e) {
         console.warn('No se pudo incluir folleto:', url, e);
       }

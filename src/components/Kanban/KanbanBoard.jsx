@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { DragDropContext } from '@hello-pangea/dnd';
 import {
   Plus, X, Save, MessageSquare, DollarSign, MapPin, Calendar, Tag,
@@ -15,22 +15,101 @@ import { getTipoCambio, calcularPrecios, calcularPrecioManoDeObra, IVA } from '.
 import { generarPDFPresupuesto } from '../../services/pdfPresupuesto';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
-const COEF_CANAL2 = 10.5;
+const COEF_CANAL2 = 1.105;
 
 const calcPrecioItem = (item, canal, tcValor) => {
   if (!tcValor) return 0;
-  if (item.tipo === 'mano_de_obra' || item.tipo === 'servicio') {
-    // Mano de obra: con IVA o sin IVA (canal 2 = IVA 0)
-    const base = (item.precioVentaUSD || 0) * tcValor;
-    return Math.round(canal === 'canal2' ? base : base * IVA);
+  
+  // 1. Obtener precio base sin IVA
+  let basePrice = 0;
+  const isMoOrServ = item.tipo === 'mano_de_obra' || item.tipo === 'servicio';
+  if (isMoOrServ) {
+    basePrice = (item.precioVentaUSD || 0) * tcValor;
   } else {
-    // Material / kit
-    if (canal === 'canal2') {
-      return Math.round((item.costoUSD || 0) * COEF_CANAL2 * tcValor);
-    }
     const markup = item.markup || 1.4;
-    return Math.round((item.costoUSD || 0) * markup * tcValor * IVA);
+    basePrice = (item.costoUSD || 0) * markup * tcValor;
   }
+  
+  // 2. Determinar el factor según canal y tipo de ítem
+  let factor = 1.0;
+  if (canal === 'canal2') {
+    const desc = (item.descripcion || '').toLowerCase();
+    if (desc.includes('pressfitting')) {
+      // Excepción especial: 50% IVA cero y 50% 1.105 => (1.0 + 1.105) / 2 = 1.0525
+      factor = 1.0525;
+    } else if (isMoOrServ) {
+      // Mano de obra tradicional: IVA cero
+      factor = 1.0;
+    } else {
+      // Materiales: 1.105
+      factor = COEF_CANAL2; // 1.105
+    }
+  } else {
+    // Con IVA: 21% para todo
+    factor = IVA; // 1.21
+  }
+  
+  return Math.round(basePrice * factor);
+};
+
+const getAutoFolletoUrl = (item) => {
+  if (item.folletoUrl) return item.folletoUrl;
+  
+  const desc = (item.descripcion || '').toLowerCase();
+  
+  if (desc.includes('eco nova') || desc.includes('econova') || (desc.includes('baxi') && desc.includes('nova'))) {
+    return '/folletos/Caldera Baxi Eco Nova.pdf';
+  }
+  if (desc.includes('luna 3') || desc.includes('luna3') || (desc.includes('confort') && desc.includes('baxi'))) {
+    return '/folletos/Caldera Baxi Luna 3 Confort.pdf';
+  }
+  if (desc.includes('duo tec') || desc.includes('duotec') || (desc.includes('duo') && desc.includes('baxi'))) {
+    return '/folletos/Caldera Baxi Luna Duo Tec E.pdf';
+  }
+  if (desc.includes('caldaia') || desc.includes('top s')) {
+    return '/folletos/Caldera Caldaia TOP S.pdf';
+  }
+  if (desc.includes('nepto') || desc.includes('atron') || desc.includes('demirdokum')) {
+    return '/folletos/Caldera DemirDokum Nepto Atron.pdf';
+  }
+  if (desc.includes('flowing') || desc.includes('caldera electrica') || desc.includes('advance')) {
+    return '/folletos/Caldera Electrica Flowing Advance.pdf';
+  }
+  if (desc.includes('nereus') && (desc.includes('radiador') || desc.includes('elemento'))) {
+    return '/folletos/Radiador Nereus 500.pdf';
+  }
+  if (desc.includes('rehau 500') || (desc.includes('radiador') && desc.includes('rehau'))) {
+    return '/folletos/Radiador REHAU 500.pdf';
+  }
+  if (desc.includes('raubasic')) {
+    return '/folletos/Sistema RAUBASIC REHAU.pdf';
+  }
+  if (desc.includes('piso radiante rehau') || desc.includes('pex-a') || desc.includes('pex a')) {
+    return '/folletos/Piso Radiante REHAU.pdf';
+  }
+  if (desc.includes('bowman') || desc.includes('intercambiador')) {
+    return '/folletos/Intercambiador Bowman.pdf';
+  }
+  if (desc.includes('ecopool') || desc.includes('heatcraft')) {
+    return '/folletos/Bomba Calor Heatcraft EcoPool.pdf';
+  }
+  if (desc.includes('toallero kanah') || desc.includes('kanah')) {
+    return '/folletos/Toallero Kanah 800.pdf';
+  }
+  if (desc.includes('piso radiante') || desc.includes('losa radiante')) {
+    return '/folletos/Piso Radiante Render.pdf';
+  }
+  
+  return null;
+};
+
+const getBrochureNameFromUrl = (url, fallback) => {
+  if (url.startsWith('/folletos/')) {
+    const parts = url.split('/');
+    const filename = parts[parts.length - 1];
+    return filename.replace('.pdf', '');
+  }
+  return fallback;
 };
 
 // ─── Componente principal ──────────────────────────────────────────────────────
@@ -91,8 +170,26 @@ const KanbanBoard = () => {
     facturacionDireccion: '',
   });
   const [isSavingLead, setIsSavingLead] = useState(false);
+  const [clientSearchQuery, setClientSearchQuery] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+
+  const [productSearchQuery, setProductSearchQuery] = useState('');
+  const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
+  const [isProductSearchFocused, setIsProductSearchFocused] = useState(false);
+  const [activeReplaceItemId, setActiveReplaceItemId] = useState(null);
+  const [replaceSearchQuery, setReplaceSearchQuery] = useState('');
+
+  useEffect(() => {
+    if (!isLeadModalOpen) {
+      setClientSearchQuery('');
+      setIsDropdownOpen(false);
+      setIsSearchFocused(false);
+    }
+  }, [isLeadModalOpen]);
 
   const handleSelectClient = (clientId) => {
+    setClientSearchQuery('');
     if (!clientId) {
       setNewLead(prev => ({
         ...prev,
@@ -172,6 +269,15 @@ const KanbanBoard = () => {
 
   // Detail panel
   const [selectedLead, setSelectedLead]     = useState(null);
+
+  useEffect(() => {
+    setProductSearchQuery('');
+    setIsProductDropdownOpen(false);
+    setIsProductSearchFocused(false);
+    setActiveReplaceItemId(null);
+    setReplaceSearchQuery('');
+  }, [selectedLead]);
+
   const [detailNotes, setDetailNotes]       = useState('');
   const [builderItems, setBuilderItems]     = useState([]);
   const [canal, setCanal]                   = useState('iva');   // 'iva' | 'canal2'
@@ -187,8 +293,26 @@ const KanbanBoard = () => {
   const [pdfProgress, setPdfProgress]         = useState(0);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [selectedFolletos, setSelectedFolletos] = useState([]);
-  // Lista de folletos disponibles (artículos con folletoUrl en lista_precios)
-  const folletosDisponibles = listaItems.filter(i => i.folletoUrl && i.activo !== false);
+  // Lista de folletos disponibles (artículos con folletoUrl en lista_precios o folletos locales por palabra clave)
+  const folletosDisponibles = useMemo(() => {
+    const uniqueUrls = new Set();
+    const result = [];
+    
+    listaItems.forEach(i => {
+      if (i.activo === false) return;
+      const url = i.folletoUrl || getAutoFolletoUrl(i);
+      if (url && !uniqueUrls.has(url)) {
+        uniqueUrls.add(url);
+        result.push({
+          id: i.id,
+          descripcion: getBrochureNameFromUrl(url, i.descripcion),
+          folletoUrl: url
+        });
+      }
+    });
+    
+    return result;
+  }, [listaItems]);
 
   // Quote builder add-item selectors
   const [selectedItemId, setSelectedItemId]   = useState('');
@@ -322,6 +446,96 @@ const KanbanBoard = () => {
     setBuilderItems(prev => [...prev, newItem]);
     setSelectedItemId('');
     setSelectedItemQty(1);
+    setProductSearchQuery('');
+  };
+
+  const handleLoadStandard = () => {
+    if (builderItems.length > 0) {
+      const confirmReplace = window.confirm(
+        "Esto reemplazará todos los artículos actuales de la cotización. ¿Deseas continuar?"
+      );
+      if (!confirmReplace) return;
+    }
+
+    const templates = [
+      { term: 'nereus 500', defaultQty: 30, fallbackDesc: 'ELEMENTO DE RADIADOR NEREUS 500MM', defaultType: 'material', defaultUnit: 'unidad' },
+      { term: 'valvula micrometrica', defaultQty: 5, fallbackDesc: 'VALVULA MICROMETRICA ESCUADRA - R705X013 - GIACOMINI', defaultType: 'material', defaultUnit: 'unidad' },
+      { term: 'detentor escuadra', defaultQty: 5, fallbackDesc: 'DETENTOR ESCUADRA GIACOMINI 1/2" R16X033 (RETORNO)', defaultType: 'material', defaultUnit: 'unidad' },
+      { term: 'roseta', defaultQty: 10, fallbackDesc: 'Roseta Embellecedor para niple de 1/2"', defaultType: 'material', defaultUnit: 'unidad' },
+      { term: 'niple', defaultQty: 10, fallbackDesc: 'Niple de acero Inoxidable 8cm 1/2"', defaultType: 'material', defaultUnit: 'unidad' },
+      { term: 'hy02b05', defaultQty: 1, fallbackDesc: 'TERMOSTATO ASUA DIGITAL PROGRAMABLE HY02B05 (CUADRADO BLANCO-BOTONES)', defaultType: 'material', defaultUnit: 'unidad' },
+      { term: 'instalación radiador', defaultQty: 5, fallbackDesc: 'Mano de obra Instalación de radiadores', defaultType: 'mano_de_obra', defaultUnit: 'servicio' },
+      { term: 'eco nova 24', defaultQty: 1, fallbackDesc: 'CALDERA BAXI ECO NOVA 24 F', defaultType: 'material', defaultUnit: 'unidad' },
+      { term: 'inst. caldera', defaultQty: 1, fallbackDesc: 'Mano de obra Instalación de caldera', defaultType: 'mano_de_obra', defaultUnit: 'servicio' },
+      { term: 'flexibles hidrá', defaultQty: 1, fallbackDesc: 'KIT DE FLEXIBLES HIDRÁULICOS PARA CALDERA DUAL', defaultType: 'material', defaultUnit: 'unidad' },
+      { term: 'nereus 80 blanco', defaultQty: 1, fallbackDesc: 'TOALLERO CURVO NEREUS 80 BLANCO (450MM ENTRE EJES)', defaultType: 'material', defaultUnit: 'unidad' },
+      { term: 'pressfitting', defaultQty: 1, fallbackDesc: 'Mano de obra y Materiales para cañería de calefacción por agua en sistema pressfitting de polietileno reticulado', defaultType: 'mano_de_obra', defaultUnit: 'servicio' },
+    ];
+
+    const tcValor = tc?.valor || 1;
+
+    const newItems = templates.map((tpl, index) => {
+      let found = listaItems.find(i => {
+        const desc = (i.descripcion || '').toLowerCase();
+        return tpl.term.split(' ').every(w => desc.includes(w));
+      });
+
+      const qty = tpl.defaultQty;
+
+      if (found) {
+        const unitPrice = calcPrecioItem(found, canal, tcValor);
+        return {
+          id: `${Date.now()}_${index}_${Math.random().toString(36).substr(2, 5)}`,
+          listaItemId:    found.id,
+          descripcion:    found.descripcion,
+          tipo:           found.tipo || tpl.defaultType,
+          costoUSD:       found.costoUSD || null,
+          markup:         found.markup || null,
+          precioVentaUSD: found.precioVentaUSD || null,
+          unidad:         found.unidad || tpl.defaultUnit,
+          quantity:       qty,
+          unitPrice,
+          subtotal:       Math.round(unitPrice * qty)
+        };
+      } else {
+        return {
+          id: `${Date.now()}_${index}_${Math.random().toString(36).substr(2, 5)}`,
+          listaItemId:    'custom_fallback_' + index,
+          descripcion:    tpl.fallbackDesc,
+          tipo:           tpl.defaultType,
+          costoUSD:       null,
+          markup:         null,
+          precioVentaUSD: null,
+          unidad:         tpl.defaultUnit,
+          quantity:       qty,
+          unitPrice:      0,
+          subtotal:       0
+        };
+      }
+    });
+
+    setBuilderItems(newItems);
+  };
+
+  const handleReplaceItem = (id, catalogItem) => {
+    if (!catalogItem || !tc) return;
+    const unitPrice = calcPrecioItem(catalogItem, canal, tc.valor);
+    
+    setBuilderItems(prev => prev.map(item => {
+      if (item.id !== id) return item;
+      return {
+        ...item,
+        listaItemId:    catalogItem.id,
+        descripcion:    catalogItem.descripcion,
+        tipo:           catalogItem.tipo || 'material',
+        costoUSD:       catalogItem.costoUSD || null,
+        markup:         catalogItem.markup || null,
+        precioVentaUSD: catalogItem.precioVentaUSD || null,
+        unidad:         catalogItem.unidad || 'unidad',
+        unitPrice,
+        subtotal:       Math.round(unitPrice * item.quantity),
+      };
+    }));
   };
 
   const updateItem = (id, field, value) => {
@@ -406,6 +620,8 @@ const KanbanBoard = () => {
         savedAt:          new Date().toISOString(),
       }];
       const newRevision = prevRev + 1;
+      const baseNum = (selectedLead.presupuestoNumber || '').split('_V')[0];
+      const newPresupuestoNumber = `${baseNum}_V${newRevision}`;
       
       const updatedFields = {
         notas: detailNotes,
@@ -413,6 +629,8 @@ const KanbanBoard = () => {
         quoteItems: builderItems,
         canal,
         revision: newRevision,
+        presupuestoNumber: newPresupuestoNumber,
+        cambiosRealizados: revChangeNote.trim(),
         revisionsHistory: history,
         
         name: editLeadFields.name,
@@ -850,17 +1068,120 @@ const KanbanBoard = () => {
                       value={newLead.newClientName}
                       onChange={e => handleUpdateNewLeadField('newClientName', e.target.value)}
                     />
-                  ) : (
-                    <select
-                      required
-                      className="input-field"
-                      value={newLead.clientId}
-                      onChange={e => handleSelectClient(e.target.value)}
-                    >
-                      <option value="" disabled>-- Selecciona de la lista --</option>
-                      {clientesList.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
-                  )}
+                  ) : (() => {
+                    const selectedClient = clientesList.find(c => c.id === newLead.clientId);
+                    const displayValue = isSearchFocused ? clientSearchQuery : (selectedClient?.name || '');
+                    return (
+                      <div style={{ position: 'relative', display: 'flex', flexDirection: 'column' }}>
+                        <input
+                          type="text"
+                          className="input-field"
+                          placeholder="🔍 Seleccione o escriba para buscar cliente..."
+                          value={displayValue}
+                          onChange={e => {
+                            setClientSearchQuery(e.target.value);
+                            setIsDropdownOpen(true);
+                          }}
+                          onFocus={() => {
+                            setIsSearchFocused(true);
+                            setIsDropdownOpen(true);
+                          }}
+                          onBlur={() => {
+                            setTimeout(() => {
+                              setIsSearchFocused(false);
+                              setIsDropdownOpen(false);
+                            }, 200);
+                          }}
+                          onClick={() => {
+                            setIsDropdownOpen(true);
+                          }}
+                          style={{ fontSize: '0.85rem' }}
+                        />
+                        
+                        {isDropdownOpen && (
+                          <div style={{
+                            position: 'absolute',
+                            top: '100%',
+                            left: 0,
+                            right: 0,
+                            maxHeight: '220px',
+                            overflowY: 'auto',
+                            background: 'white',
+                            border: '1px solid var(--border-strong)',
+                            borderRadius: '6px',
+                            zIndex: 1000,
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                            marginTop: '4px'
+                          }}>
+                            {(() => {
+                              const filtered = clientesList.filter(c => {
+                                if (!clientSearchQuery || clientSearchQuery.trim().length < 2) return true;
+                                const query = clientSearchQuery.toLowerCase().trim();
+                                const nameMatch = (c.name || '').toLowerCase().includes(query);
+                                const contactNameMatch = (c.contactoNombre || '').toLowerCase().includes(query);
+                                const factNameMatch = (c.facturacionNombre || '').toLowerCase().includes(query);
+                                
+                                const cleanQuery = query.replace(/[^a-zA-Z0-9]/g, '');
+                                const cleanCuit = (c.cuit || '').replace(/[^a-zA-Z0-9]/g, '');
+                                const cleanFactCuit = (c.facturacionCuit || '').replace(/[^a-zA-Z0-9]/g, '');
+                                
+                                const cuitMatch = (c.cuit || '').toLowerCase().includes(query) ||
+                                                  cleanCuit.includes(cleanQuery) ||
+                                                  (c.facturacionCuit || '').toLowerCase().includes(query) ||
+                                                  cleanFactCuit.includes(cleanQuery);
+                                                  
+                                const dniMatch = (c.dni || '').toLowerCase().includes(query) ||
+                                                 (c.facturacionDni || '').toLowerCase().includes(query);
+                                                 
+                                return nameMatch || contactNameMatch || factNameMatch || cuitMatch || dniMatch;
+                              });
+
+                              if (filtered.length === 0) {
+                                return (
+                                  <div style={{
+                                    padding: '0.6rem 0.85rem',
+                                    color: 'var(--text-tertiary)',
+                                    fontSize: '0.875rem',
+                                    textAlign: 'center'
+                                  }}>
+                                    No se encontraron clientes
+                                  </div>
+                                );
+                              }
+
+                              return filtered.map(c => (
+                                <div
+                                  key={c.id}
+                                  onMouseDown={() => {
+                                    handleSelectClient(c.id);
+                                  }}
+                                  style={{
+                                    padding: '0.5rem 0.85rem',
+                                    cursor: 'pointer',
+                                    fontSize: '0.875rem',
+                                    borderBottom: '1px solid var(--border-light)',
+                                    backgroundColor: newLead.clientId === c.id ? 'var(--primary-50)' : 'transparent',
+                                    color: newLead.clientId === c.id ? 'var(--primary-700)' : 'var(--text-primary)',
+                                    fontWeight: newLead.clientId === c.id ? '600' : 'normal',
+                                    transition: 'background 0.1s'
+                                  }}
+                                  onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)'}
+                                  onMouseLeave={e => e.currentTarget.style.backgroundColor = newLead.clientId === c.id ? 'var(--primary-50)' : 'transparent'}
+                                >
+                                  <div style={{ fontWeight: '600' }}>{c.name}</div>
+                                  {(c.cuit || c.dni) && (
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '0.15rem' }}>
+                                      {c.cuit ? `CUIT: ${c.cuit}` : ''} {c.dni ? `| DNI: ${c.dni}` : ''}
+                                    </div>
+                                  )}
+                                </div>
+                              ));
+                            })()}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem' }}>
@@ -1158,7 +1479,7 @@ const KanbanBoard = () => {
         <>
           <div style={{ position:'fixed',top:0,left:0,right:0,bottom:0,backgroundColor:'rgba(0,0,0,0.5)',zIndex:40 }} onClick={() => setSelectedLead(null)} />
           <div style={{
-            position:'fixed',top:0,right:0,bottom:0,width:'100%',maxWidth:'800px',
+            position:'fixed',top:0,right:0,bottom:0,width:'calc(100vw - 250px)',
             backgroundColor:'var(--bg-primary)',boxShadow:'-5px 0 25px rgba(0,0,0,0.15)',
             zIndex:50,display:'flex',flexDirection:'column',animation:'slideIn 0.25s ease',
           }}>
@@ -1183,17 +1504,19 @@ const KanbanBoard = () => {
             </div>
 
             {/* Navigation Tabs */}
-            <div style={{ display:'flex',borderBottom:'1px solid var(--border-light)',backgroundColor:'var(--bg-surface-hover)',padding:'0 1.5rem' }}>
+            <div style={{ display:'flex',borderBottom:'1px solid var(--border-light)',backgroundColor:'var(--bg-surface-hover)',padding:'0 1rem' }}>
               <button
                 onClick={() => setDetailTab('cotizador')}
                 style={{
-                  padding:'0.75rem 1rem',
-                  fontSize:'0.875rem',
+                  padding:'0.5rem 0.75rem',
+                  fontSize:'0.85rem',
                   fontWeight:'600',
                   color: detailTab === 'cotizador' ? 'var(--primary-600)' : 'var(--text-secondary)',
                   borderBottom: detailTab === 'cotizador' ? '2px solid var(--primary-600)' : '2px solid transparent',
                   cursor:'pointer',
                   transition:'all 0.2s',
+                  background: 'none',
+                  border: 'none',
                 }}
               >
                 💰 Cotizador
@@ -1201,13 +1524,15 @@ const KanbanBoard = () => {
               <button
                 onClick={() => setDetailTab('datos')}
                 style={{
-                  padding:'0.75rem 1rem',
-                  fontSize:'0.875rem',
+                  padding:'0.5rem 0.75rem',
+                  fontSize:'0.85rem',
                   fontWeight:'600',
                   color: detailTab === 'datos' ? 'var(--primary-600)' : 'var(--text-secondary)',
                   borderBottom: detailTab === 'datos' ? '2px solid var(--primary-600)' : '2px solid transparent',
                   cursor:'pointer',
                   transition:'all 0.2s',
+                  background: 'none',
+                  border: 'none',
                 }}
               >
                 📋 Datos del Lead
@@ -1215,13 +1540,15 @@ const KanbanBoard = () => {
               <button
                 onClick={() => setDetailTab('historial')}
                 style={{
-                  padding:'0.75rem 1rem',
-                  fontSize:'0.875rem',
+                  padding:'0.5rem 0.75rem',
+                  fontSize:'0.85rem',
                   fontWeight:'600',
                   color: detailTab === 'historial' ? 'var(--primary-600)' : 'var(--text-secondary)',
                   borderBottom: detailTab === 'historial' ? '2px solid var(--primary-600)' : '2px solid transparent',
                   cursor:'pointer',
                   transition:'all 0.2s',
+                  background: 'none',
+                  border: 'none',
                 }}
               >
                 🕰️ Historial {(selectedLead.revisionsHistory?.length || 0) > 0 ? ` (${selectedLead.revisionsHistory.length})` : ''}
@@ -1229,36 +1556,30 @@ const KanbanBoard = () => {
             </div>
 
             {/* Panel body */}
-            <div style={{ flex:1,overflowY:'auto',padding:'1.5rem',display:'flex',flexDirection:'column',gap:'1.5rem' }}>
+            <div style={{ flex:1,overflowY:'auto',padding:'1rem',display:'flex',flexDirection:'column',gap:'0.75rem' }}>
               {/* Info del cliente */}
-              <div style={{ display:'flex',flexDirection:'column',gap:'0.5rem' }}>
-                <h2 style={{ margin:0,fontSize:'1.25rem',fontWeight:'700' }}>{selectedLead.name}</h2>
-                <div style={{ display:'flex',gap:'1rem',flexWrap:'wrap',fontSize:'0.8rem',color:'var(--text-secondary)' }}>
-                  <span style={{ display:'flex',alignItems:'center',gap:'0.25rem' }}><MapPin size={14}/> {selectedLead.location || 'S/D'}</span>
-                  <span style={{ display:'flex',alignItems:'center',gap:'0.25rem' }}><Calendar size={14}/> {selectedLead.date}</span>
-                  <span style={{ display:'flex',alignItems:'center',gap:'0.25rem' }}><Tag size={14}/> {selectedLead.paramSistema || 'S/D'}</span>
+              <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',background:'var(--bg-surface-hover)',border:'1px solid var(--border-light)',borderRadius:'8px',padding:'0.4rem 0.75rem' }}>
+                <h2 style={{ margin:0,fontSize:'1.1rem',fontWeight:'700' }}>{selectedLead.name}</h2>
+                <div style={{ display:'flex',gap:'0.75rem',fontSize:'0.75rem',color:'var(--text-secondary)' }}>
+                  <span style={{ display:'flex',alignItems:'center',gap:'0.15rem' }}><MapPin size={13}/> {selectedLead.location || 'S/D'}</span>
+                  <span style={{ display:'flex',alignItems:'center',gap:'0.15rem' }}><Calendar size={13}/> {selectedLead.date}</span>
+                  <span style={{ display:'flex',alignItems:'center',gap:'0.15rem' }}><Tag size={13}/> {selectedLead.paramSistema || 'S/D'}</span>
                 </div>
               </div>
 
               {detailTab === 'cotizador' && (
                 <>
                   {/* ── Canal 2 toggle ── */}
-                  <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',background:'var(--bg-surface)',border:'1px solid var(--border-light)',borderRadius:'10px',padding:'0.75rem 1rem' }}>
+                  <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',background:'var(--bg-surface)',border:'1px solid var(--border-light)',borderRadius:'8px',padding:'0.4rem 0.75rem' }}>
                     <div>
-                      <div style={{ fontWeight:'600',fontSize:'0.875rem' }}>
-                        Modo de precio
-                      </div>
-                      <div style={{ fontSize:'0.75rem',color:'var(--text-secondary)' }}>
-                        {canal === 'iva'
-                          ? '🧾 Con IVA 21% discriminado (factura A)'
-                          : `💵 Sin IVA — Canal 2 (materiales × ${COEF_CANAL2}, MO sin IVA)`
-                        }
+                      <div style={{ fontWeight:'600',fontSize:'0.8rem' }}>
+                        Modo: <span style={{ color: canal === 'iva' ? '#1d4ed8' : '#d97706' }}>{canal === 'iva' ? 'Con IVA 21% discriminado' : 'Canal 2 (Sin IVA)'}</span>
                       </div>
                     </div>
                     <button
                       onClick={handleToggleCanal}
                       style={{
-                        padding:'0.4rem 1rem',borderRadius:'8px',fontWeight:'700',fontSize:'0.8rem',
+                        padding:'0.25rem 0.75rem',borderRadius:'6px',fontWeight:'700',fontSize:'0.75rem',
                         cursor:'pointer',border:'none',transition:'all 0.2s',
                         background: canal === 'iva' ? '#1d4ed8' : '#d97706',
                         color: 'white',
@@ -1270,40 +1591,211 @@ const KanbanBoard = () => {
 
                   {/* ── Cotizador ── */}
                   <div style={{ border:'1px solid var(--primary-100)',borderRadius:'8px',overflow:'hidden' }}>
-                    <div style={{ backgroundColor:'var(--primary-50)',padding:'1rem',borderBottom:'1px solid var(--primary-100)' }}>
-                      <h4 style={{ margin:0,display:'flex',alignItems:'center',gap:'0.5rem',color:'var(--primary-700)' }}>
-                        <ListPlus size={18}/> Cotizador — {canal === 'iva' ? 'Precios c/IVA' : 'Canal 2 (sin IVA)'}
+                    <div style={{ backgroundColor:'var(--primary-50)',padding:'0.5rem 0.75rem',borderBottom:'1px solid var(--primary-100)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                      <h4 style={{ margin:0,display:'flex',alignItems:'center',gap:'0.5rem',color:'var(--primary-700)', fontSize:'0.875rem' }}>
+                        <ListPlus size={16}/> Cotizador — {canal === 'iva' ? 'Precios c/IVA' : 'Canal 2 (sin IVA)'}
                       </h4>
+                      <button
+                        onClick={handleLoadStandard}
+                        className="btn"
+                        style={{
+                          padding:'0.25rem 0.6rem',
+                          fontSize:'0.75rem',
+                          fontWeight:'700',
+                          margin:0,
+                          border:'1px solid var(--primary-300)',
+                          color:'var(--primary-700)',
+                          backgroundColor:'var(--primary-50)',
+                          borderRadius:'5px',
+                          cursor:'pointer',
+                          transition:'all 0.2s',
+                          display:'flex',
+                          alignItems:'center',
+                          gap:'0.2rem'
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.backgroundColor = 'var(--primary-100)';
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.backgroundColor = 'var(--primary-50)';
+                        }}
+                      >
+                        ⚡ Cargar Estándar
+                      </button>
                     </div>
 
                     {/* Selector de ítem */}
-                    <div style={{ padding:'1rem',display:'flex',gap:'0.5rem',alignItems:'flex-end',backgroundColor:'#fafafa' }}>
+                    <div style={{ padding:'0.5rem 0.75rem',display:'flex',gap:'0.5rem',alignItems:'flex-end',backgroundColor:'#fafafa',borderBottom:'1px solid var(--border-light)' }}>
                       <div style={{ flex:1 }}>
                         <label className="form-label" style={{ fontSize:'0.75rem' }}>Seleccionar del Catálogo</label>
-                        <select className="input-field" value={selectedItemId} onChange={e => setSelectedItemId(e.target.value)}>
-                          <option value="">-- Buscar artículo --</option>
-                          {materialesItems.length > 0 && (
-                            <optgroup label="── Materiales y Equipos ──">
-                              {materialesItems.map(i => (
-                                <option key={i.id} value={i.id}>
-                                  {i.descripcion}
-                                  {i.costoUSD ? ` — U$D ${i.costoUSD}` : ''}
-                                  {i.categoria ? ` [${i.categoria}]` : ''}
-                                </option>
-                              ))}
-                            </optgroup>
-                          )}
-                          {manoDeObraItems.length > 0 && (
-                            <optgroup label="── Mano de Obra ──">
-                              {manoDeObraItems.map(i => (
-                                <option key={i.id} value={i.id}>
-                                  {i.descripcion}
-                                  {i.precioVentaUSD ? ` — U$D ${i.precioVentaUSD}` : ''}
-                                </option>
-                              ))}
-                            </optgroup>
-                          )}
-                        </select>
+                        {(() => {
+                          const selectedItem = listaItems.find(i => i.id === selectedItemId);
+                          const displayValue = isProductSearchFocused ? productSearchQuery : (selectedItem?.descripcion || '');
+                          return (
+                            <div style={{ position: 'relative', display: 'flex', flexDirection: 'column' }}>
+                              <input
+                                type="text"
+                                className="input-field"
+                                placeholder="🔍 Seleccione o escriba para buscar artículo..."
+                                value={displayValue}
+                                onChange={e => {
+                                  setProductSearchQuery(e.target.value);
+                                  setIsProductDropdownOpen(true);
+                                }}
+                                onFocus={() => {
+                                  setIsProductSearchFocused(true);
+                                  setIsProductDropdownOpen(true);
+                                }}
+                                onBlur={() => {
+                                  setTimeout(() => {
+                                    setIsProductSearchFocused(false);
+                                    setIsProductDropdownOpen(false);
+                                  }, 200);
+                                }}
+                                onClick={() => {
+                                  setIsProductDropdownOpen(true);
+                                }}
+                                style={{ fontSize: '0.85rem' }}
+                              />
+                              
+                              {isProductDropdownOpen && (
+                                <div style={{
+                                  position: 'absolute',
+                                  top: '100%',
+                                  left: 0,
+                                  right: 0,
+                                  maxHeight: '220px',
+                                  overflowY: 'auto',
+                                  background: 'white',
+                                  border: '1px solid var(--border-strong)',
+                                  borderRadius: '6px',
+                                  zIndex: 1000,
+                                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                                  marginTop: '4px'
+                                }}>
+                                  {(() => {
+                                    const filterItems = (items) => {
+                                      return items.filter(i => {
+                                        if (!productSearchQuery || productSearchQuery.trim().length < 2) return true;
+                                        const query = productSearchQuery.toLowerCase().trim();
+                                        const descMatch = (i.descripcion || '').toLowerCase().includes(query);
+                                        const catMatch = (i.categoria || '').toLowerCase().includes(query);
+                                        const codeMatch = (i.id || '').toLowerCase().includes(query);
+                                        return descMatch || catMatch || codeMatch;
+                                      });
+                                    };
+
+                                    const filteredMaterials = filterItems(materialesItems);
+                                    const filteredMO = filterItems(manoDeObraItems);
+
+                                    if (filteredMaterials.length === 0 && filteredMO.length === 0) {
+                                      return (
+                                        <div style={{
+                                          padding: '0.6rem 0.85rem',
+                                          color: 'var(--text-tertiary)',
+                                          fontSize: '0.875rem',
+                                          textAlign: 'center'
+                                        }}>
+                                          No se encontraron artículos
+                                        </div>
+                                      );
+                                    }
+
+                                    return (
+                                      <>
+                                        {filteredMaterials.length > 0 && (
+                                          <div>
+                                            <div style={{
+                                              padding: '0.35rem 0.85rem',
+                                              backgroundColor: 'var(--bg-surface-hover)',
+                                              fontSize: '0.7rem',
+                                              fontWeight: '700',
+                                              color: 'var(--text-tertiary)',
+                                              textTransform: 'uppercase',
+                                              borderBottom: '1px solid var(--border-light)'
+                                            }}>
+                                              ── Materiales y Equipos ──
+                                            </div>
+                                            {filteredMaterials.map(i => (
+                                              <div
+                                                key={i.id}
+                                                onMouseDown={() => {
+                                                  setSelectedItemId(i.id);
+                                                  setProductSearchQuery('');
+                                                }}
+                                                style={{
+                                                  padding: '0.5rem 0.85rem',
+                                                  cursor: 'pointer',
+                                                  fontSize: '0.875rem',
+                                                  borderBottom: '1px solid var(--border-light)',
+                                                  backgroundColor: selectedItemId === i.id ? 'var(--primary-50)' : 'transparent',
+                                                  color: selectedItemId === i.id ? 'var(--primary-700)' : 'var(--text-primary)',
+                                                  fontWeight: selectedItemId === i.id ? '600' : 'normal',
+                                                  transition: 'background 0.1s',
+                                                  textAlign: 'left'
+                                                }}
+                                                onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)'}
+                                                onMouseLeave={e => e.currentTarget.style.backgroundColor = selectedItemId === i.id ? 'var(--primary-50)' : 'transparent'}
+                                              >
+                                                <div style={{ fontWeight: '600' }}>{i.descripcion}</div>
+                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '0.15rem' }}>
+                                                  {i.costoUSD ? `Costo: U$D ${i.costoUSD}` : ''} {i.categoria ? `| Categoría: ${i.categoria}` : ''}
+                                                </div>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+                                        {filteredMO.length > 0 && (
+                                          <div>
+                                            <div style={{
+                                              padding: '0.35rem 0.85rem',
+                                              backgroundColor: 'var(--bg-surface-hover)',
+                                              fontSize: '0.7rem',
+                                              fontWeight: '700',
+                                              color: 'var(--text-tertiary)',
+                                              textTransform: 'uppercase',
+                                              borderBottom: '1px solid var(--border-light)',
+                                              borderTop: '1px solid var(--border-light)'
+                                            }}>
+                                              ── Mano de Obra ──
+                                            </div>
+                                            {filteredMO.map(i => (
+                                              <div
+                                                key={i.id}
+                                                onMouseDown={() => {
+                                                  setSelectedItemId(i.id);
+                                                  setProductSearchQuery('');
+                                                }}
+                                                style={{
+                                                  padding: '0.5rem 0.85rem',
+                                                  cursor: 'pointer',
+                                                  fontSize: '0.875rem',
+                                                  borderBottom: '1px solid var(--border-light)',
+                                                  backgroundColor: selectedItemId === i.id ? 'var(--primary-50)' : 'transparent',
+                                                  color: selectedItemId === i.id ? 'var(--primary-700)' : 'var(--text-primary)',
+                                                  fontWeight: selectedItemId === i.id ? '600' : 'normal',
+                                                  transition: 'background 0.1s',
+                                                  textAlign: 'left'
+                                                }}
+                                                onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)'}
+                                                onMouseLeave={e => e.currentTarget.style.backgroundColor = selectedItemId === i.id ? 'var(--primary-50)' : 'transparent'}
+                                              >
+                                                <div style={{ fontWeight: '600' }}>{i.descripcion}</div>
+                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '0.15rem' }}>
+                                                  {i.precioVentaUSD ? `Precio Venta: U$D ${i.precioVentaUSD}` : ''}
+                                                </div>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </>
+                                    );
+                                  })()}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                       <div style={{ width:'80px' }}>
                         <label className="form-label" style={{ fontSize:'0.75rem' }}>Cant.</label>
@@ -1325,44 +1817,152 @@ const KanbanBoard = () => {
                     )}
 
                     {/* Tabla */}
-                    <div style={{ overflowX:'auto' }}>
-                      <table style={{ width:'100%',borderCollapse:'collapse',fontSize:'0.875rem' }}>
-                        <thead>
+                    <div style={{ overflowX:'auto', maxHeight:'300px', overflowY:'auto', borderBottom:'1px solid var(--border-light)' }}>
+                      <table style={{ width:'100%',borderCollapse:'collapse',fontSize:'0.825rem' }}>
+                        <thead style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--bg-primary)' }}>
                           <tr style={{ backgroundColor:'var(--bg-surface-hover)',borderTop:'1px solid var(--border-light)',borderBottom:'1px solid var(--border-light)' }}>
-                            <th style={{ padding:'0.75rem',textAlign:'left',width:'42%' }}>Artículo</th>
-                            <th style={{ padding:'0.75rem',textAlign:'center',width:'12%' }}>Tipo</th>
-                            <th style={{ padding:'0.75rem',textAlign:'center',width:'12%' }}>Cant</th>
-                            <th style={{ padding:'0.75rem',textAlign:'right',width:'17%' }}>P.Unit</th>
-                            <th style={{ padding:'0.75rem',textAlign:'right',width:'17%' }}>Subtotal</th>
-                            <th style={{ padding:'0.75rem',textAlign:'center',width:'5%' }}></th>
+                            <th style={{ padding:'0.45rem 0.5rem',textAlign:'left',width:'42%' }}>Artículo</th>
+                            <th style={{ padding:'0.45rem 0.5rem',textAlign:'center',width:'12%' }}>Tipo</th>
+                            <th style={{ padding:'0.45rem 0.5rem',textAlign:'center',width:'12%' }}>Cant</th>
+                            <th style={{ padding:'0.45rem 0.5rem',textAlign:'right',width:'17%' }}>P.Unit</th>
+                            <th style={{ padding:'0.45rem 0.5rem',textAlign:'right',width:'17%' }}>Subtotal</th>
+                            <th style={{ padding:'0.45rem 0.5rem',textAlign:'center',width:'5%' }}></th>
                           </tr>
                         </thead>
                         <tbody>
                           {builderItems.map(item => (
                             <tr key={item.id} style={{ borderBottom:'1px solid #e2e8f0', backgroundColor: item.tipo === 'mano_de_obra' || item.tipo === 'servicio' ? '#f0f9ff' : 'white' }}>
-                              <td style={{ padding:'0.5rem 0.75rem',fontWeight:'500' }}>
-                                <div>{item.descripcion}</div>
-                                <div style={{ fontSize:'0.7rem',color:'var(--text-tertiary)' }}>
-                                  {item.unidad}
-                                  {item.costoUSD && ` · U$D ${item.costoUSD}`}
-                                </div>
+                              <td style={{ padding:'0.35rem 0.5rem',fontWeight:'500',position:'relative' }}>
+                                {activeReplaceItemId === item.id ? (
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                      <input
+                                        type="text"
+                                        className="input-field"
+                                        placeholder="🔍 Escribe 2+ letras para buscar..."
+                                        value={replaceSearchQuery}
+                                        onChange={e => setReplaceSearchQuery(e.target.value)}
+                                        autoFocus
+                                        style={{ fontSize: '0.75rem', padding: '0.15rem 0.35rem', margin: 0 }}
+                                      />
+                                      <button
+                                        onClick={() => {
+                                          setActiveReplaceItemId(null);
+                                          setReplaceSearchQuery('');
+                                        }}
+                                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600' }}
+                                      >
+                                        Cancelar
+                                      </button>
+                                    </div>
+                                    
+                                    {/* Lista flotante de artículos alternativos */}
+                                    <div style={{
+                                      position: 'absolute',
+                                      top: '100%',
+                                      left: '0.5rem',
+                                      right: '0.5rem',
+                                      maxHeight: '150px',
+                                      overflowY: 'auto',
+                                      background: 'white',
+                                      border: '1px solid var(--border-strong)',
+                                      borderRadius: '4px',
+                                      zIndex: 100,
+                                      boxShadow: '0 4px 10px rgba(0,0,0,0.15)'
+                                    }}>
+                                      {(() => {
+                                        const filtered = listaItems.filter(i => {
+                                          if (!replaceSearchQuery || replaceSearchQuery.trim().length < 2) return true;
+                                          const q = replaceSearchQuery.toLowerCase().trim();
+                                          return (i.descripcion || '').toLowerCase().includes(q) || (i.categoria || '').toLowerCase().includes(q);
+                                        });
+
+                                        if (filtered.length === 0) {
+                                          return (
+                                            <div style={{ padding: '0.4rem 0.6rem', fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
+                                              No se encontraron artículos
+                                            </div>
+                                          );
+                                        }
+
+                                        return filtered.map(i => (
+                                          <div
+                                            key={i.id}
+                                            onMouseDown={() => {
+                                              handleReplaceItem(item.id, i);
+                                              setActiveReplaceItemId(null);
+                                              setReplaceSearchQuery('');
+                                            }}
+                                            style={{
+                                              padding: '0.4rem 0.6rem',
+                                              cursor: 'pointer',
+                                              fontSize: '0.75rem',
+                                              borderBottom: '1px solid var(--border-light)',
+                                              textAlign: 'left',
+                                              color: 'var(--text-primary)'
+                                            }}
+                                            onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)'}
+                                            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                                          >
+                                            <div style={{ fontWeight: '600' }}>{i.descripcion}</div>
+                                            <div style={{ fontSize: '0.65rem', color: 'var(--text-tertiary)' }}>
+                                              {i.costoUSD ? `Costo: U$D ${i.costoUSD}` : ''} {i.precioVentaUSD ? `| Precio: U$D ${i.precioVentaUSD}` : ''} {i.categoria ? `[${i.categoria}]` : ''}
+                                            </div>
+                                          </div>
+                                        ));
+                                      })()}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <div>{item.descripcion}</div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.15rem' }}>
+                                      <span style={{ fontSize:'0.65rem',color:'var(--text-tertiary)' }}>
+                                        {item.unidad}
+                                        {item.costoUSD && ` · U$D ${item.costoUSD}`}
+                                      </span>
+                                      <button
+                                        onClick={() => {
+                                          setActiveReplaceItemId(item.id);
+                                          setReplaceSearchQuery('');
+                                        }}
+                                        style={{
+                                          background: 'none',
+                                          border: 'none',
+                                          cursor: 'pointer',
+                                          color: 'var(--primary-600)',
+                                          fontSize: '0.65rem',
+                                          padding: 0,
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: '0.1rem',
+                                          marginLeft: '0.5rem',
+                                          fontWeight: '700'
+                                        }}
+                                        title="Reemplazar producto"
+                                      >
+                                        🔄 Reemplazar ▾
+                                      </button>
+                                    </div>
+                                  </>
+                                )}
                               </td>
-                              <td style={{ padding:'0.5rem',textAlign:'center' }}>
-                                <span style={{ fontSize:'0.65rem',padding:'0.1rem 0.4rem',borderRadius:'8px',backgroundColor: (item.tipo === 'mano_de_obra' || item.tipo === 'servicio' ? '#dbeafe' : '#f0fdf4'),color:(item.tipo === 'mano_de_obra' || item.tipo === 'servicio' ? '#1d4ed8':'#166534'),fontWeight:'600' }}>
+                              <td style={{ padding:'0.35rem 0.5rem',textAlign:'center' }}>
+                                <span style={{ fontSize:'0.6rem',padding:'0.1rem 0.35rem',borderRadius:'6px',backgroundColor: (item.tipo === 'mano_de_obra' || item.tipo === 'servicio' ? '#dbeafe' : '#f0fdf4'),color:(item.tipo === 'mano_de_obra' || item.tipo === 'servicio' ? '#1d4ed8':'#166534'),fontWeight:'600' }}>
                                   {(item.tipo === 'mano_de_obra' || item.tipo === 'servicio') ? 'MO' : 'Mat'}
                                 </span>
                               </td>
-                              <td style={{ padding:'0.5rem' }}>
-                                <input type="number" value={item.quantity} onChange={e => updateItem(item.id, 'quantity', e.target.value)} style={{ width:'100%',padding:'0.25rem',border:'1px solid #cbd5e1',borderRadius:'4px',textAlign:'center' }} />
+                              <td style={{ padding:'0.35rem 0.5rem' }}>
+                                <input type="number" value={item.quantity} onChange={e => updateItem(item.id, 'quantity', e.target.value)} style={{ width:'100%',padding:'0.15rem 0.25rem',fontSize:'0.8rem',border:'1px solid #cbd5e1',borderRadius:'4px',textAlign:'center' }} />
                               </td>
-                              <td style={{ padding:'0.5rem' }}>
-                                <input type="number" value={item.unitPrice} onChange={e => updateItem(item.id, 'unitPrice', e.target.value)} style={{ width:'100%',padding:'0.25rem',border:'1px solid #cbd5e1',borderRadius:'4px',textAlign:'right' }} />
+                              <td style={{ padding:'0.35rem 0.5rem' }}>
+                                <input type="number" value={item.unitPrice} onChange={e => updateItem(item.id, 'unitPrice', e.target.value)} style={{ width:'100%',padding:'0.15rem 0.25rem',fontSize:'0.8rem',border:'1px solid #cbd5e1',borderRadius:'4px',textAlign:'right' }} />
                               </td>
-                              <td style={{ padding:'0.5rem 0.75rem',textAlign:'right',fontWeight:'600' }}>
+                              <td style={{ padding:'0.35rem 0.5rem',textAlign:'right',fontWeight:'600' }}>
                                 $ {item.subtotal.toLocaleString('es-AR')}
                               </td>
-                              <td style={{ padding:'0.5rem',textAlign:'center' }}>
-                                <button onClick={() => removeItem(item.id)} style={{ background:'none',border:'none',color:'#ef4444',cursor:'pointer' }}><X size={16}/></button>
+                              <td style={{ padding:'0.35rem 0.5rem',textAlign:'center' }}>
+                                <button onClick={() => removeItem(item.id)} style={{ background:'none',border:'none',color:'#ef4444',cursor:'pointer',padding:'0.2rem' }}><X size={14}/></button>
                               </td>
                             </tr>
                           ))}
@@ -1370,20 +1970,42 @@ const KanbanBoard = () => {
                             <tr><td colSpan="6" style={{ padding:'2rem',textAlign:'center',color:'#94a3b8',fontStyle:'italic' }}>Agrega artículos al presupuesto</td></tr>
                           )}
                         </tbody>
-                        <tfoot>
-                          <tr style={{ backgroundColor:'#f8fafc',fontWeight:'700',fontSize:'1rem' }}>
-                            <td colSpan="4" style={{ padding:'1rem',textAlign:'right',color:'var(--text-secondary)',fontSize:'0.875rem' }}>
-                              TOTAL PRESUPUESTO
-                              <span style={{ marginLeft:'0.5rem',fontSize:'0.7rem',fontWeight:'400' }}>
-                                ({canal === 'iva' ? 'con IVA 21%' : 'sin IVA — Canal 2'})
-                              </span>:
-                            </td>
-                            <td colSpan="2" style={{ padding:'1rem',textAlign:'left',color:'var(--primary-700)' }}>
-                              $ {calcTotal(builderItems).toLocaleString('es-AR')}
-                            </td>
-                          </tr>
-                        </tfoot>
                       </table>
+                    </div>
+
+                    {/* Resumen de totales fijo fuera del scroll */}
+                    <div style={{
+                      backgroundColor: '#f8fafc',
+                      borderTop: '2px solid var(--primary-200)',
+                      padding: '0.5rem 1rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      fontSize: '0.85rem'
+                    }}>
+                      {canal === 'iva' ? (
+                        <div style={{ display: 'flex', width: '100%', justifyContent: 'space-around', alignItems: 'center', gap: '1rem' }}>
+                          <div style={{ display: 'flex', gap: '0.35rem' }}>
+                            <span style={{ fontWeight: '500', color: 'var(--text-secondary)' }}>Precio sin IVA:</span>
+                            <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>$ {Math.round(calcTotal(builderItems) / 1.21).toLocaleString('es-AR')}</span>
+                          </div>
+                          <div style={{ width: '1px', height: '14px', backgroundColor: 'var(--border-light)' }}></div>
+                          <div style={{ display: 'flex', gap: '0.35rem' }}>
+                            <span style={{ fontWeight: '500', color: 'var(--text-secondary)' }}>IVA (21%):</span>
+                            <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>$ {Math.round(calcTotal(builderItems) - (calcTotal(builderItems) / 1.21)).toLocaleString('es-AR')}</span>
+                          </div>
+                          <div style={{ width: '1px', height: '14px', backgroundColor: 'var(--border-light)' }}></div>
+                          <div style={{ display: 'flex', gap: '0.35rem' }}>
+                            <span style={{ fontWeight: '800', color: 'var(--primary-800)' }}>TOTAL:</span>
+                            <span style={{ fontWeight: '800', color: 'var(--primary-700)' }}>$ {calcTotal(builderItems).toLocaleString('es-AR')}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontWeight: '800', color: 'var(--primary-800)' }}>TOTAL PRESUPUESTO (Canal 2 sin factura):</span>
+                          <span style={{ fontWeight: '800', color: 'var(--primary-700)', fontSize: '0.95rem' }}>$ {calcTotal(builderItems).toLocaleString('es-AR')}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -1796,7 +2418,20 @@ const KanbanBoard = () => {
                 <div style={{ display:'flex',gap:'0.5rem',flexWrap:'wrap' }}>
                   {/* Botón Generar PDF */}
                   <button
-                    onClick={() => { setSelectedFolletos([]); setIsPDFModalOpen(true); }}
+                    onClick={() => {
+                      const autoSelectedUrls = [];
+                      builderItems.forEach(bi => {
+                        const catalogItem = listaItems.find(li => li.id === bi.listaItemId || li.descripcion === bi.descripcion);
+                        if (catalogItem) {
+                          const url = catalogItem.folletoUrl || getAutoFolletoUrl(catalogItem);
+                          if (url) {
+                            autoSelectedUrls.push(url);
+                          }
+                        }
+                      });
+                      setSelectedFolletos([...new Set(autoSelectedUrls)]);
+                      setIsPDFModalOpen(true);
+                    }}
                     style={{ display:'flex',alignItems:'center',gap:'0.35rem',padding:'0.4rem 0.9rem',borderRadius:'8px',border:'1px solid #e2e8f0',background:'#f0f9ff',color:'#0369a1',fontWeight:'600',fontSize:'0.8rem',cursor:'pointer' }}
                   >
                     <FileText size={15}/> Generar PDF
@@ -1842,30 +2477,29 @@ const KanbanBoard = () => {
               <div style={{ fontWeight:'600',fontSize:'0.875rem',marginBottom:'0.5rem',color:'var(--text-primary)' }}>
                 📄 Incluir folletos de productos ({folletosDisponibles.length} disponibles)
               </div>
-              {folletosDisponibles.length === 0 ? (
+               {folletosDisponibles.length === 0 ? (
                 <div style={{ padding:'0.75rem',background:'#f8fafc',borderRadius:'8px',fontSize:'0.8rem',color:'#64748b',textAlign:'center' }}>
                   No hay folletos configurados. Para agregar folletos, asigná una URL de PDF en el campo <strong>folletoUrl</strong> de cada artículo en Lista de Precios.
                 </div>
               ) : (
                 <div style={{ display:'flex',flexDirection:'column',gap:'0.25rem',maxHeight:'220px',overflowY:'auto' }}>
                   {folletosDisponibles.map(item => {
-                    const checked = selectedFolletos.includes(item.id);
+                    const checked = selectedFolletos.includes(item.folletoUrl);
                     return (
-                      <label key={item.id} style={{ display:'flex',alignItems:'center',gap:'0.5rem',padding:'0.5rem 0.75rem',borderRadius:'6px',cursor:'pointer',background:checked?'#eff6ff':'transparent',border:checked?'1px solid #bfdbfe':'1px solid transparent',fontSize:'0.8rem' }}>
+                      <label key={item.folletoUrl} style={{ display:'flex',alignItems:'center',gap:'0.5rem',padding:'0.5rem 0.75rem',borderRadius:'6px',cursor:'pointer',background:checked?'#eff6ff':'transparent',border:checked?'1px solid #bfdbfe':'1px solid transparent',fontSize:'0.8rem' }}>
                         <input type="checkbox" checked={checked}
                           onChange={e => setSelectedFolletos(prev =>
-                            e.target.checked ? [...prev, item.id] : prev.filter(id => id !== item.id)
+                            e.target.checked ? [...prev, item.folletoUrl] : prev.filter(url => url !== item.folletoUrl)
                           )}
                         />
                         <span style={{ flex:1 }}>{item.descripcion}</span>
-                        <span style={{ fontSize:'0.7rem',color:'#64748b' }}>{item.categoria}</span>
                       </label>
                     );
                   })}
                 </div>
               )}
               {folletosDisponibles.length > 0 && (
-                <button onClick={() => setSelectedFolletos(folletosDisponibles.map(i => i.id))} style={{ marginTop:'0.5rem',background:'none',border:'none',color:'#0369a1',fontSize:'0.75rem',cursor:'pointer',fontWeight:'600' }}>
+                <button onClick={() => setSelectedFolletos(folletosDisponibles.map(i => i.folletoUrl))} style={{ marginTop:'0.5rem',background:'none',border:'none',color:'#0369a1',fontSize:'0.75rem',cursor:'pointer',fontWeight:'600' }}>
                   Seleccionar todos
                 </button>
               )}
@@ -1899,8 +2533,8 @@ const KanbanBoard = () => {
                       notas: detailNotes || selectedLead.notas || '',
                     };
                     const folletoUrls = folletosDisponibles
-                      .filter(i => selectedFolletos.includes(i.id))
-                      .map(i => ({ nombre: i.descripcion, url: i.folletoUrl }));
+                      .filter(f => selectedFolletos.includes(f.folletoUrl))
+                      .map(f => ({ nombre: f.descripcion, url: f.folletoUrl }));
                     await generarPDFPresupuesto(presupuestoData, folletoUrls, (p) => setPdfProgress(p));
                     setIsPDFModalOpen(false);
                   } catch(err) {
