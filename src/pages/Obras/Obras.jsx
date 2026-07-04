@@ -199,6 +199,7 @@ const Obras = () => {
     setNewBitacora('');
     setNewPersonal({ nombre: '', rol: '' });
     setUploadProgress(null);
+    setShowSurveyModal(false);
   };
 
   /* ── Save general fields ── */
@@ -1130,7 +1131,7 @@ const Obras = () => {
         @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
       `}</style>
       {/* ── Encuesta Modal ── */}
-      {showSurveyModal && (
+      {showSurveyModal && selectedObra && (
         <div className="modal-overlay">
           <div className="modal" style={{ maxWidth: '500px', textAlign: 'center' }}>
             <div className="modal-header" style={{ justifyContent: 'center', borderBottom: 'none', paddingBottom: 0 }}>
