@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, Calculator, ClipboardList, Package, MapPin, Receipt, Flame, HardHat, Wallet, DollarSign, Trash2 } from 'lucide-react';
+import { LayoutDashboard, Users, Calculator, ClipboardList, Package, MapPin, Receipt, HardHat, Wallet, DollarSign, Trash2 } from 'lucide-react';
 
 const Sidebar = () => {
   const sections = [
@@ -45,8 +45,7 @@ const Sidebar = () => {
   return (
     <div style={{ width: '250px', background: 'var(--bg-sidebar)', color: 'var(--text-sidebar)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
       <div style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', borderBottom: '1px solid #1e293b' }}>
-        <Flame color="var(--primary-500)" size={28} />
-        <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'white', letterSpacing: '-0.025em', margin: 0 }}>Euler Master</h2>
+        <img src="/logo_euler.png" alt="Euler Logo" style={{ height: '40px', objectFit: 'contain' }} />
       </div>
       
       <nav style={{ flex: 1, padding: '0.75rem 0', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>

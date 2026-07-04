@@ -1,25 +1,26 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Righteous&display=swap');
 
 :root {
-  /* Colors - Primary (Blue) */
+  /* Colors - Primary (Blue Euler) */
   --primary-50: #eff6ff;
   --primary-100: #dbeafe;
   --primary-200: #bfdbfe;
-  --primary-500: #3b82f6;
-  --primary-600: #2563eb;
-  --primary-700: #1d4ed8;
+  --primary-500: #0c3552; /* Euler Blue */
+  --primary-600: #0a2d46;
+  --primary-700: #082438;
 
-  /* Colors - Secondary (Orange/Red for heating accent) */
-  --accent-500: #ef4444;
-  --accent-600: #dc2626;
+  /* Colors - Secondary (Yellow & Red Euler) */
+  --accent-500: #e0a42d; /* Euler Yellow */
+  --accent-600: #c44121; /* Euler Red */
 
   /* Colors - Surface & Background */
   --bg-primary: #f8fafc;
   --bg-surface: #ffffff;
   --bg-surface-hover: #f1f5f9;
-  --bg-sidebar: #0f172a;
+  --bg-sidebar: #0c3552; /* Euler Blue */
   --text-sidebar: #f8fafc;
-  --text-sidebar-hover: #94a3b8;
+  --text-sidebar-hover: #e0a42d; /* Euler Yellow */
 
   /* Colors - Text */
   --text-primary: #0f172a;
@@ -64,8 +65,9 @@ body {
 }
 
 h1, h2, h3, h4, h5, h6 {
-  color: var(--text-primary);
-  font-weight: 600;
+  font-family: 'Righteous', 'Inter', sans-serif;
+  color: var(--primary-500);
+  font-weight: 400;
   line-height: 1.2;
 }
 
