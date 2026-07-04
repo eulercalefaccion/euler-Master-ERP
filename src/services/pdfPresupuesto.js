@@ -74,10 +74,12 @@ const buildPortada = (doc, presupuesto, logoBase64) => {
   doc.text('PRESUPUESTO DE CALEFACCIÓN POR AGUA', W / 2, 116, { align: 'center' });
 
   // Datos del presupuesto
+  const versionSuffix = (presupuesto.revisionsHistory?.length > 0) ? `-V${presupuesto.revisionsHistory.length}` : '';
+
   const campos = [
     ['Cliente:',           presupuesto.clientName || presupuesto.name || '—'],
-    ['N° Presupuesto:',    presupuesto.presupuestoNumber || '—'],
-    ['Revisión:',          presupuesto.revision ? `V${presupuesto.revision}` : 'Original'],
+    ['N° Presupuesto:',    `${presupuesto.presupuestoNumber || '—'}${versionSuffix}`],
+    ['Revisión:',          presupuesto.revisionsHistory?.length > 0 ? `V${presupuesto.revisionsHistory.length}` : 'Original'],
     ['Dirección de obra:', presupuesto.location || '—'],
     ['Fecha:',             presupuesto.date || new Date().toLocaleDateString('es-AR')],
     ['Modo de precios:',   presupuesto.canal === 'canal2' ? 'Sin Factura (Canal 2)' : 'Con IVA 21% discriminado'],

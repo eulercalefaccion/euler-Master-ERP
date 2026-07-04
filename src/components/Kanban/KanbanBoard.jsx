@@ -13,6 +13,7 @@ import {
 } from 'firebase/firestore';
 import { getTipoCambio, calcularPrecios, calcularPrecioManoDeObra, IVA } from '../../services/tipoCambioService';
 import { generarPDFPresupuesto } from '../../services/pdfPresupuesto';
+import { getNextSequenceValue, formatPresupuestoNumber, formatObraNumber } from '../../utils/sequenceGenerator';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 const COEF_CANAL2 = 1.105;
@@ -795,8 +796,19 @@ const KanbanBoard = () => {
         });
       } catch (e) { console.warn('Error al crear obra en Jornadas:', e); }
 
+      // 3.5 Generar número de OT secuencial
+      let otNumber = '';
+      try {
+        const seq = await getNextSequenceValue('obrasSeq');
+        otNumber = formatObraNumber(seq);
+      } catch (e) {
+        console.error("Error generando OT sequence:", e);
+        otNumber = `OT-${new Date().getFullYear()}-FALLBACK-${Math.floor(Math.random()*1000)}`;
+      }
+
       // 4. Crear obra en ERP
       const obraRef = await addDoc(collection(db, 'obras'), {
+        otNumber:       otNumber,
         name:           obraNombre,
         location:       item.direccionObra || item.location || 'S/D',
         clientId:       item.clientId || '',
@@ -810,10 +822,11 @@ const KanbanBoard = () => {
         quoteItems:     item.quoteItems || [],
         presupuestoId:  draggableId,
         presupuestoNum: item.presupuestoNumber || '',
+        presupuestoOrigen: item.presupuestoNumber || '', // Trazabilidad estricta
         canal:          item.canal || 'iva',
         jornadasObraId: jornadasObraId,
         bitacoraPreview: `Vinculado al Presupuesto: ${item.presupuestoNumber || 'S/N'}. Aprobado.`,
-        bitacoraHistory: [{ texto: `Obra creada desde Presupuesto ${item.presupuestoNumber || ''}. Aprobado el ${new Date().toLocaleDateString('es-AR')}.`, fecha: new Date().toISOString() }],
+        bitacoraHistory: [{ texto: `Obra creada desde Presupuesto ${item.presupuestoNumber || ''}. Aprobado el ${new Date().toLocaleDateString('es-AR')}. OT generada: ${otNumber}`, fecha: new Date().toISOString() }],
         fechaInicio:    '',
         fechaFinEstimada: '',
         fechaFinReal:   '',
@@ -909,9 +922,17 @@ const KanbanBoard = () => {
         if (!newLead.clientId) { setIsSavingLead(false); return alert('Seleccioná un cliente de la lista.'); }
         finalClientName = (clientesList.find(c => c.id === newLead.clientId) || {}).name || '';
       }
-      const now = new Date();
-      const dateStr = `${now.getFullYear().toString().slice(-2)}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
-      const presupuestoNumber = `PRE-${dateStr}-${Math.floor(Math.random()*1000).toString().padStart(3,'0')}`;
+      
+      let presupuestoNumber = '';
+      try {
+        const seq = await getNextSequenceValue('presupuestosSeq');
+        presupuestoNumber = formatPresupuestoNumber(seq);
+      } catch (e) {
+        console.error("Error generando PRE sequence:", e);
+        const now = new Date();
+        const dateStr = `${now.getFullYear().toString().slice(-2)}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
+        presupuestoNumber = `PRE-${dateStr}-FALLBACK`;
+      }
       
       await addDoc(collection(db, 'presupuestos'), {
         clientId: finalClientId,
@@ -1655,7 +1676,10 @@ const KanbanBoard = () => {
             <div style={{ flex:1,overflowY:'auto',padding:'1rem',display:'flex',flexDirection:'column',gap:'0.75rem' }}>
               {/* Info del cliente */}
               <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',background:'var(--bg-surface-hover)',border:'1px solid var(--border-light)',borderRadius:'8px',padding:'0.4rem 0.75rem' }}>
-                <h2 style={{ margin:0,fontSize:'1.1rem',fontWeight:'700' }}>{selectedLead.name}</h2>
+                <h2 style={{ margin:0,fontSize:'1.1rem',fontWeight:'700', display:'flex', alignItems:'center', gap:'0.5rem' }}>
+                  {selectedLead.presupuestoNumber ? <span style={{ color:'var(--primary-600)', fontSize:'0.9rem' }}>{selectedLead.presupuestoNumber}{(selectedLead.revisionsHistory?.length > 0) ? `-V${selectedLead.revisionsHistory.length}` : ''} | </span> : null}
+                  {selectedLead.name}
+                </h2>
                 <div style={{ display:'flex',gap:'0.75rem',fontSize:'0.75rem',color:'var(--text-secondary)' }}>
                   <span style={{ display:'flex',alignItems:'center',gap:'0.15rem' }}><MapPin size={13}/> {selectedLead.location || 'S/D'}</span>
                   <span style={{ display:'flex',alignItems:'center',gap:'0.15rem' }}><Calendar size={13}/> {selectedLead.date}</span>

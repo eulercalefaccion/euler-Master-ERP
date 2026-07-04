@@ -879,9 +879,6 @@ const Obras = () => {
             {obras.length} obras • {obras.filter(o => o.estado === 'En Proceso' || o.estado === 'Instalación en Proceso').length} en curso
           </p>
         </div>
-        <button className="btn btn-primary" onClick={() => setIsNewModalOpen(true)}>
-          <Plus size={18} /> Nueva Obra
-        </button>
       </div>
 
       {/* ── Toolbar ── */}
@@ -922,7 +919,14 @@ const Obras = () => {
           >
             <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface-hover)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-                <h3 style={{ fontSize: '1.125rem', fontWeight: '600', margin: 0, paddingRight: '1rem' }}>{obra.name}</h3>
+                <div>
+                  {obra.otNumber && (
+                    <div style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--primary-600)', marginBottom: '0.25rem', letterSpacing: '0.5px' }}>
+                      {obra.otNumber}
+                    </div>
+                  )}
+                  <h3 style={{ fontSize: '1.125rem', fontWeight: '600', margin: 0, paddingRight: '1rem' }}>{obra.name}</h3>
+                </div>
                 {getStatusBadge(obra.estado, obra.phase)}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
@@ -992,7 +996,7 @@ const Obras = () => {
                 <div>
                   <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <HardHat color="var(--primary-600)" size={20} />
-                    {selectedObra.name}
+                    {selectedObra.otNumber ? `${selectedObra.otNumber} - ` : ''}{selectedObra.name}
                   </h3>
                   <div style={{ marginTop: '0.25rem' }}>{getStatusBadge(selectedObra.estado, selectedObra.phase)}</div>
                 </div>

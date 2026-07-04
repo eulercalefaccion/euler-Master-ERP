@@ -44,11 +44,9 @@ const KanbanCard = ({ item, index, onCardClick }) => {
         >
           {/* Badges de revisión y canal arriba a la derecha */}
           <div style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', display: 'flex', gap: '0.25rem' }}>
-            {hasRevisions && (
-              <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem', backgroundColor: '#e0e7ff', color: '#3730a3', borderRadius: '8px', fontWeight: '700' }}>
-                Rev {item.revision}
-              </span>
-            )}
+            <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem', backgroundColor: '#e0e7ff', color: '#3730a3', borderRadius: '8px', fontWeight: '700' }}>
+              {item.presupuestoNumber || 'S/N'}{hasRevisions ? `-V${item.revision}` : ''}
+            </span>
             {isCanal2 && (
               <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem', backgroundColor: '#fef3c7', color: '#92400e', borderRadius: '8px', fontWeight: '700' }}>
                 💵 Ch2
