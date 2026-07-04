@@ -150,8 +150,8 @@ const Papelera = () => {
               <tbody>
                 {presupuestos.map(pres => (
                   <tr key={pres.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '1rem', fontWeight: '500' }}>{pres.clientName || pres.nombre}</td>
-                    <td style={{ padding: '1rem', color: '#64748b' }}>${Number(pres.totalPrice || 0).toLocaleString()}</td>
+                    <td style={{ padding: '1rem', fontWeight: '500' }}>{pres.name || pres.nombre}</td>
+                    <td style={{ padding: '1rem', color: '#64748b' }}>${Number(pres.amount || 0).toLocaleString()}</td>
                     <td style={{ padding: '1rem', textAlign: 'right', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
                       <button 
                         onClick={() => handleRestore(pres.id, 'presupuestos')}
