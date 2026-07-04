@@ -38,7 +38,6 @@ const KanbanCard = ({ item, index, onCardClick }) => {
             display: 'flex',
             flexDirection: 'column',
             gap: '0.5rem',
-            transition: 'background-color 0.2s',
             cursor: 'pointer',
             position: 'relative',
           }}

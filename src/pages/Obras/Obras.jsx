@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   HardHat, Search, Plus, MapPin, User, Thermometer, X, Save, Edit2,
   ChevronRight, PlayCircle, Package, Upload, FileText, Users, Calendar,
-  ClipboardList, Trash2, Download, Eye
+  ClipboardList, Trash2, Download, Eye, Phone, Mail, MoreVertical, Clock, MessageSquare, CheckCircle, Shield, Wrench, Settings, Star, AlertCircle
 } from 'lucide-react';
 import { db, storage } from '../../services/firebaseConfig';
 import {
@@ -11,13 +11,31 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 
+const addBusinessDays = (startDateStr, days) => {
+  if (!days) return startDateStr;
+  let d = new Date(startDateStr + 'T00:00:00');
+  let added = 0;
+  while (added < days) {
+    d.setDate(d.getDate() + 1);
+    const day = d.getDay();
+    if (day !== 0 && day !== 6) {
+      added++;
+    }
+  }
+  return d.toISOString().split('T')[0];
+};
+
 /* ─────────────────────────────────────────────────────── */
 /*  Constants                                              */
 /* ─────────────────────────────────────────────────────── */
-const phases  = ['Todas', 'Obra', 'Instalación', 'Finalizada'];
+const filterPhases = [
+  { id: 'Todas', label: 'Todas' },
+  { id: 'Obra', label: 'Obra de Cañería' },
+  { id: 'Instalación', label: 'Instalación de Equipos' },
+  { id: 'Finalizada', label: 'Finalizada' }
+];
 const estados = [
-  'Pendiente de Inicio', 'En Proceso', 'Finalizada',
-  'Instalación Pendiente', 'Instalación en Proceso', 'Instalación Finalizada'
+  'Pendiente de Inicio', 'En Proceso', 'Finalizada'
 ];
 const sistemas = ['Radiadores', 'Piso Radiante', 'SSTT Caldera', 'Híbrido'];
 
@@ -38,19 +56,35 @@ const TABS = [
 /* ─────────────────────────────────────────────────────── */
 /*  Helpers                                                */
 /* ─────────────────────────────────────────────────────── */
-const getStatusBadge = (estado) => {
-  const colors = {
-    'Pendiente de Inicio':      { bg: '#f1f5f9', color: '#475569' },
-    'En Proceso':               { bg: '#dbeafe', color: '#1d4ed8' },
-    'Finalizada':               { bg: '#d1fae5', color: '#059669' },
-    'Instalación Pendiente':    { bg: '#fef3c7', color: '#d97706' },
-    'Instalación en Proceso':   { bg: '#dbeafe', color: '#1d4ed8' },
-    'Instalación Finalizada':   { bg: '#d1fae5', color: '#059669' },
-  };
-  const c = colors[estado] || colors['Pendiente de Inicio'];
+const getStatusBadge = (estado, phase) => {
+  let bg = '#f1f5f9';
+  let color = '#475569';
+  let text = estado || 'Pendiente de Inicio';
+
+  if (estado === 'Pendiente de Inicio') {
+    bg = '#f1f5f9'; color = '#475569';
+  } else if (estado === 'En Proceso') {
+    bg = '#dbeafe'; color = '#1d4ed8';
+  } else if (estado === 'Finalizada') {
+    bg = '#d1fae5'; color = '#059669';
+    if (phase === 'Obra') {
+      text = 'Obra de Cañería Finalizada e Instalación de Equipos Pendiente';
+    } else if (phase === 'Instalación') {
+      text = 'Instalación de Equipos Finalizada';
+    }
+  } 
+  // Fallbacks for older data
+  else if (estado === 'Instalación Pendiente') {
+    bg = '#fef3c7'; color = '#d97706'; text = 'Instalación de Equipos Pendiente';
+  } else if (estado === 'Instalación en Proceso') {
+    bg = '#dbeafe'; color = '#1d4ed8'; text = 'Instalación de Equipos en Proceso';
+  } else if (estado === 'Instalación Finalizada') {
+    bg = '#d1fae5'; color = '#059669'; text = 'Instalación de Equipos Finalizada';
+  }
+
   return (
-    <span className="badge" style={{ backgroundColor: c.bg, color: c.color, fontWeight: '600' }}>
-      {estado}
+    <span className="badge" style={{ backgroundColor: bg, color: color, fontWeight: '600' }}>
+      {text}
     </span>
   );
 };
@@ -102,6 +136,10 @@ const Obras = () => {
   // iniciar obra dialog
   const [showIniciarDialog, setShowIniciarDialog] = useState(false);
   const [isInitiating, setIsInitiating]           = useState(false);
+  const [diasEstimados, setDiasEstimados]         = useState(1);
+
+  // survey trigger modal
+  const [showSurveyModal, setShowSurveyModal] = useState(false);
 
   // nueva obra modal
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
@@ -110,17 +148,30 @@ const Obras = () => {
     phase: 'Obra', estado: 'Pendiente de Inicio', operarios: '', progress: 0
   });
 
+  const selectedObraIdRef = useRef(null);
+  useEffect(() => {
+    selectedObraIdRef.current = selectedObra?.id || null;
+  }, [selectedObra]);
+
   /* ── Firestore listener ── */
   useEffect(() => {
     const qObras = query(collection(db, 'obras'));
     const unsub = onSnapshot(qObras, (snap) => {
       const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       setObras(data);
-      if (selectedObra) {
-        const updated = data.find(o => o.id === selectedObra.id);
+      if (selectedObraIdRef.current) {
+        const updated = data.find(o => o.id === selectedObraIdRef.current);
         if (updated) {
           setSelectedObra(updated);
-          setEditForm(f => ({ ...updated, fechaInicio: f.fechaInicio !== undefined ? f.fechaInicio : (updated.fechaInicio || ''), fechaFinEstimada: f.fechaFinEstimada !== undefined ? f.fechaFinEstimada : (updated.fechaFinEstimada || ''), fechaFinReal: f.fechaFinReal !== undefined ? f.fechaFinReal : (updated.fechaFinReal || '') }));
+          setEditForm(f => ({ 
+            ...updated, 
+            fechaInicioObra: f.fechaInicioObra !== undefined ? f.fechaInicioObra : (updated.fechaInicioObra || updated.fechaInicio || ''),
+            fechaFinEstimadaObra: f.fechaFinEstimadaObra !== undefined ? f.fechaFinEstimadaObra : (updated.fechaFinEstimadaObra || updated.fechaFinEstimada || ''),
+            fechaFinRealObra: f.fechaFinRealObra !== undefined ? f.fechaFinRealObra : (updated.fechaFinRealObra || updated.fechaFinReal || ''),
+            fechaInicioInstalacion: f.fechaInicioInstalacion !== undefined ? f.fechaInicioInstalacion : (updated.fechaInicioInstalacion || ''),
+            fechaFinEstimadaInstalacion: f.fechaFinEstimadaInstalacion !== undefined ? f.fechaFinEstimadaInstalacion : (updated.fechaFinEstimadaInstalacion || ''),
+            fechaFinRealInstalacion: f.fechaFinRealInstalacion !== undefined ? f.fechaFinRealInstalacion : (updated.fechaFinRealInstalacion || '')
+          }));
         }
       }
     });
@@ -129,6 +180,7 @@ const Obras = () => {
 
   /* ── Derived ── */
   const filteredObras = obras.filter(obra => {
+    if (obra.deleted) return false;
     const term = searchTerm.toLowerCase();
     const matchesSearch =
       (obra.name      && obra.name.toLowerCase().includes(term)) ||
@@ -153,6 +205,20 @@ const Obras = () => {
   const handleSaveEdit = async () => {
     if (!selectedObra) return;
     setIsSaving(true);
+    
+    const isObra = editForm.phase === 'Obra';
+    const currentFinReal = isObra ? editForm.fechaFinRealObra : editForm.fechaFinRealInstalacion;
+    
+    if (editForm.estado === 'Finalizada' && !currentFinReal) {
+      alert('Debes ingresar la Fecha Fin Real para marcar esta fase como Finalizada.');
+      setIsSaving(false);
+      return;
+    }
+
+    const justFinished = isObra
+      ? !selectedObra.fechaFinRealObra && editForm.fechaFinRealObra
+      : !selectedObra.fechaFinRealInstalacion && editForm.fechaFinRealInstalacion;
+
     try {
       const updates = {
         name:             editForm.name            || '',
@@ -163,13 +229,34 @@ const Obras = () => {
         estado:           editForm.estado          || 'Pendiente de Inicio',
         operarios:        editForm.operarios       || '',
         progress:         parseInt(editForm.progress) || 0,
-        fechaInicio:      editForm.fechaInicio     || '',
-        fechaFinEstimada: editForm.fechaFinEstimada || '',
-        fechaFinReal:     editForm.fechaFinReal    || '',
+        fechaInicioObra:      editForm.fechaInicioObra || '',
+        fechaFinEstimadaObra: editForm.fechaFinEstimadaObra || '',
+        fechaFinRealObra:     editForm.fechaFinRealObra || '',
+        fechaInicioInstalacion: editForm.fechaInicioInstalacion || '',
+        fechaFinEstimadaInstalacion: editForm.fechaFinEstimadaInstalacion || '',
+        fechaFinRealInstalacion: editForm.fechaFinRealInstalacion || '',
       };
       await updateDoc(doc(db, 'obras', selectedObra.id), updates);
+      
+      if (justFinished) {
+        setShowSurveyModal(true);
+      }
     } catch (err) {
       alert('Error al guardar: ' + err.message);
+    }
+    setIsSaving(false);
+  };
+
+  /* ── Soft Delete Obra ── */
+  const handleSoftDelete = async () => {
+    if (!selectedObra) return;
+    if (!window.confirm(`¿Seguro que deseas mover "${selectedObra.name}" a la papelera?`)) return;
+    setIsSaving(true);
+    try {
+      await updateDoc(doc(db, 'obras', selectedObra.id), { deleted: true });
+      setSelectedObra(null);
+    } catch (err) {
+      alert('Error al mover a papelera: ' + err.message);
     }
     setIsSaving(false);
   };
@@ -230,14 +317,24 @@ const Obras = () => {
         );
       await Promise.all(stockUpdates);
 
-      const entry = { texto: 'Obra iniciada — stock descontado', fecha: new Date().toISOString() };
+      const hoy = new Date().toISOString().split('T')[0];
+      const estimatedEndDate = addBusinessDays(hoy, parseInt(diasEstimados) || 1);
+
+      const entry = { texto: 'Obra iniciada — stock descontado. Días estimados: ' + (parseInt(diasEstimados) || 1), fecha: new Date().toISOString() };
       const existing = selectedObra.bitacoraHistory || [];
-      await updateDoc(doc(db, 'obras', selectedObra.id), {
+      const isObraPhase = selectedObra.phase === 'Obra';
+      const updatedFields = {
         estado: 'En Proceso',
+        [isObraPhase ? 'fechaInicioObra' : 'fechaInicioInstalacion']: hoy,
+        [isObraPhase ? 'fechaFinEstimadaObra' : 'fechaFinEstimadaInstalacion']: estimatedEndDate,
         bitacoraPreview: entry.texto,
         bitacoraHistory: [entry, ...existing],
-      });
+      };
+      await updateDoc(doc(db, 'obras', selectedObra.id), updatedFields);
+      setSelectedObra(prev => ({ ...prev, ...updatedFields }));
+      setEditForm(prev => ({ ...prev, ...updatedFields }));
       setShowIniciarDialog(false);
+      setDiasEstimados(1);
     } catch (err) {
       alert('Error al iniciar obra: ' + err.message);
     }
@@ -362,8 +459,8 @@ const Obras = () => {
         <div className="form-group" style={{ marginBottom: 0 }}>
           <label className="form-label">Fase</label>
           <select style={inp} value={editForm.phase || 'Obra'} onChange={e => setEditForm({ ...editForm, phase: e.target.value })}>
-            <option value="Obra">Obra</option>
-            <option value="Instalación">Instalación</option>
+            <option value="Obra">Obra de Cañería</option>
+            <option value="Instalación">Instalación de Equipos</option>
           </select>
         </div>
         <div className="form-group" style={{ marginBottom: 0 }}>
@@ -393,24 +490,118 @@ const Obras = () => {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
         <div className="form-group" style={{ marginBottom: 0 }}>
           <label className="form-label">Fecha Inicio</label>
-          <input type="date" style={inp} value={editForm.fechaInicio || ''} onChange={e => setEditForm({ ...editForm, fechaInicio: e.target.value })} />
+          <input 
+            type="date" 
+            style={inp} 
+            value={(editForm.phase === 'Obra' ? editForm.fechaInicioObra : editForm.fechaInicioInstalacion) || ''} 
+            onChange={e => {
+              const val = e.target.value;
+              setEditForm(prev => ({
+                ...prev,
+                [prev.phase === 'Obra' ? 'fechaInicioObra' : 'fechaInicioInstalacion']: val
+              }));
+            }} 
+          />
         </div>
         <div className="form-group" style={{ marginBottom: 0 }}>
           <label className="form-label">Fin Estimado</label>
-          <input type="date" style={inp} value={editForm.fechaFinEstimada || ''} onChange={e => setEditForm({ ...editForm, fechaFinEstimada: e.target.value })} />
+          <input 
+            type="date" 
+            style={inp} 
+            value={(editForm.phase === 'Obra' ? editForm.fechaFinEstimadaObra : editForm.fechaFinEstimadaInstalacion) || ''} 
+            onChange={e => {
+              const val = e.target.value;
+              setEditForm(prev => ({
+                ...prev,
+                [prev.phase === 'Obra' ? 'fechaFinEstimadaObra' : 'fechaFinEstimadaInstalacion']: val
+              }));
+            }} 
+          />
         </div>
         <div className="form-group" style={{ marginBottom: 0 }}>
           <label className="form-label">Fin Real</label>
-          <input type="date" style={inp} value={editForm.fechaFinReal || ''} onChange={e => setEditForm({ ...editForm, fechaFinReal: e.target.value })} />
+          <input 
+            type="date" 
+            style={inp} 
+            value={(editForm.phase === 'Obra' ? editForm.fechaFinRealObra : editForm.fechaFinRealInstalacion) || ''} 
+            onChange={e => {
+              const val = e.target.value;
+              setEditForm(prev => {
+                const isObraPhase = prev.phase === 'Obra';
+                const field = isObraPhase ? 'fechaFinRealObra' : 'fechaFinRealInstalacion';
+                const newState = { ...prev, [field]: val };
+                if (val) {
+                  newState.estado = 'Finalizada';
+                }
+                return newState;
+              });
+            }} 
+          />
         </div>
       </div>
 
       {/* Save */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
+        <button 
+          onClick={handleSoftDelete}
+          disabled={isSaving}
+          style={{ background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem' }}
+        >
+          <Trash2 size={16} /> Mover a Papelera
+        </button>
         <button className="btn btn-primary" onClick={handleSaveEdit} disabled={isSaving} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
           <Save size={16} /> {isSaving ? 'Guardando...' : 'Guardar Cambios'}
         </button>
       </div>
+
+      {/* Panel de Encuesta */}
+      {((editForm?.phase === 'Obra' && editForm?.fechaFinRealObra) || (editForm?.phase === 'Instalación' && editForm?.fechaFinRealInstalacion)) && (
+        <div style={{ marginTop: '1.5rem', background: '#f8fafc', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+          <h4 style={{ margin: '0 0 1rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#0f172a' }}>
+            🌟 Encuesta de Satisfacción
+          </h4>
+          {selectedObra?.encuesta ? (
+            <div style={{ background: '#f0fdf4', padding: '1rem', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                <span style={{ fontWeight: '600', color: '#166534' }}>¡Encuesta completada!</span>
+                <span style={{ fontWeight: '700', color: '#15803d' }}>Promedio: {selectedObra.encuesta.promedio} / 5</span>
+              </div>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: '#166534' }}>
+                El cliente respondió la encuesta el {new Date(selectedObra.encuesta.fecha).toLocaleDateString('es-AR')}.
+              </p>
+              {selectedObra.encuesta.comentarios && (
+                <div style={{ marginTop: '0.75rem', fontSize: '0.85rem', color: '#166534', fontStyle: 'italic', background: '#dcfce7', padding: '0.5rem', borderRadius: '6px' }}>
+                  "{selectedObra.encuesta.comentarios}"
+                </div>
+              )}
+            </div>
+          ) : (
+            <div>
+              <p style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: '#475569' }}>
+                La obra está finalizada. Enviá el link de la encuesta al cliente para conocer su nivel de satisfacción.
+              </p>
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                <a 
+                  href={`https://wa.me/?text=${encodeURIComponent(`¡Hola! En Euler valoramos mucho tu experiencia. Te pedimos unos minutos para calificar nuestro trabajo en tu obra ingresando a este link: https://euler-master-erp-app.netlify.app/encuesta/${selectedObra.id}`)}`}
+                  target="_blank" rel="noopener noreferrer"
+                  className="btn btn-secondary" 
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#16a34a', borderColor: '#16a34a' }}
+                >
+                  <Phone size={16} /> Enviar por WhatsApp
+                </a>
+                <a 
+                  href={`mailto:?subject=${encodeURIComponent('Encuesta de Satisfacción - Euler')}&body=${encodeURIComponent(`¡Hola! En Euler valoramos mucho tu experiencia. Te pedimos unos minutos para calificar nuestro trabajo en tu obra ingresando a este link:\n\nhttps://euler-master-erp-app.netlify.app/encuesta/${selectedObra.id}`)}`}
+                  target="_blank" rel="noopener noreferrer"
+                  className="btn btn-secondary"
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                >
+                  <Mail size={16} /> Enviar por Email
+                </a>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 
@@ -681,14 +872,14 @@ const Obras = () => {
           />
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
-          {phases.map(fase => (
+          {filterPhases.map(fase => (
             <button
-              key={fase}
-              onClick={() => setFilterPhase(fase)}
-              className={filterPhase === fase ? 'btn btn-primary' : 'btn btn-secondary'}
+              key={fase.id}
+              onClick={() => setFilterPhase(fase.id)}
+              className={filterPhase === fase.id ? 'btn btn-primary' : 'btn btn-secondary'}
               style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}
             >
-              {fase}
+              {fase.label}
             </button>
           ))}
         </div>
@@ -706,7 +897,7 @@ const Obras = () => {
             <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface-hover)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
                 <h3 style={{ fontSize: '1.125rem', fontWeight: '600', margin: 0, paddingRight: '1rem' }}>{obra.name}</h3>
-                {getStatusBadge(obra.estado)}
+                {getStatusBadge(obra.estado, obra.phase)}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
                 <MapPin size={14} /> {obra.location || 'Sin ubicación'}
@@ -762,7 +953,7 @@ const Obras = () => {
           {/* Panel */}
           <div style={{
             position: 'fixed', top: 0, right: 0, bottom: 0,
-            width: '100%', maxWidth: '750px',
+            width: '95vw', maxWidth: '1400px',
             backgroundColor: 'var(--bg-primary)',
             boxShadow: '-5px 0 25px rgba(0,0,0,0.15)',
             zIndex: 50,
@@ -777,11 +968,11 @@ const Obras = () => {
                     <HardHat color="var(--primary-600)" size={20} />
                     {selectedObra.name}
                   </h3>
-                  <div style={{ marginTop: '0.25rem' }}>{getStatusBadge(selectedObra.estado)}</div>
+                  <div style={{ marginTop: '0.25rem' }}>{getStatusBadge(selectedObra.estado, selectedObra.phase)}</div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   {/* Iniciar Obra button */}
-                  {selectedObra.estado === 'Pendiente de Inicio' && (
+                  {selectedObra.estado === 'Pendiente de Inicio' ? (
                     <button
                       className="btn btn-primary"
                       onClick={() => setShowIniciarDialog(true)}
@@ -789,7 +980,15 @@ const Obras = () => {
                     >
                       <PlayCircle size={16} /> Iniciar Obra
                     </button>
-                  )}
+                  ) : selectedObra.estado === 'En Proceso' ? (
+                    <button
+                      className="btn btn-primary"
+                      disabled
+                      style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: '#0284c7', borderColor: '#0284c7', fontSize: '0.875rem', opacity: 1, cursor: 'default' }}
+                    >
+                      <Clock size={16} /> Obra en proceso
+                    </button>
+                  ) : null}
                   <button
                     onClick={() => setSelectedObra(null)}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: '0.25rem' }}
@@ -848,6 +1047,16 @@ const Obras = () => {
             <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
               Se cambiará el estado a <strong>En Proceso</strong> y se descontará el stock de todos los materiales vinculados al presupuesto de esta obra.
             </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: '500', color: '#475569' }}>Días estimados de obra (sin sábados ni domingos)</label>
+              <input 
+                type="number" min="1" 
+                className="input-field" 
+                value={diasEstimados} 
+                onChange={e => setDiasEstimados(e.target.value)} 
+                style={{ padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+              />
+            </div>
             {(selectedObra?.quoteItems || []).filter(i => i.listaItemId).length > 0 && (
               <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '0.75rem', fontSize: '0.8rem', color: '#166534' }}>
                 <Package size={13} style={{ display: 'inline', marginRight: '0.35rem' }} />
@@ -920,6 +1129,49 @@ const Obras = () => {
         .hover-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); }
         @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
       `}</style>
+      {/* ── Encuesta Modal ── */}
+      {showSurveyModal && (
+        <div className="modal-overlay">
+          <div className="modal" style={{ maxWidth: '500px', textAlign: 'center' }}>
+            <div className="modal-header" style={{ justifyContent: 'center', borderBottom: 'none', paddingBottom: 0 }}>
+              <h3 style={{ fontSize: '1.25rem', color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                🌟 ¡Obra Finalizada!
+              </h3>
+            </div>
+            <div className="modal-body" style={{ padding: '2rem 1.5rem' }}>
+              <p style={{ margin: '0 0 1.5rem 0', color: '#475569', fontSize: '1rem', lineHeight: 1.5 }}>
+                Como ya definiste la fecha de fin real, ¿querés enviarle la encuesta de satisfacción al cliente ahora mismo?
+              </p>
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+                <a 
+                  href={`https://wa.me/?text=${encodeURIComponent(`¡Hola! En Euler valoramos mucho tu experiencia. Te pedimos unos minutos para calificar nuestro trabajo en tu obra ingresando a este link: https://euler-master-erp-app.netlify.app/encuesta/${selectedObra.id}`)}`}
+                  target="_blank" rel="noopener noreferrer"
+                  className="btn btn-secondary" 
+                  onClick={() => setShowSurveyModal(false)}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#16a34a', borderColor: '#16a34a', flex: 1, justifyContent: 'center' }}
+                >
+                  <Phone size={18} /> Por WhatsApp
+                </a>
+                <a 
+                  href={`mailto:?subject=${encodeURIComponent('Encuesta de Satisfacción - Euler')}&body=${encodeURIComponent(`¡Hola! En Euler valoramos mucho tu experiencia. Te pedimos unos minutos para calificar nuestro trabajo en tu obra ingresando a este link:\n\nhttps://euler-master-erp-app.netlify.app/encuesta/${selectedObra.id}`)}`}
+                  target="_blank" rel="noopener noreferrer"
+                  className="btn btn-secondary"
+                  onClick={() => setShowSurveyModal(false)}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, justifyContent: 'center' }}
+                >
+                  <Mail size={18} /> Por Email
+                </a>
+              </div>
+            </div>
+            <div className="modal-footer" style={{ borderTop: 'none', justifyContent: 'center' }}>
+              <button className="btn btn-secondary" onClick={() => setShowSurveyModal(false)} style={{ color: '#64748b', border: 'none', background: 'transparent' }}>
+                Quizás más tarde
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

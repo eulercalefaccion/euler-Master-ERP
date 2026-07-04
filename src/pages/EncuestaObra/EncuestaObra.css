@@ -1,0 +1,153 @@
+.encuesta-container {
+  min-height: 100vh;
+  background-color: var(--bg-body, #f4f7fa);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem 1rem;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+.center-content {
+  flex-direction: column;
+  text-align: center;
+}
+
+.encuesta-card {
+  background: white;
+  width: 100%;
+  max-width: 600px;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+  overflow: hidden;
+}
+
+.encuesta-header {
+  background: linear-gradient(135deg, var(--primary-600, #0284c7) 0%, var(--primary-800, #075985) 100%);
+  color: white;
+  padding: 2rem;
+  text-align: center;
+}
+
+.encuesta-header h1 {
+  margin: 0 0 1rem 0;
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+
+.encuesta-header p {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  opacity: 0.9;
+}
+
+.encuesta-form {
+  padding: 2rem;
+}
+
+.question-block {
+  margin-bottom: 2rem;
+}
+
+.question-block label {
+  display: block;
+  font-weight: 600;
+  color: var(--text-primary, #1e293b);
+  margin-bottom: 0.75rem;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.stars-container {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-top: 0.5rem;
+}
+
+.star-icon {
+  color: #cbd5e1;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.star-icon:hover {
+  transform: scale(1.1);
+  color: #fbbf24;
+}
+
+.star-icon.filled {
+  color: #fbbf24;
+  fill: #fbbf24;
+}
+
+.encuesta-textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: 8px;
+  font-family: inherit;
+  resize: vertical;
+  transition: border-color 0.2s;
+}
+
+.encuesta-textarea:focus {
+  outline: none;
+  border-color: var(--primary-500, #0ea5e9);
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+}
+
+.encuesta-submit-btn {
+  width: 100%;
+  padding: 1rem;
+  background-color: var(--primary-600, #0284c7);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 1rem;
+}
+
+.encuesta-submit-btn:hover:not(:disabled) {
+  background-color: var(--primary-700, #0369a1);
+}
+
+.encuesta-submit-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.success-icon-wrap {
+  background: #f0fdf4;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+}
+
+.fade-in {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.logo-footer {
+  margin-top: 2rem;
+  color: var(--text-tertiary, #94a3b8);
+  font-size: 0.8rem;
+  border-top: 1px solid var(--border-light, #e2e8f0);
+  padding-top: 1rem;
+}

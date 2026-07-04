@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   BadgeDollarSign, TrendingUp, HardHat, AlertTriangle, Package,
-  ChevronRight, CheckCircle, Clock, Pickaxe, Target, Activity, XCircle
+  ChevronRight, CheckCircle, Clock, Pickaxe, Target, Activity, XCircle, Star
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { db } from '../../services/firebaseConfig';
@@ -169,6 +169,17 @@ const Dashboard = () => {
     return Math.round(obrasEnProceso.reduce((s, o) => s + (Number(o.progress) || 0), 0) / obrasEnProceso.length);
   }, [obrasEnProceso]);
 
+  // ── Derived: Satisfacción del Cliente ──
+  const satisfaccionData = useMemo(() => {
+    const encuestas = obras.filter(o => o.encuesta).map(o => o.encuesta);
+    if (!encuestas.length) return { average: 0, count: 0 };
+    const sum = encuestas.reduce((acc, e) => acc + (Number(e.promedio) || 0), 0);
+    return {
+      average: (sum / encuestas.length).toFixed(1),
+      count: encuestas.length
+    };
+  }, [obras]);
+
   // ── Derived: Alertas de Stock ──
   const alertasStock = useMemo(() => {
     return listaPrecios
@@ -275,6 +286,15 @@ const Dashboard = () => {
           borderColor="#059669"
           iconBg="#ecfdf5"
           iconColor="#059669"
+        />
+        <KpiCard
+          icon={<Star size={20} />}
+          label="Satisfacción Cliente"
+          main={satisfaccionData.count > 0 ? `${satisfaccionData.average} / 5` : 'N/A'}
+          sub={satisfaccionData.count > 0 ? `Basado en ${satisfaccionData.count} encuestas` : 'Sin encuestas'}
+          borderColor="#fbbf24"
+          iconBg="#fef3c7"
+          iconColor="#d97706"
         />
       </div>
 

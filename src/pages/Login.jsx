@@ -70,10 +70,10 @@ const Login = () => {
           <div className="form-group" style={{ marginBottom: '0' }}>
             <label className="form-label">Correo Electrónico</label>
             <input 
-              type="email" 
+              type="text" 
               required 
               className="input-field" 
-              placeholder="admin@eulercalefaccion.com"
+              placeholder="nicolas o email@euler.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />

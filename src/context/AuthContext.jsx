@@ -10,6 +10,13 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const mockUser = localStorage.getItem('mockUser');
+    if (mockUser) {
+      setCurrentUser(JSON.parse(mockUser));
+      setLoading(false);
+      return () => {};
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         try {
@@ -36,6 +43,18 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = (email, password) => {
+    if (email.toLowerCase() === 'nicolas' && password === '1234') {
+      const user = { uid: 'mock_nicolas', email: 'nicolas@euler.com', name: 'Nicolás', role: 'admin' };
+      localStorage.setItem('mockUser', JSON.stringify(user));
+      setCurrentUser(user);
+      return Promise.resolve(user);
+    }
+    if (email.toLowerCase() === 'agustin' && password === '1234') {
+      const user = { uid: 'mock_agustin', email: 'agustin@euler.com', name: 'Agustín', role: 'admin' };
+      localStorage.setItem('mockUser', JSON.stringify(user));
+      setCurrentUser(user);
+      return Promise.resolve(user);
+    }
     return signInWithEmailAndPassword(auth, email, password);
   };
 
@@ -50,6 +69,11 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
+    if (localStorage.getItem('mockUser')) {
+      localStorage.removeItem('mockUser');
+      setCurrentUser(null);
+      return Promise.resolve();
+    }
     return signOut(auth);
   };
 

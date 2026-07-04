@@ -25,19 +25,27 @@ const formatARS = (n) =>
   n != null ? `$ ${Math.round(n).toLocaleString('es-AR')}` : '—';
 
 // ─── LOGO Euler (texto estilizado, se reemplaza con imagen si está disponible)
-const drawLogo = (doc, x, y) => {
-  doc.setFontSize(28);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...EULER_GOLD);
-  doc.text('⚡ EULER', x, y, { align: 'center' });
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(...WHITE);
-  doc.text('CALEFACCIÓN POR AGUA', x, y + 7, { align: 'center' });
+const drawLogo = (doc, x, y, logoBase64) => {
+  if (logoBase64) {
+    // Logo proporcionado (apaisado)
+    const imgWidth = 120;
+    const imgHeight = 40;
+    // Ajustar posición X e Y (x es el centro, y es la posición superior aproximada en el original)
+    doc.addImage(logoBase64, 'PNG', x - (imgWidth / 2), y - 10, imgWidth, imgHeight);
+  } else {
+    doc.setFontSize(28);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...EULER_GOLD);
+    doc.text('⚡ EULER', x, y, { align: 'center' });
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...WHITE);
+    doc.text('CALEFACCIÓN POR AGUA', x, y + 7, { align: 'center' });
+  }
 };
 
 // ─── PÁGINA 1: Portada ───────────────────────────────────────────────────────
-const buildPortada = (doc, presupuesto) => {
+const buildPortada = (doc, presupuesto, logoBase64) => {
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
 
@@ -52,7 +60,7 @@ const buildPortada = (doc, presupuesto) => {
   doc.rect(0, H - 24, W, 2, 'F');
 
   // Logo
-  drawLogo(doc, W / 2, 80);
+  drawLogo(doc, W / 2, 80, logoBase64);
 
   // Separador
   doc.setDrawColor(...[42, 90, 138]);
@@ -431,6 +439,24 @@ const buildGarantiasYCierre = (doc, presupuesto) => {
 
 // ─── FUNCIÓN PRINCIPAL ───────────────────────────────────────────────────────
 
+// Helper para convertir imagen a Base64
+const getBase64ImageFromURL = (url) => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'Anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = error => reject(error);
+    img.src = url;
+  });
+};
+
 /**
  * Genera y descarga el PDF del presupuesto.
  * @param {Object} presupuesto - El documento del presupuesto de Firestore
@@ -440,9 +466,17 @@ const buildGarantiasYCierre = (doc, presupuesto) => {
 export async function generarPDFPresupuesto(presupuesto, folletoUrls = [], onProgress = null) {
   const jspdfInstance = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
+  // Cargar el logo desde public/logo_euler.png si existe
+  let logoBase64 = null;
+  try {
+    logoBase64 = await getBase64ImageFromURL('/logo_euler.png');
+  } catch (e) {
+    console.warn('No se pudo cargar el logo de Euler', e);
+  }
+
   // Paso 1-4: páginas del presupuesto
   onProgress?.(0.1);
-  buildPortada(jspdfInstance, presupuesto);
+  buildPortada(jspdfInstance, presupuesto, logoBase64);
   onProgress?.(0.2);
   buildTablaItems(jspdfInstance, presupuesto);
   onProgress?.(0.3);

@@ -358,6 +358,7 @@ const KanbanBoard = () => {
       };
       const newItems = {};
       docs.forEach(d => {
+        if (d.deleted) return;
         const tags = Array.isArray(d.tags) ? d.tags : [d.paramSistema || 'S/D'];
         newItems[d.id] = { ...d, tags };
         (newCols[d.status] || newCols['pendiente']).itemsIds.push(d.id);
@@ -551,6 +552,16 @@ const KanbanBoard = () => {
 
   const removeItem = id => setBuilderItems(prev => prev.filter(i => i.id !== id));
 
+  // ─── Soft Delete ────────────────────────────────────────────────────────────
+  const handleSoftDeleteLead = async () => {
+    if (!selectedLead) return;
+    if (!window.confirm(`¿Seguro que deseas mover este presupuesto a la papelera?`)) return;
+    try {
+      await updateDoc(doc(db, 'presupuestos', selectedLead.id), { deleted: true });
+      setSelectedLead(null);
+    } catch (e) { alert('Error: ' + e.message); }
+  };
+
   // ─── Save detail (without new revision) ─────────────────────────────────────
   const saveDetail = async () => {
     if (!selectedLead || !editLeadFields) return;
@@ -668,6 +679,44 @@ const KanbanBoard = () => {
   };
 
   // ─── Delete lead ────────────────────────────────────────────────────────────
+  const handleDownloadHistoricalPDF = async (rev) => {
+    setIsGeneratingPDF(true);
+    setPdfProgress(0);
+    try {
+      const historicalPresupuestoData = {
+        ...selectedLead,
+        quoteItems: rev.quoteItems || [],
+        canal: rev.canal || 'iva',
+        notas: rev.notas || '',
+        cambiosRealizados: rev.cambiosRealizados || '',
+        revision: rev.revisionNumber || 0,
+        amount: rev.amount || 0,
+        date: new Date(rev.savedAt).toLocaleDateString('es-AR')
+      };
+      
+      const autoSelectedUrls = [];
+      (rev.quoteItems || []).forEach(bi => {
+        const catalogItem = listaItems.find(li => li.id === bi.listaItemId || li.descripcion === bi.descripcion);
+        if (catalogItem) {
+          const url = catalogItem.folletoUrl || getAutoFolletoUrl(catalogItem);
+          if (url) {
+            autoSelectedUrls.push(url);
+          }
+        }
+      });
+      const folletoUrls = [...new Set(autoSelectedUrls)].map(url => ({ url }));
+
+      await generarPDFPresupuesto(historicalPresupuestoData, folletoUrls, (p) => setPdfProgress(p));
+    } catch (err) {
+      console.error(err);
+      alert('Error al generar PDF: ' + err.message);
+    } finally {
+      setIsGeneratingPDF(false);
+      setPdfProgress(0);
+    }
+  };
+
+  // ─── Drag and Drop (Kanban) ─────────────────────────────────────────────────
   const deleteLead = async () => {
     if (!selectedLead) return;
     if (!window.confirm(`¿Eliminar lead "${selectedLead.name}"?`)) return;
@@ -684,6 +733,11 @@ const KanbanBoard = () => {
     if (destination.droppableId === source.droppableId && destination.index === source.index) return;
     const finishCol = data.columns[destination.droppableId];
     if (data.columns[source.droppableId] === finishCol) return;
+
+    if (source.droppableId === 'aprobado') {
+      alert("No se puede mover un presupuesto fuera de 'Aprobado'.");
+      return;
+    }
 
     if (finishCol.id === 'aprobado') {
       setPendingMove(result);
@@ -2388,9 +2442,19 @@ const KanbanBoard = () => {
                             </span>
                             {rev.canal === 'canal2' && <span style={{ marginLeft:'0.5rem',fontSize:'0.7rem',backgroundColor:'#fef3c7',color:'#92400e',padding:'0.1rem 0.4rem',borderRadius:'8px' }}>Canal 2</span>}
                           </div>
-                          <span style={{ fontWeight:'700',color:'var(--primary-600)' }}>
-                            $ {(rev.amount || 0).toLocaleString('es-AR')}
-                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <span style={{ fontWeight:'700',color:'var(--primary-600)' }}>
+                              $ {(rev.amount || 0).toLocaleString('es-AR')}
+                            </span>
+                            <button 
+                              onClick={() => handleDownloadHistoricalPDF(rev)}
+                              title="Descargar PDF de esta versión"
+                              disabled={isGeneratingPDF}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary-600)', display: 'flex', alignItems: 'center', opacity: isGeneratingPDF ? 0.5 : 1 }}
+                            >
+                              {isGeneratingPDF ? <Loader size={16} className="spin" /> : <Download size={16} />}
+                            </button>
+                          </div>
                         </div>
                         {rev.cambiosRealizados && (
                           <div style={{ background:'#fefce8',border:'1px solid #fde68a',borderRadius:'6px',padding:'0.5rem 0.75rem',fontSize:'0.8rem',color:'#92400e',marginBottom:'0.5rem' }}>
@@ -2415,8 +2479,16 @@ const KanbanBoard = () => {
                 <Trash2 size={16}/> Eliminar Lead
               </button>
               {detailTab !== 'historial' && (
-                <div style={{ display:'flex',gap:'0.5rem',flexWrap:'wrap' }}>
-                  {/* Botón Generar PDF */}
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                  <button 
+                    onClick={handleSoftDeleteLead}
+                    disabled={isSavingDetail}
+                    style={{ background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', padding: '0.4rem 0.9rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', fontWeight: '600' }}
+                  >
+                    <Trash2 size={15} /> Mover a Papelera
+                  </button>
+                  <div style={{ display:'flex',gap:'0.5rem',flexWrap:'wrap' }}>
+                    {/* Botón Generar PDF */}
                   <button
                     onClick={() => {
                       const autoSelectedUrls = [];
@@ -2443,6 +2515,7 @@ const KanbanBoard = () => {
                     <Save size={16}/> {isSavingDetail ? 'Guardando...' : 'Guardar Nueva Revisión'}
                   </button>
                 </div>
+              </div>
               )}
             </div>
           </div>
