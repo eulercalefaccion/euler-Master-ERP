@@ -57,35 +57,60 @@ const TABS = [
 /*  Helpers                                                */
 /* ─────────────────────────────────────────────────────── */
 const getStatusBadge = (estado, phase) => {
-  let bg = '#f1f5f9';
-  let color = '#475569';
-  let text = estado || 'Pendiente de Inicio';
+  let obraText = 'Pendiente de Inicio';
+  let obraBg = '#f1f5f9';
+  let obraColor = '#475569';
+  
+  let instText = 'Pendiente de Inicio';
+  let instBg = '#f1f5f9';
+  let instColor = '#475569';
 
-  if (estado === 'Pendiente de Inicio') {
-    bg = '#f1f5f9'; color = '#475569';
-  } else if (estado === 'En Proceso') {
-    bg = '#dbeafe'; color = '#1d4ed8';
-  } else if (estado === 'Finalizada') {
-    bg = '#d1fae5'; color = '#059669';
-    if (phase === 'Obra') {
-      text = 'Obra de Cañería Finalizada e Instalación de Equipos Pendiente';
-    } else if (phase === 'Instalación') {
-      text = 'Instalación de Equipos Finalizada';
+  if (phase === 'Obra') {
+    if (estado === 'Pendiente de Inicio') {
+      obraText = 'Pendiente de Inicio';
+    } else if (estado === 'En Proceso') {
+      obraText = 'En Proceso';
+      obraBg = '#dbeafe'; obraColor = '#1d4ed8';
+    } else if (estado === 'Finalizada') {
+      obraText = 'Finalizada';
+      obraBg = '#d1fae5'; obraColor = '#059669';
     }
-  } 
+  } else if (phase === 'Instalación') {
+    obraText = 'Finalizada';
+    obraBg = '#d1fae5'; obraColor = '#059669';
+    
+    if (estado === 'Pendiente de Inicio') {
+      instText = 'Pendiente de Inicio';
+    } else if (estado === 'En Proceso') {
+      instText = 'En Proceso';
+      instBg = '#dbeafe'; instColor = '#1d4ed8';
+    } else if (estado === 'Finalizada') {
+      instText = 'Finalizada';
+      instBg = '#d1fae5'; instColor = '#059669';
+    }
+  }
+
   // Fallbacks for older data
-  else if (estado === 'Instalación Pendiente') {
-    bg = '#fef3c7'; color = '#d97706'; text = 'Instalación de Equipos Pendiente';
+  if (estado === 'Instalación Pendiente') {
+    obraText = 'Finalizada'; obraBg = '#d1fae5'; obraColor = '#059669';
+    instText = 'Pendiente de Inicio';
   } else if (estado === 'Instalación en Proceso') {
-    bg = '#dbeafe'; color = '#1d4ed8'; text = 'Instalación de Equipos en Proceso';
+    obraText = 'Finalizada'; obraBg = '#d1fae5'; obraColor = '#059669';
+    instText = 'En Proceso'; instBg = '#dbeafe'; instColor = '#1d4ed8';
   } else if (estado === 'Instalación Finalizada') {
-    bg = '#d1fae5'; color = '#059669'; text = 'Instalación de Equipos Finalizada';
+    obraText = 'Finalizada'; obraBg = '#d1fae5'; obraColor = '#059669';
+    instText = 'Finalizada'; instBg = '#d1fae5'; instColor = '#059669';
   }
 
   return (
-    <span className="badge" style={{ backgroundColor: bg, color: color, fontWeight: '600' }}>
-      {text}
-    </span>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', alignItems: 'flex-start' }}>
+      <span className="badge" style={{ backgroundColor: obraBg, color: obraColor, fontWeight: '600' }}>
+        Obra de Cañería: {obraText}
+      </span>
+      <span className="badge" style={{ backgroundColor: instBg, color: instColor, fontWeight: '600' }}>
+        Instalación de Equipos: {instText}
+      </span>
+    </div>
   );
 };
 
