@@ -161,8 +161,9 @@ const Dashboard = () => {
   [pipelineMap]);
 
   // ── Derived: Obras ──
-  const obrasEnProceso = useMemo(() => obras.filter(o => o.estado === 'En Proceso'), [obras]);
-  const obrasPendientesInicio = useMemo(() => obras.filter(o => o.estado === 'Pendiente de Inicio'), [obras]);
+  const obrasEnProceso = useMemo(() => obras.filter(o => !o.deleted && o.estado === 'En Proceso'), [obras]);
+  const obrasPendientesInicio = useMemo(() => obras.filter(o => !o.deleted && o.estado === 'Pendiente de Inicio'), [obras]);
+  const obrasActivasList = useMemo(() => obras.filter(o => !o.deleted && (o.estado === 'En Proceso' || o.estado === 'Pendiente de Inicio')), [obras]);
 
   const progAvg = useMemo(() => {
     if (!obrasEnProceso.length) return 0;
@@ -336,20 +337,21 @@ const Dashboard = () => {
               fontSize: '0.7rem', fontWeight: 600, padding: '0.15rem 0.5rem',
               borderRadius: 20, background: '#eff6ff', color: '#3b82f6',
             }}>
-              {obrasEnProceso.length} en proceso
+              {obrasActivasList.length} activas
             </span>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', overflowY: 'auto', maxHeight: 320 }}>
-            {obrasEnProceso.length === 0 ? (
+            {obrasActivasList.length === 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem', color: 'var(--text-tertiary)', gap: '0.5rem' }}>
                 <HardHat size={32} strokeWidth={1.2} />
-                <p style={{ margin: 0, fontSize: '0.85rem' }}>No hay obras en proceso</p>
+                <p style={{ margin: 0, fontSize: '0.85rem' }}>No hay obras activas</p>
               </div>
             ) : (
-              obrasEnProceso.map(obra => {
+              obrasActivasList.map(obra => {
                 const pct = Number(obra.progress) || 0;
                 const barColor = pct >= 75 ? '#10b981' : pct >= 40 ? '#f59e0b' : '#3b82f6';
+                const isPendiente = obra.estado === 'Pendiente de Inicio';
                 return (
                   <div key={obra.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', padding: '0.5rem 0', borderBottom: '1px dashed var(--border-light)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
@@ -365,16 +367,20 @@ const Dashboard = () => {
                         <SistemaBadge system={obra.system} />
                         <span style={{
                           fontSize: '0.65rem', fontWeight: 600, padding: '0.1rem 0.4rem',
-                          borderRadius: 4, background: '#dbeafe', color: '#1d4ed8',
+                          borderRadius: 4, 
+                          background: isPendiente ? '#f1f5f9' : '#dbeafe', 
+                          color: isPendiente ? '#475569' : '#1d4ed8',
                         }}>
-                          En Proceso
+                          {isPendiente ? 'Pendiente' : 'En Proceso'}
                         </span>
                       </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <ProgressBar pct={pct} color={barColor} />
-                      <span style={{ fontSize: '0.72rem', fontWeight: 600, color: barColor, minWidth: 28, textAlign: 'right' }}>{pct}%</span>
-                    </div>
+                    {!isPendiente && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.2rem' }}>
+                        <ProgressBar pct={pct} color={barColor} />
+                        <span style={{ fontSize: '0.72rem', fontWeight: 600, color: barColor, minWidth: 28, textAlign: 'right' }}>{pct}%</span>
+                      </div>
+                    )}
                   </div>
                 );
               })
