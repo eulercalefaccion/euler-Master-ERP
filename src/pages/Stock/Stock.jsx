@@ -200,6 +200,8 @@ const Stock = () => {
                 const status = getStockStatus(item);
                 const stock = item.stock ?? 0;
                 const minimo = item.stockMinimo ?? 0;
+                const reservado = item.stockReservado ?? 0;
+                const disponible = Math.max(0, stock - reservado);
                 const isEditing = editingId === item.id;
                 const valorLinea = tc && item.costoUSD ? Math.round(item.costoUSD * stock * tc.valor) : null;
 
