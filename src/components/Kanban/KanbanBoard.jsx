@@ -129,10 +129,12 @@ const KanbanBoard = () => {
 
   const [clientesList, setClientesList]   = useState([]);
   const [listaItems, setListaItems]       = useState([]);   // lista_precios
+  const [estandares, setEstandares]       = useState([]);   // estandares
   const [tc, setTc]                       = useState(null);
   const [tcLoading, setTcLoading]         = useState(true);
 
   // Modals
+  const [isStandardsModalOpen, setIsStandardsModalOpen] = useState(false);
   const [isApprovalOpen, setIsApprovalOpen] = useState(false);
   const [isLeadModalOpen, setIsLeadModalOpen] = useState(false);
   const [isRevModalOpen, setIsRevModalOpen]   = useState(false);
@@ -345,6 +347,10 @@ const KanbanBoard = () => {
       setListaItems(items);
     });
 
+    const unsubEstandares = onSnapshot(collection(db, 'estandares'), snap => {
+      setEstandares(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+
     // Presupuestos
     const unsubPresupuestos = onSnapshot(query(collection(db, 'presupuestos')), snap => {
       const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -366,7 +372,12 @@ const KanbanBoard = () => {
       setData(prev => ({ ...prev, items: newItems, columns: newCols }));
     });
 
-    return () => { unsubClientes(); unsubLista(); unsubPresupuestos(); };
+    return () => { 
+      unsubClientes(); 
+      unsubLista(); 
+      unsubEstandares();
+      unsubPresupuestos(); 
+    };
   }, []);
 
   // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -457,31 +468,21 @@ const KanbanBoard = () => {
       );
       if (!confirmReplace) return;
     }
+    
+    setIsStandardsModalOpen(true);
+  };
 
-    const templates = [
-      { term: 'nereus 500', defaultQty: 30, fallbackDesc: 'ELEMENTO DE RADIADOR NEREUS 500MM', defaultType: 'material', defaultUnit: 'unidad' },
-      { term: 'valvula micrometrica', defaultQty: 5, fallbackDesc: 'VALVULA MICROMETRICA ESCUADRA - R705X013 - GIACOMINI', defaultType: 'material', defaultUnit: 'unidad' },
-      { term: 'detentor escuadra', defaultQty: 5, fallbackDesc: 'DETENTOR ESCUADRA GIACOMINI 1/2" R16X033 (RETORNO)', defaultType: 'material', defaultUnit: 'unidad' },
-      { term: 'roseta', defaultQty: 10, fallbackDesc: 'Roseta Embellecedor para niple de 1/2"', defaultType: 'material', defaultUnit: 'unidad' },
-      { term: 'niple', defaultQty: 10, fallbackDesc: 'Niple de acero Inoxidable 8cm 1/2"', defaultType: 'material', defaultUnit: 'unidad' },
-      { term: 'hy02b05', defaultQty: 1, fallbackDesc: 'TERMOSTATO ASUA DIGITAL PROGRAMABLE HY02B05 (CUADRADO BLANCO-BOTONES)', defaultType: 'material', defaultUnit: 'unidad' },
-      { term: 'instalación radiador', defaultQty: 5, fallbackDesc: 'Mano de obra Instalación de radiadores', defaultType: 'mano_de_obra', defaultUnit: 'servicio' },
-      { term: 'eco nova 24', defaultQty: 1, fallbackDesc: 'CALDERA BAXI ECO NOVA 24 F', defaultType: 'material', defaultUnit: 'unidad' },
-      { term: 'inst. caldera', defaultQty: 1, fallbackDesc: 'Mano de obra Instalación de caldera', defaultType: 'mano_de_obra', defaultUnit: 'servicio' },
-      { term: 'flexibles hidrá', defaultQty: 1, fallbackDesc: 'KIT DE FLEXIBLES HIDRÁULICOS PARA CALDERA DUAL', defaultType: 'material', defaultUnit: 'unidad' },
-      { term: 'nereus 80 blanco', defaultQty: 1, fallbackDesc: 'TOALLERO CURVO NEREUS 80 BLANCO (450MM ENTRE EJES)', defaultType: 'material', defaultUnit: 'unidad' },
-      { term: 'pressfitting', defaultQty: 1, fallbackDesc: 'Mano de obra y Materiales para cañería de calefacción por agua en sistema pressfitting de polietileno reticulado', defaultType: 'mano_de_obra', defaultUnit: 'servicio' },
-    ];
-
+  const confirmLoadStandard = (standard) => {
+    setIsStandardsModalOpen(false);
     const tcValor = tc?.valor || 1;
 
-    const newItems = templates.map((tpl, index) => {
-      let found = listaItems.find(i => {
-        const desc = (i.descripcion || '').toLowerCase();
-        return tpl.term.split(' ').every(w => desc.includes(w));
-      });
+    const newItems = standard.items.map((estItem, index) => {
+      let found = listaItems.find(i => i.id === estItem.itemId);
+      if (!found && estItem.itemId !== 'unknown') {
+         found = listaItems.find(i => (i.descripcion || '').toLowerCase() === (estItem.descripcion || '').toLowerCase());
+      }
 
-      const qty = tpl.defaultQty;
+      const qty = estItem.defaultQty;
 
       if (found) {
         const unitPrice = calcPrecioItem(found, canal, tcValor);
@@ -489,11 +490,11 @@ const KanbanBoard = () => {
           id: `${Date.now()}_${index}_${Math.random().toString(36).substr(2, 5)}`,
           listaItemId:    found.id,
           descripcion:    found.descripcion,
-          tipo:           found.tipo || tpl.defaultType,
+          tipo:           found.tipo || estItem.tipo,
           costoUSD:       found.costoUSD || null,
           markup:         found.markup || null,
           precioVentaUSD: found.precioVentaUSD || null,
-          unidad:         found.unidad || tpl.defaultUnit,
+          unidad:         found.unidad || estItem.unidad,
           quantity:       qty,
           unitPrice,
           subtotal:       Math.round(unitPrice * qty)
@@ -502,12 +503,12 @@ const KanbanBoard = () => {
         return {
           id: `${Date.now()}_${index}_${Math.random().toString(36).substr(2, 5)}`,
           listaItemId:    'custom_fallback_' + index,
-          descripcion:    tpl.fallbackDesc,
-          tipo:           tpl.defaultType,
+          descripcion:    estItem.descripcion,
+          tipo:           estItem.tipo,
           costoUSD:       null,
           markup:         null,
           precioVentaUSD: null,
-          unidad:         tpl.defaultUnit,
+          unidad:         estItem.unidad,
           quantity:       qty,
           unitPrice:      0,
           subtotal:       0
@@ -1053,6 +1054,47 @@ const KanbanBoard = () => {
               <button className="btn btn-primary" onClick={confirmApproval} disabled={isApproving}>
                 {isApproving ? 'Procesando...' : '✓ Cerrar Venta y Generar Obra'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ──────────────────────────────────────────────────────────────────────
+          MODAL: Seleccionar Estándar
+      ────────────────────────────────────────────────────────────────────── */}
+      {isStandardsModalOpen && (
+        <div style={{ position:'fixed',top:0,left:0,right:0,bottom:0,backgroundColor:'rgba(0,0,0,0.6)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000 }}>
+          <div className="card" style={{ width:'500px',maxWidth:'95vw',display:'flex',flexDirection:'column',gap:'1.25rem' }}>
+            <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',borderBottom:'1px solid var(--border-light)',paddingBottom:'0.75rem' }}>
+              <h3 style={{ margin:0,fontSize:'1.1rem',fontWeight:'600', display:'flex', alignItems:'center', gap:'0.5rem' }}>
+                ⚡ Cargar Estándar
+              </h3>
+              <button onClick={() => setIsStandardsModalOpen(false)} style={{ background:'none',border:'none',cursor:'pointer',color:'var(--text-tertiary)' }}><X size={20}/></button>
+            </div>
+            
+            <div style={{ display:'flex',flexDirection:'column',gap:'0.5rem', maxHeight:'60vh', overflowY:'auto' }}>
+              {estandares.length === 0 ? (
+                <div style={{ textAlign:'center', padding:'2rem', color:'var(--text-tertiary)', fontSize:'0.9rem' }}>
+                  No hay estándares creados. Ve a la sección "Estándares" en el menú para crear uno.
+                </div>
+              ) : (
+                estandares.map(est => (
+                  <button 
+                    key={est.id}
+                    onClick={() => confirmLoadStandard(est)}
+                    style={{
+                      padding:'1rem', textAlign:'left', borderRadius:'8px', border:'1px solid var(--border-light)',
+                      background:'white', cursor:'pointer', display:'flex', flexDirection:'column', gap:'0.25rem',
+                      transition:'all 0.2s'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--primary-400)'}
+                    onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border-light)'}
+                  >
+                    <span style={{ fontWeight:'600', fontSize:'0.95rem', color:'var(--text-primary)' }}>{est.nombre}</span>
+                    <span style={{ fontSize:'0.8rem', color:'var(--text-secondary)' }}>Contiene {est.items?.length || 0} artículos</span>
+                  </button>
+                ))
+              )}
             </div>
           </div>
         </div>

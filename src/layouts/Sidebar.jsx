@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, Calculator, ClipboardList, Package, MapPin, Receipt, HardHat, Wallet, DollarSign, Trash2 } from 'lucide-react';
+import { LayoutDashboard, Users, Calculator, ClipboardList, Package, MapPin, Receipt, HardHat, Wallet, DollarSign, Trash2, Zap } from 'lucide-react';
 
 const Sidebar = () => {
   const sections = [
@@ -15,6 +15,7 @@ const Sidebar = () => {
       items: [
         { name: 'Clientes', icon: <Users size={20} />, path: '/clientes' },
         { name: 'Presupuestos', icon: <Calculator size={20} />, path: '/presupuestos' },
+        { name: 'Estándares', icon: <Zap size={20} />, path: '/estandares' },
         { name: 'Lista de Precios', icon: <DollarSign size={20} />, path: '/lista-precios' },
       ]
     },

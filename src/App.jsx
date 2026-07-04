@@ -16,6 +16,7 @@ import Sueldos from './pages/Sueldos/Sueldos';
 import ListaPrecios from './pages/ListaPrecios/ListaPrecios';
 import EncuestaObra from './pages/EncuestaObra/EncuestaObra';
 import Papelera from './pages/Papelera/Papelera';
+import Estandares from './pages/Estandares/Estandares';
 
 // Rutas Privadas
 const PrivateRoute = ({ children }) => {
@@ -38,6 +39,7 @@ function App() {
         <Route path="/obras" element={<PrivateRoute><Obras /></PrivateRoute>} />
         <Route path="/stock" element={<PrivateRoute><Stock /></PrivateRoute>} />
         <Route path="/lista-precios" element={<PrivateRoute><ListaPrecios /></PrivateRoute>} />
+        <Route path="/estandares" element={<PrivateRoute><Estandares /></PrivateRoute>} />
         <Route path="/jornadas" element={<PrivateRoute><Jornadas /></PrivateRoute>} />
         <Route path="/personas" element={<PrivateRoute><Personas /></PrivateRoute>} />
         <Route path="/balance" element={<PrivateRoute><Balance /></PrivateRoute>} />
