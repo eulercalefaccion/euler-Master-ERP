@@ -6,10 +6,12 @@ import {
 } from 'lucide-react';
 import { db, storage } from '../../services/firebaseConfig';
 import {
-  collection, onSnapshot, query, addDoc, updateDoc, doc,
+  collection, onSnapshot, query, addDoc, updateDoc, doc, getDoc,
   serverTimestamp, increment, arrayUnion, arrayRemove
 } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
+import { generarPDFPresupuesto } from '../../services/pdfPresupuesto';
+import { getTipoCambio } from '../../services/tipoCambioService';
 
 const addBusinessDays = (startDateStr, days) => {
   if (!days) return startDateStr;
@@ -177,6 +179,24 @@ const Obras = () => {
   useEffect(() => {
     selectedObraIdRef.current = selectedObra?.id || null;
   }, [selectedObra]);
+
+  const handleDownloadPDF = async (presupuestoId) => {
+    if (!presupuestoId) return;
+    try {
+      const docRef = doc(db, 'presupuestos', presupuestoId);
+      const docSnap = await getDoc(docRef);
+      if (!docSnap.exists()) {
+        alert("El presupuesto original no fue encontrado en la base de datos.");
+        return;
+      }
+      const tc = await getTipoCambio();
+      const presupuestoData = { id: docSnap.id, ...docSnap.data() };
+      generarPDFPresupuesto(presupuestoData, tc?.valor || 1000);
+    } catch (err) {
+      console.error(err);
+      alert("Ocurrió un error al intentar descargar el presupuesto.");
+    }
+  };
 
   /* ── Firestore listener ── */
   useEffect(() => {
@@ -638,9 +658,17 @@ const Obras = () => {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         {presId && (
-          <div style={{ padding: '0.75rem 1rem', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', fontSize: '0.875rem', color: '#1d4ed8', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <FileText size={15} />
-            Materiales vinculados al Presupuesto <strong>#{presId}</strong>
+          <div style={{ padding: '0.75rem 1rem', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', fontSize: '0.875rem', color: '#1d4ed8', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <FileText size={15} />
+              Materiales vinculados al Presupuesto <strong>{selectedObra?.presupuestoOrigen || `#${presId}`}</strong>
+            </div>
+            <button 
+              onClick={() => handleDownloadPDF(presId)}
+              style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '0.4rem 0.75rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' }}
+            >
+              <Download size={14} /> Descargar PDF
+            </button>
           </div>
         )}
         {items.length === 0 ? (

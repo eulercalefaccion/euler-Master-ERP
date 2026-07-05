@@ -742,6 +742,12 @@ const KanbanBoard = () => {
     }
 
     if (finishCol.id === 'aprobado') {
+      const itemToMove = data.items[draggableId];
+      if (!itemToMove || !itemToMove.quoteItems || itemToMove.quoteItems.length === 0) {
+        alert("No se puede aprobar un presupuesto vacío. Debe contener al menos un artículo.");
+        return;
+      }
+      
       setPendingMove(result);
       setIsApprovalOpen(true);
       return;
