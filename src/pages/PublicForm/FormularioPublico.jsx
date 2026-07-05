@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Camera, Video, UploadCloud, X, CheckCircle, Loader, MapPin } from 'lucide-react';
+import { Camera, Video, UploadCloud, X, CheckCircle, Loader, MapPin, User } from 'lucide-react';
 import './FormularioPublico.css';
 import MapPicker from '../../components/MapPicker/MapPicker';
 
