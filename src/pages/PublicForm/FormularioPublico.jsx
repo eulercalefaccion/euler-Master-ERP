@@ -56,81 +56,93 @@ const FormularioPublico = () => {
     return [dirCalle, dirAltura, dirLocalidad, dirProvincia].filter(Boolean).join(', ');
   };
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     if (e.target.files) {
       const newFiles = Array.from(e.target.files);
-      const validFiles = newFiles.filter(file => file.size <= 200 * 1024 * 1024); // max 200MB
+      const validFiles = newFiles.filter(file => file.size <= 200 * 1024 * 1024);
       
       if (validFiles.length < newFiles.length) {
         alert("Algunos archivos superan el límite de 200MB y no fueron agregados.");
       }
       
-      setArchivos(prev => [...prev, ...validFiles]);
-    }
-    // reset input
-    e.target.value = '';
-  };
+      if (validFiles.length === 0) return;
 
-  const removeFile = (indexToRemove) => {
-    setArchivos(prev => prev.filter((_, idx) => idx !== indexToRemove));
-  };
+      try {
+        if (!auth.currentUser) {
+          await signInAnonymously(auth);
+        }
+      } catch (err) {
+        console.error("Error signing in anonymously:", err);
+      }
 
-  const isProfesional = ['Arquitecto/Estudio de Arquitectura', 'Constructora', 'Desarrolladora'].includes(formData.tipoContacto);
+      validFiles.forEach(file => {
+        const fileId = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+        
+        // Agregar archivo en estado 'uploading'
+        setArchivos(prev => [...prev, {
+          id: fileId,
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          status: 'uploading',
+          progress: 0,
+          url: null
+        }]);
 
-  const uploadFiles = async () => {
-    const uploadedUrls = [];
-    
-    const uploadPromises = archivos.map((file, i) => {
-      return new Promise((resolve, reject) => {
-        const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-        const storageRef = ref(storage, `public_leads_attachments/${fileName}`);
+        const storageRef = ref(storage, `public_leads_attachments/${fileId}`);
         const uploadTask = uploadBytesResumable(storageRef, file);
 
         uploadTask.on(
           'state_changed',
           (snapshot) => {
             const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-            setUploadProgress(prev => ({ ...prev, [i]: progress }));
+            setArchivos(prev => prev.map(a => a.id === fileId ? { ...a, progress } : a));
           },
           (error) => {
             console.error("Error uploading file:", error);
-            reject(error);
+            setArchivos(prev => prev.map(a => a.id === fileId ? { ...a, status: 'error' } : a));
           },
           async () => {
             try {
               const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-              uploadedUrls.push({
-                name: file.name,
-                url: downloadURL,
-                type: file.type,
-                size: file.size
-              });
-              resolve();
+              setArchivos(prev => prev.map(a => a.id === fileId ? { ...a, status: 'success', url: downloadURL, progress: 100 } : a));
             } catch (e) {
               console.error("Error getting download URL:", e);
-              reject(e);
+              setArchivos(prev => prev.map(a => a.id === fileId ? { ...a, status: 'error' } : a));
             }
           }
         );
       });
-    });
-
-    await Promise.all(uploadPromises);
-    return uploadedUrls;
+    }
+    // reset input
+    e.target.value = '';
   };
+
+  const removeFile = (idToRemove) => {
+    setArchivos(prev => prev.filter(a => a.id !== idToRemove));
+  };
+
+  const isProfesional = ['Arquitecto/Estudio de Arquitectura', 'Constructora', 'Desarrolladora'].includes(formData.tipoContacto);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    const isUploading = archivos.some(a => a.status === 'uploading');
+    if (isUploading) {
+      alert("Por favor esperá a que terminen de cargarse los archivos antes de enviar.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      // Intentar login anónimo si no hay usuario (para permisos de Storage/Firestore)
-      if (!auth.currentUser) {
-        await signInAnonymously(auth);
-      }
-
-      // 1. Subir archivos
-      const urlsAdjuntos = await uploadFiles();
+      // 1. Tomar URLs de archivos subidos exitosamente
+      const urlsAdjuntos = archivos.filter(a => a.status === 'success').map(a => ({
+        name: a.name,
+        url: a.url,
+        type: a.type,
+        size: a.size
+      }));
 
       // 2. Obtener próximo número de presupuesto
       let presupuestoNumber = '';
@@ -371,18 +383,25 @@ const FormularioPublico = () => {
             {/* Lista de archivos seleccionados */}
             {archivos.length > 0 && (
               <div className="file-list">
-                {archivos.map((file, idx) => (
-                  <div key={idx} className="file-item">
+                {archivos.map((file) => (
+                  <div key={file.id} className="file-item">
                     <div className="file-item-info">
-                      {isSubmitting ? (
-                        <Loader size={14} className="animate-spin" />
+                      {file.status === 'uploading' ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
+                          <Loader size={14} className="animate-spin" color="#3b82f6" />
+                          <div style={{ flex: 1, background: '#e2e8f0', height: '6px', borderRadius: '3px', overflow: 'hidden' }}>
+                            <div style={{ background: '#3b82f6', height: '100%', width: `${file.progress}%`, transition: 'width 0.2s' }}></div>
+                          </div>
+                        </div>
+                      ) : file.status === 'error' ? (
+                        <X size={14} color="#ef4444" />
                       ) : (
                         <CheckCircle size={14} color="#10b981" />
                       )}
                       <span className="file-item-name" title={file.name}>{file.name}</span>
                     </div>
-                    {!isSubmitting && (
-                      <button type="button" className="btn-remove-file" onClick={() => removeFile(idx)}>
+                    {file.status !== 'uploading' && !isSubmitting && (
+                      <button type="button" className="btn-remove-file" onClick={() => removeFile(file.id)}>
                         <X size={16} />
                       </button>
                     )}
