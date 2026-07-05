@@ -75,7 +75,7 @@ const ReportesIA = () => {
           sueldosData = {
             empleados: (sData.employees || []).map(e => ({ nombre: e.name, rol: e.category, base: e.baseSalary })),
             historialParitarias: sData.paritariasHistory || [],
-            ultimasLiquidaciones: (sData.liquidations || []).slice(-20).map(l => ({ empleado: l.employeeName, totalAbonado: l.totalToPay, fecha: l.date }))
+            ultimasLiquidaciones: (sData.liquidations || []).map(l => ({ empleado: l.employeeName, totalAbonado: l.totalToPay, fecha: l.date }))
           };
         }
       } catch (err) {
