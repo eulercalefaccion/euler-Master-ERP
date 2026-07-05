@@ -107,7 +107,8 @@ Responde la pregunta del usuario basándote SOLO en estos datos si te pide métr
       });
       
       if (!res.ok) {
-        throw new Error(`Error de API: ${res.status}`);
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(`Error de API: ${res.status} - ${errorData.error?.message || res.statusText}`);
       }
 
       const json = await res.json();
@@ -115,7 +116,8 @@ Responde la pregunta del usuario basándote SOLO en estos datos si te pide métr
 
       setMessages(prev => [...prev, { role: 'model', text: botReply }]);
     } catch (error) {
-      setMessages(prev => [...prev, { role: 'model', text: 'Hubo un error de conexión con la IA. Verifica tu API Key o conexión a internet.' }]);
+      console.error(error);
+      setMessages(prev => [...prev, { role: 'model', text: `Hubo un error de conexión con la IA. Detalle: ${error.message}` }]);
     } finally {
       setLoading(false);
     }
