@@ -1740,7 +1740,7 @@ const KanbanBoard = () => {
             </div>
 
             {/* Panel body */}
-            <div style={{ flex:1,overflowY:'auto',padding:'1rem',display:'flex',flexDirection:'column',gap:'0.75rem' }}>
+            <div style={{ flex:1,minHeight:0,overflowY:'auto',padding:'1rem',display:'flex',flexDirection:'column',gap:'0.75rem' }}>
 
               {detailTab === 'cotizador' && (
                 <>
