@@ -26,7 +26,6 @@ const KanbanCard = ({ item, index, onCardClick }) => {
           {...provided.dragHandleProps}
           onClick={() => onCardClick && onCardClick(item)}
           style={{
-            ...provided.draggableProps.style,
             userSelect: 'none',
             padding: '1rem',
             margin: '0 0 0.75rem 0',
@@ -40,6 +39,7 @@ const KanbanCard = ({ item, index, onCardClick }) => {
             gap: '0.5rem',
             cursor: 'pointer',
             position: 'relative',
+            ...provided.draggableProps.style,
           }}
         >
           {/* Badges de revisión y canal arriba a la derecha */}
