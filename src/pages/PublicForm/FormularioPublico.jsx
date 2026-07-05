@@ -192,7 +192,7 @@ const FormularioPublico = () => {
       setIsSuccess(true);
     } catch (error) {
       console.error("Error al enviar formulario:", error);
-      alert("Hubo un error al procesar tu solicitud. Por favor intentá nuevamente más tarde.");
+      alert("Hubo un error al procesar tu solicitud: " + (error.message || error.code || JSON.stringify(error)));
     } finally {
       setIsSubmitting(false);
     }
