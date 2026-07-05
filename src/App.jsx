@@ -17,6 +17,7 @@ import ListaPrecios from './pages/ListaPrecios/ListaPrecios';
 import EncuestaObra from './pages/EncuestaObra/EncuestaObra';
 import Papelera from './pages/Papelera/Papelera';
 import Estandares from './pages/Estandares/Estandares';
+import FormularioPublico from './pages/PublicForm/FormularioPublico';
 
 // Rutas Privadas
 const PrivateRoute = ({ children }) => {
@@ -33,6 +34,7 @@ function App() {
       <Routes>
         <Route path="/login" element={currentUser ? <Navigate to="/" /> : <Login />} />
         <Route path="/encuesta/:id" element={<EncuestaObra />} />
+        <Route path="/presupuesto" element={<FormularioPublico />} />
         <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
         <Route path="/clientes" element={<PrivateRoute><Clientes /></PrivateRoute>} />
         <Route path="/presupuestos" element={<PrivateRoute><PresupuestosCRM /></PrivateRoute>} />
