@@ -42,8 +42,6 @@ const Header = () => {
           const data = change.doc.data();
           if (!data.read) {
             setShowPopup({ id: change.doc.id, ...data });
-            // Auto hide popup after 5 seconds
-            setTimeout(() => setShowPopup(null), 5000);
           }
         }
       });
@@ -153,24 +151,37 @@ const Header = () => {
 
       {/* Popup de nueva notificación */}
       {showPopup && (
-        <div style={{ position: 'fixed', bottom: '24px', right: '24px', background: 'white', borderRadius: '8px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)', border: '1px solid #bfdbfe', padding: '1rem', width: '320px', zIndex: 9999, display: 'flex', gap: '1rem', alignItems: 'flex-start', animation: 'slideIn 0.3s ease-out forwards' }}>
-          <div style={{ background: '#eff6ff', color: '#3b82f6', padding: '0.5rem', borderRadius: '50%' }}>
-            <Bell size={20} />
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'fadeIn 0.3s ease-out' }}>
+          <div style={{ background: 'white', borderRadius: '12px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1px solid #bfdbfe', padding: '2rem', width: '600px', maxWidth: '90vw', display: 'flex', flexDirection: 'column', gap: '1.5rem', animation: 'popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1.5rem' }}>
+              <div style={{ background: '#eff6ff', color: '#3b82f6', padding: '1rem', borderRadius: '50%' }}>
+                <Bell size={40} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <h4 style={{ margin: '0 0 0.5rem 0', color: '#1e3a8a', fontSize: '1.5rem' }}>¡Atención!</h4>
+                <p style={{ margin: 0, fontSize: '1.25rem', color: '#475569', lineHeight: 1.4, fontWeight: 'bold' }}>{showPopup.title}</p>
+                <p style={{ margin: '0.5rem 0 0 0', fontSize: '1.1rem', color: '#64748b' }}>{showPopup.message}</p>
+              </div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+              <button 
+                onClick={() => setShowPopup(null)} 
+                style={{ background: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', padding: '0.75rem 2rem', fontSize: '1.1rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(59, 130, 246, 0.3)' }}
+              >
+                ENTENDIDO
+              </button>
+            </div>
           </div>
-          <div style={{ flex: 1 }}>
-            <h4 style={{ margin: '0 0 0.25rem 0', color: '#1e3a8a', fontSize: '0.95rem' }}>¡Atención!</h4>
-            <p style={{ margin: 0, fontSize: '0.85rem', color: '#475569', lineHeight: 1.4 }}>{showPopup.title}</p>
-            <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.75rem', color: '#64748b' }}>{showPopup.message}</p>
-          </div>
-          <button onClick={() => setShowPopup(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}>
-            <X size={16} />
-          </button>
         </div>
       )}
       <style>{`
-        @keyframes slideIn {
-          from { transform: translateX(100%); opacity: 0; }
-          to { transform: translateX(0); opacity: 1; }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes popIn {
+          from { transform: scale(0.9); opacity: 0; }
+          to { transform: scale(1); opacity: 1; }
         }
       `}</style>
     </header>
