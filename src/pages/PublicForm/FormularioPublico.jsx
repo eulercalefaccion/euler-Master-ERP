@@ -48,8 +48,17 @@ const FormularioPublico = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleLocationSelect = (pos) => {
-    setFormData(prev => ({ ...prev, ubicacionLat: pos.lat, ubicacionLng: pos.lng }));
+  const handleLocationSelect = (pos, addressData = null) => {
+    setFormData(prev => {
+      let newData = { ...prev, ubicacionLat: pos.lat, ubicacionLng: pos.lng };
+      if (addressData) {
+        if (addressData.road) newData.dirCalle = addressData.road;
+        if (addressData.house_number) newData.dirAltura = addressData.house_number;
+        if (addressData.city || addressData.town || addressData.village) newData.dirLocalidad = addressData.city || addressData.town || addressData.village;
+        if (addressData.state) newData.dirProvincia = addressData.state;
+      }
+      return newData;
+    });
   };
 
   const getDireccionCompleta = () => {
@@ -263,6 +272,7 @@ const FormularioPublico = () => {
                 <option value="Arquitecto/Estudio de Arquitectura">Arquitecto / Estudio de Arquitectura</option>
                 <option value="Constructora">Constructora</option>
                 <option value="Desarrolladora">Desarrolladora</option>
+                <option value="Otro">Otro</option>
               </select>
             </div>
 
@@ -285,6 +295,9 @@ const FormularioPublico = () => {
           {/* SECCIÓN 2: La Obra */}
           <div className="form-section">
             <h3 className="form-section-title"><MapPin size={20} /> La obra</h3>
+            <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1.25rem', lineHeight: '1.4' }}>
+              Podés completar manualmente la dirección abajo para que el mapa te busque, o directamente <b>tocar tu ubicación en el mapa</b> para que se autocompleten las calles automáticamente.
+            </p>
             
             <div className="form-group">
               <label className="form-label">Calle <span className="required">*</span></label>
@@ -308,7 +321,7 @@ const FormularioPublico = () => {
 
             <div className="form-group" style={{ marginTop: '1.5rem' }}>
               <label className="form-label">Ubicación en el mapa</label>
-              <p style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '0.5rem' }}>Tocá el mapa para ajustar la ubicación exacta de la obra.</p>
+              <p style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '0.5rem' }}>Tocá el mapa para ajustar la ubicación exacta y autocompletar la dirección.</p>
               <MapPicker 
                 address={`${formData.dirCalle} ${formData.dirAltura}, ${formData.dirLocalidad}`} 
                 onLocationSelect={handleLocationSelect} 

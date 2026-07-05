@@ -12,10 +12,10 @@ L.Icon.Default.mergeOptions({
 });
 
 // Component to handle map clicks and moving the marker
-const MapEvents = ({ setPosition }) => {
+const MapEvents = ({ onMapClick }) => {
   useMapEvents({
     click(e) {
-      setPosition(e.latlng);
+      onMapClick(e.latlng);
     },
   });
   return null;
@@ -42,12 +42,25 @@ const MapPicker = ({
   const [isSearching, setIsSearching] = useState(false);
   const searchTimeoutRef = useRef(null);
 
-  // Expose the selected position back to parent
-  useEffect(() => {
-    if (position) {
-      onLocationSelect(position);
+  const handleMapClick = async (latlng) => {
+    setPosition(latlng);
+    setIsSearching(true);
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latlng.lat}&lon=${latlng.lng}`, {
+        headers: { 'Accept-Language': 'es' }
+      });
+      const data = await response.json();
+      if (data && data.address) {
+        onLocationSelect(latlng, data.address);
+      } else {
+        onLocationSelect(latlng, null);
+      }
+    } catch (e) {
+      onLocationSelect(latlng, null);
+    } finally {
+      setIsSearching(false);
     }
-  }, [position, onLocationSelect]);
+  };
 
   // Geocode address when it changes (with debounce)
   useEffect(() => {
@@ -76,6 +89,7 @@ const MapPicker = ({
           const newPos = { lat, lng: lon };
           setMapCenter(newPos);
           setPosition(newPos);
+          onLocationSelect(newPos, null);
         }
       } catch (error) {
         console.error("Geocoding error:", error);
@@ -99,7 +113,7 @@ const MapPicker = ({
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        <MapEvents setPosition={setPosition} />
+        <MapEvents onMapClick={handleMapClick} />
         {position && <Marker position={position} />}
       </MapContainer>
       
