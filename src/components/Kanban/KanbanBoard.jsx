@@ -1992,7 +1992,7 @@ const KanbanBoard = () => {
                     )}
 
                     {/* Tabla */}
-                    <div style={{ overflowX:'auto', maxHeight:'calc(100vh - 380px)', overflowY:'auto', borderBottom:'1px solid var(--border-light)' }}>
+                    <div style={{ borderBottom:'1px solid var(--border-light)' }}>
                       <table style={{ width:'100%',borderCollapse:'collapse',fontSize:'0.825rem' }}>
                         <thead style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--bg-primary)' }}>
                           <tr style={{ backgroundColor:'var(--bg-surface-hover)',borderTop:'1px solid var(--border-light)',borderBottom:'1px solid var(--border-light)' }}>
