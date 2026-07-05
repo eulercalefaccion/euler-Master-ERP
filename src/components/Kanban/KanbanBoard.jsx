@@ -1740,7 +1740,8 @@ const KanbanBoard = () => {
             </div>
 
             {/* Panel body */}
-            <div style={{ flex:1,minHeight:0,overflowY:'auto',padding:'1rem',display:'flex',flexDirection:'column',gap:'0.75rem' }}>
+            <div style={{ flex:1,minHeight:0,overflowY:'auto',direction:'rtl' }}>
+              <div style={{ padding:'1rem',display:'flex',flexDirection:'column',gap:'0.75rem',direction:'ltr',minHeight:'100%' }}>
 
               {detailTab === 'cotizador' && (
                 <>
@@ -2582,6 +2583,7 @@ const KanbanBoard = () => {
                   )}
                 </div>
               )}
+              </div>
             </div>
 
             {/* ── Fixed block for Cotizador (Notas y Totales) ── */}
