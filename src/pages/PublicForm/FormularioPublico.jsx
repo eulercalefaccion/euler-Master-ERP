@@ -92,7 +92,7 @@ const FormularioPublico = () => {
           url: null
         }]);
 
-        const storageRef = ref(storage, `public_leads_attachments/${fileId}`);
+        const storageRef = ref(storage, `obras/public_leads_attachments/${fileId}`);
         const uploadTask = uploadBytesResumable(storageRef, file);
 
         uploadTask.on(
