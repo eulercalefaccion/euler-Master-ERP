@@ -142,6 +142,7 @@ const Obras = () => {
   const [obras, setObras]             = useState([]);
   const [searchTerm, setSearchTerm]   = useState('');
   const [filterPhase, setFilterPhase] = useState('Todas');
+  const [filterDate, setFilterDate]   = useState('');
 
   const [selectedObra, setSelectedObra] = useState(null);
   const [editForm, setEditForm]         = useState({});
@@ -230,10 +231,28 @@ const Obras = () => {
     const matchesSearch =
       (obra.name      && obra.name.toLowerCase().includes(term)) ||
       (obra.clientName && obra.clientName.toLowerCase().includes(term));
-    if (filterPhase === 'Todas') return matchesSearch;
-    if (filterPhase === 'Finalizada')
-      return matchesSearch && (obra.estado === 'Instalación Finalizada' || obra.estado === 'Finalizada');
-    return matchesSearch && obra.phase === filterPhase;
+      
+    let matchesDate = true;
+    if (filterDate) {
+      matchesDate = false;
+      const dParts = filterDate.split('-'); // YYYY-MM-DD
+      if (dParts.length === 3) {
+        const [y, m, d] = dParts;
+        if (obra.createdAt) {
+          const cDate = obra.createdAt.toDate ? obra.createdAt.toDate() : new Date(obra.createdAt);
+          if (cDate.getFullYear() == y && (cDate.getMonth() + 1) == parseInt(m) && cDate.getDate() == parseInt(d)) {
+            matchesDate = true;
+          }
+        }
+      }
+    }
+
+    let matchesPhase = false;
+    if (filterPhase === 'Todas') matchesPhase = true;
+    else if (filterPhase === 'Finalizada') matchesPhase = (obra.estado === 'Instalación Finalizada' || obra.estado === 'Finalizada');
+    else matchesPhase = (obra.phase === filterPhase);
+
+    return matchesSearch && matchesDate && matchesPhase;
   });
 
   /* ── Open detail ── */
@@ -920,6 +939,16 @@ const Obras = () => {
             style={{ paddingLeft: '2.5rem' }}
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <div style={{ position: 'relative', maxWidth: '180px' }}>
+          <Calendar size={18} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
+          <input
+            type="date"
+            className="input-field"
+            style={{ paddingLeft: '2.5rem' }}
+            value={filterDate}
+            onChange={e => setFilterDate(e.target.value)}
           />
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>

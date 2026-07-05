@@ -136,6 +136,10 @@ const KanbanBoard = () => {
   const [tc, setTc]                       = useState(null);
   const [tcLoading, setTcLoading]         = useState(true);
 
+  // Filters
+  const [searchCRM, setSearchCRM] = useState('');
+  const [dateCRM, setDateCRM] = useState('');
+
   // Modals
   const [isStandardsModalOpen, setIsStandardsModalOpen] = useState(false);
   const [isApprovalOpen, setIsApprovalOpen] = useState(false);
@@ -1040,7 +1044,7 @@ const KanbanBoard = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* ── Header ── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h2 style={{ fontSize: '1.5rem', fontWeight: '600', margin: 0 }}>Presupuestos (CRM)</h2>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginTop: '0.25rem' }}>
@@ -1048,9 +1052,32 @@ const KanbanBoard = () => {
             {tc && <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>— actualizado {new Date(tc.ultimaConsultaApi).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}</span>}
           </p>
         </div>
-        <button className="btn btn-primary" onClick={() => setIsLeadModalOpen(true)}>
-          <Plus size={18} /> Nuevo Lead
-        </button>
+        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', flex: 1, justifyContent: 'flex-end', alignItems: 'center' }}>
+          <div style={{ position: 'relative', flexGrow: 1, maxWidth: '300px' }}>
+            <Search size={18} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
+            <input
+              type="text"
+              placeholder="Buscar por cliente, dirección..."
+              className="input-field"
+              style={{ paddingLeft: '2.5rem' }}
+              value={searchCRM}
+              onChange={e => setSearchCRM(e.target.value)}
+            />
+          </div>
+          <div style={{ position: 'relative', maxWidth: '180px' }}>
+            <Calendar size={18} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
+            <input
+              type="date"
+              className="input-field"
+              style={{ paddingLeft: '2.5rem' }}
+              value={dateCRM}
+              onChange={e => setDateCRM(e.target.value)}
+            />
+          </div>
+          <button className="btn btn-primary" onClick={() => setIsLeadModalOpen(true)}>
+            <Plus size={18} /> Nuevo Lead
+          </button>
+        </div>
       </div>
 
       {/* ── Kanban Board ── */}
@@ -1058,7 +1085,33 @@ const KanbanBoard = () => {
         <DragDropContext onDragEnd={onDragEnd}>
           {data.columnOrder.map(colId => {
             const col = data.columns[colId];
-            const items = col.itemsIds.map(id => data.items[id]).filter(Boolean);
+            const items = col.itemsIds.map(id => data.items[id]).filter(Boolean).filter(item => {
+              if (searchCRM) {
+                const term = searchCRM.toLowerCase();
+                const text = `${item.name || ''} ${item.clientName || ''} ${item.location || ''} ${item.direccionObra || ''} ${item.direccionCliente || ''} ${item.presupuestoNumber || ''} ${item.email || ''} ${item.contactoNombre || ''}`.toLowerCase();
+                if (!text.includes(term)) return false;
+              }
+              if (dateCRM) {
+                let match = false;
+                const dCrmParts = dateCRM.split('-'); // YYYY-MM-DD
+                if (dCrmParts.length === 3) {
+                  const [y, m, d] = dCrmParts;
+                  const targetStr1 = `${d}/${m}/${y}`;
+                  const targetStr2 = `${parseInt(d)}/${parseInt(m)}/${y}`;
+                  if ((item.date || '') === targetStr1 || (item.date || '') === targetStr2) {
+                    match = true;
+                  }
+                  if (!match && item.createdAt) {
+                    const cDate = item.createdAt.toDate ? item.createdAt.toDate() : new Date(item.createdAt);
+                    if (cDate.getFullYear() == y && (cDate.getMonth() + 1) == parseInt(m) && cDate.getDate() == parseInt(d)) {
+                      match = true;
+                    }
+                  }
+                }
+                if (!match) return false;
+              }
+              return true;
+            });
             return <KanbanColumn key={col.id} column={col} items={items} onCardClick={openDetail} />;
           })}
         </DragDropContext>
