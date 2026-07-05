@@ -5,7 +5,7 @@ import MapPicker from '../../components/MapPicker/MapPicker';
 
 import { db, storage, auth } from '../../services/firebaseConfig';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { signInAnonymously } from 'firebase/auth';
 import { getNextSequenceValue, formatPresupuestoNumber } from '../../utils/sequenceGenerator';
 
@@ -93,28 +93,21 @@ const FormularioPublico = () => {
         }]);
 
         const storageRef = ref(storage, `public_leads_attachments/${fileId}`);
-        const uploadTask = uploadBytesResumable(storageRef, file);
-
-        uploadTask.on(
-          'state_changed',
-          (snapshot) => {
-            const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-            setArchivos(prev => prev.map(a => a.id === fileId ? { ...a, progress } : a));
-          },
-          (error) => {
-            console.error("Error uploading file:", error);
-            setArchivos(prev => prev.map(a => a.id === fileId ? { ...a, status: 'error', error: error.message } : a));
-          },
-          async () => {
+        
+        uploadBytes(storageRef, file)
+          .then(async (snapshot) => {
             try {
-              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+              const downloadURL = await getDownloadURL(snapshot.ref);
               setArchivos(prev => prev.map(a => a.id === fileId ? { ...a, status: 'success', url: downloadURL, progress: 100 } : a));
             } catch (e) {
               console.error("Error getting download URL:", e);
               setArchivos(prev => prev.map(a => a.id === fileId ? { ...a, status: 'error', error: e.message } : a));
             }
-          }
-        );
+          })
+          .catch((error) => {
+            console.error("Error uploading file:", error);
+            setArchivos(prev => prev.map(a => a.id === fileId ? { ...a, status: 'error', error: error.code || error.message } : a));
+          });
       });
     }
     // reset input
