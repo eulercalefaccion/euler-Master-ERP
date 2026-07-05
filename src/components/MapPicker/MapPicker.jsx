@@ -88,7 +88,7 @@ const MapPicker = ({
   }, [address]);
 
   return (
-    <div style={{ position: 'relative', width: '100%', height, borderRadius: '8px', overflow: 'hidden', border: '1px solid #d1d5db' }}>
+    <div style={{ position: 'relative', width: '100%', height, borderRadius: '8px', overflow: 'hidden', border: '1px solid #d1d5db', zIndex: 1 }}>
       <MapContainer 
         center={mapCenter} 
         zoom={position ? 15 : 12} 
