@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, limit, doc, getDoc } from 'firebase/firestore';
 import { db } from '../../services/firebaseConfig';
+import { dbSueldos } from '../../services/firebaseSueldos';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Key, Send, Loader, Trash2, MessageSquare } from 'lucide-react';
 
@@ -8,7 +9,7 @@ const ReportesIA = () => {
   const [apiKey, setApiKey] = useState(localStorage.getItem('gemini_api_key') || '');
   const [isKeyConfigured, setIsKeyConfigured] = useState(!!localStorage.getItem('gemini_api_key'));
   const [messages, setMessages] = useState([
-    { role: 'model', text: '¡Hola! Soy tu Analista de Datos de Euler. Puedo responder preguntas sobre tiempos de venta, métricas de obras, encuestas y clientes. ¿En qué te ayudo hoy?' }
+    { role: 'model', text: '¡Hola! Soy tu Analista de Datos de Euler. Puedo responder preguntas sobre tiempos de venta, métricas de obras, encuestas, clientes, sueldos y liquidaciones del personal. ¿En qué te ayudo hoy?' }
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -64,7 +65,24 @@ const ReportesIA = () => {
         fecha: d.data().createdAt?.toDate()
       }));
 
-      setContextData({ presupuestos, obras, encuestas });
+      // Cargar datos de Sueldos
+      let sueldosData = {};
+      try {
+        const sueldosRef = doc(dbSueldos, 'eulerData', 'mainData');
+        const sueldosSnap = await getDoc(sueldosRef);
+        if (sueldosSnap.exists()) {
+          const sData = sueldosSnap.data();
+          sueldosData = {
+            empleados: (sData.employees || []).map(e => ({ nombre: e.name, rol: e.category, base: e.baseSalary })),
+            historialParitarias: sData.paritariasHistory || [],
+            ultimasLiquidaciones: (sData.liquidations || []).slice(-20).map(l => ({ empleado: l.employeeName, totalAbonado: l.totalToPay, fecha: l.date }))
+          };
+        }
+      } catch (err) {
+        console.warn("No se pudo cargar la info de sueldos:", err);
+      }
+
+      setContextData({ presupuestos, obras, encuestas, sueldos: sueldosData });
     } catch (e) {
       console.error('Error cargando contexto', e);
     }
