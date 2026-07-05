@@ -1707,9 +1707,9 @@ const KanbanBoard = () => {
             backgroundColor:'var(--bg-primary)',boxShadow:'-5px 0 25px rgba(0,0,0,0.15)',
             zIndex:50,display:'flex',flexDirection:'column',animation:'slideIn 0.25s ease',
           }}>
-            {/* Panel header */}
-            <div style={{ padding:'1.5rem',borderBottom:'1px solid var(--border-light)',display:'flex',justifyContent:'space-between',alignItems:'center',backgroundColor:'var(--bg-surface-hover)' }}>
-              <div>
+            {/* ── HEADER COMPACTO ── */}
+            <div style={{ padding:'0.75rem 1rem',borderBottom:'1px solid var(--border-light)',display:'flex',justifyContent:'space-between',alignItems:'center',backgroundColor:'var(--bg-surface-hover)' }}>
+              <div style={{ display:'flex',alignItems:'center',gap:'1.5rem' }}>
                 <h3 style={{ margin:0,fontSize:'1.125rem',fontWeight:'600',display:'flex',alignItems:'center',gap:'0.5rem' }}>
                   {selectedLead.presupuestoNumber || 'S/N'}
                   <span style={{ fontSize:'0.75rem',padding:'0.15rem 0.5rem',backgroundColor:'#e2e8f0',color:'#475569',borderRadius:'12px' }}>
@@ -1721,78 +1721,26 @@ const KanbanBoard = () => {
                     </span>
                   )}
                 </h3>
+                <div style={{ display:'flex',gap:'0.5rem' }}>
+                  <button onClick={() => setDetailTab('cotizador')} style={{ padding:'0.35rem 0.75rem',fontSize:'0.85rem',fontWeight:'600',color:detailTab==='cotizador'?'var(--primary-600)':'var(--text-secondary)',backgroundColor:detailTab==='cotizador'?'var(--primary-50)':'transparent',border:'none',borderRadius:'6px',cursor:'pointer',transition:'all 0.2s' }}>💰 Cotizador</button>
+                  <button onClick={() => setDetailTab('datos')} style={{ padding:'0.35rem 0.75rem',fontSize:'0.85rem',fontWeight:'600',color:detailTab==='datos'?'var(--primary-600)':'var(--text-secondary)',backgroundColor:detailTab==='datos'?'var(--primary-50)':'transparent',border:'none',borderRadius:'6px',cursor:'pointer',transition:'all 0.2s' }}>📋 Datos del Lead</button>
+                  <button onClick={() => setDetailTab('historial')} style={{ padding:'0.35rem 0.75rem',fontSize:'0.85rem',fontWeight:'600',color:detailTab==='historial'?'var(--primary-600)':'var(--text-secondary)',backgroundColor:detailTab==='historial'?'var(--primary-50)':'transparent',border:'none',borderRadius:'6px',cursor:'pointer',transition:'all 0.2s' }}>🕰️ Historial {(selectedLead.revisionsHistory?.length||0)>0?` (${selectedLead.revisionsHistory.length})`:''}</button>
+                </div>
               </div>
-              <button onClick={handleCloseModal} style={{ background:'none',border:'none',cursor:'pointer',color:'var(--text-tertiary)',padding:'0.25rem' }}>
-                <X size={22} />
-              </button>
-            </div>
-
-            {/* Navigation Tabs */}
-            <div style={{ display:'flex',borderBottom:'1px solid var(--border-light)',backgroundColor:'var(--bg-surface-hover)',padding:'0 1rem' }}>
-              <button
-                onClick={() => setDetailTab('cotizador')}
-                style={{
-                  padding:'0.5rem 0.75rem',
-                  fontSize:'0.85rem',
-                  fontWeight:'600',
-                  color: detailTab === 'cotizador' ? 'var(--primary-600)' : 'var(--text-secondary)',
-                  borderBottom: detailTab === 'cotizador' ? '2px solid var(--primary-600)' : '2px solid transparent',
-                  cursor:'pointer',
-                  transition:'all 0.2s',
-                  background: 'none',
-                  border: 'none',
-                }}
-              >
-                💰 Cotizador
-              </button>
-              <button
-                onClick={() => setDetailTab('datos')}
-                style={{
-                  padding:'0.5rem 0.75rem',
-                  fontSize:'0.85rem',
-                  fontWeight:'600',
-                  color: detailTab === 'datos' ? 'var(--primary-600)' : 'var(--text-secondary)',
-                  borderBottom: detailTab === 'datos' ? '2px solid var(--primary-600)' : '2px solid transparent',
-                  cursor:'pointer',
-                  transition:'all 0.2s',
-                  background: 'none',
-                  border: 'none',
-                }}
-              >
-                📋 Datos del Lead
-              </button>
-              <button
-                onClick={() => setDetailTab('historial')}
-                style={{
-                  padding:'0.5rem 0.75rem',
-                  fontSize:'0.85rem',
-                  fontWeight:'600',
-                  color: detailTab === 'historial' ? 'var(--primary-600)' : 'var(--text-secondary)',
-                  borderBottom: detailTab === 'historial' ? '2px solid var(--primary-600)' : '2px solid transparent',
-                  cursor:'pointer',
-                  transition:'all 0.2s',
-                  background: 'none',
-                  border: 'none',
-                }}
-              >
-                🕰️ Historial {(selectedLead.revisionsHistory?.length || 0) > 0 ? ` (${selectedLead.revisionsHistory.length})` : ''}
-              </button>
+              <div style={{ display:'flex',alignItems:'center',gap:'1rem' }}>
+                <div style={{ display:'flex',gap:'0.75rem',fontSize:'0.75rem',color:'var(--text-secondary)' }}>
+                  <span style={{ fontWeight:'700',color:'var(--text-primary)' }}>{selectedLead.name}</span>
+                  <span>|</span>
+                  <span style={{ display:'flex',alignItems:'center',gap:'0.15rem' }}><MapPin size={13}/> {selectedLead.location || 'S/D'}</span>
+                  <span>|</span>
+                  <span style={{ display:'flex',alignItems:'center',gap:'0.15rem' }}><Calendar size={13}/> {selectedLead.date}</span>
+                </div>
+                <button onClick={handleCloseModal} style={{ background:'none',border:'none',cursor:'pointer',color:'var(--text-tertiary)',padding:'0.25rem' }}><X size={22} /></button>
+              </div>
             </div>
 
             {/* Panel body */}
             <div style={{ flex:1,overflowY:'auto',padding:'1rem',display:'flex',flexDirection:'column',gap:'0.75rem' }}>
-              {/* Info del cliente */}
-              <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',background:'var(--bg-surface-hover)',border:'1px solid var(--border-light)',borderRadius:'8px',padding:'0.4rem 0.75rem' }}>
-                <h2 style={{ margin:0,fontSize:'1.1rem',fontWeight:'700', display:'flex', alignItems:'center', gap:'0.5rem' }}>
-                  {selectedLead.presupuestoNumber ? <span style={{ color:'var(--primary-600)', fontSize:'0.9rem' }}>{selectedLead.presupuestoNumber}{(selectedLead.revisionsHistory?.length > 0) ? `-V${selectedLead.revisionsHistory.length}` : ''} | </span> : null}
-                  {selectedLead.name}
-                </h2>
-                <div style={{ display:'flex',gap:'0.75rem',fontSize:'0.75rem',color:'var(--text-secondary)' }}>
-                  <span style={{ display:'flex',alignItems:'center',gap:'0.15rem' }}><MapPin size={13}/> {selectedLead.location || 'S/D'}</span>
-                  <span style={{ display:'flex',alignItems:'center',gap:'0.15rem' }}><Calendar size={13}/> {selectedLead.date}</span>
-                  <span style={{ display:'flex',alignItems:'center',gap:'0.15rem' }}><Tag size={13}/> {selectedLead.paramSistema || 'S/D'}</span>
-                </div>
-              </div>
 
               {detailTab === 'cotizador' && (
                 <>
@@ -2044,7 +1992,7 @@ const KanbanBoard = () => {
                     )}
 
                     {/* Tabla */}
-                    <div style={{ overflowX:'auto', maxHeight:'300px', overflowY:'auto', borderBottom:'1px solid var(--border-light)' }}>
+                    <div style={{ overflowX:'auto', maxHeight:'calc(100vh - 380px)', overflowY:'auto', borderBottom:'1px solid var(--border-light)' }}>
                       <table style={{ width:'100%',borderCollapse:'collapse',fontSize:'0.825rem' }}>
                         <thead style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--bg-primary)' }}>
                           <tr style={{ backgroundColor:'var(--bg-surface-hover)',borderTop:'1px solid var(--border-light)',borderBottom:'1px solid var(--border-light)' }}>
@@ -2246,7 +2194,7 @@ const KanbanBoard = () => {
                       <MessageSquare size={16}/> Comentarios y Condiciones
                     </label>
                     <textarea
-                      className="input-field" rows={4}
+                      className="input-field" rows={2}
                       placeholder="Notas comerciales, tiempo de entrega, validez..."
                       value={detailNotes} onChange={e => setDetailNotes(e.target.value)}
                       style={{ resize:'vertical',fontFamily:'inherit' }}
