@@ -836,7 +836,7 @@ const KanbanBoard = () => {
         fechaInicio:    '',
         fechaFinEstimada: '',
         fechaFinReal:   '',
-        archivos:       [],
+        archivos:       (item.archivos || []).map(a => ({ ...a, subidoEn: new Date().toISOString() })),
         createdAt:      serverTimestamp(),
 
         // Copy new CRM fields to Obra
