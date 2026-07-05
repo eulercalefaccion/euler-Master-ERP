@@ -3,9 +3,10 @@ import { Camera, Video, UploadCloud, X, CheckCircle, Loader, MapPin, User } from
 import './FormularioPublico.css';
 import MapPicker from '../../components/MapPicker/MapPicker';
 
-import { db, storage } from '../../services/firebaseConfig';
+import { db, storage, auth } from '../../services/firebaseConfig';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { signInAnonymously } from 'firebase/auth';
 import { getNextSequenceValue, formatPresupuestoNumber } from '../../utils/sequenceGenerator';
 
 const FormularioPublico = () => {
@@ -78,33 +79,43 @@ const FormularioPublico = () => {
 
   const uploadFiles = async () => {
     const uploadedUrls = [];
-    for (let i = 0; i < archivos.length; i++) {
-      const file = archivos[i];
-      const fileName = `${Date.now()}_${file.name}`;
-      const storageRef = ref(storage, `public_leads_attachments/${fileName}`);
-      const uploadTask = uploadBytesResumable(storageRef, file);
+    
+    const uploadPromises = archivos.map((file, i) => {
+      return new Promise((resolve, reject) => {
+        const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+        const storageRef = ref(storage, `public_leads_attachments/${fileName}`);
+        const uploadTask = uploadBytesResumable(storageRef, file);
 
-      await new Promise((resolve, reject) => {
         uploadTask.on(
           'state_changed',
           (snapshot) => {
             const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
             setUploadProgress(prev => ({ ...prev, [i]: progress }));
           },
-          (error) => reject(error),
+          (error) => {
+            console.error("Error uploading file:", error);
+            reject(error);
+          },
           async () => {
-            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-            uploadedUrls.push({
-              name: file.name,
-              url: downloadURL,
-              type: file.type,
-              size: file.size
-            });
-            resolve();
+            try {
+              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+              uploadedUrls.push({
+                name: file.name,
+                url: downloadURL,
+                type: file.type,
+                size: file.size
+              });
+              resolve();
+            } catch (e) {
+              console.error("Error getting download URL:", e);
+              reject(e);
+            }
           }
         );
       });
-    }
+    });
+
+    await Promise.all(uploadPromises);
     return uploadedUrls;
   };
 
@@ -113,6 +124,11 @@ const FormularioPublico = () => {
     setIsSubmitting(true);
 
     try {
+      // Intentar login anónimo si no hay usuario (para permisos de Storage/Firestore)
+      if (!auth.currentUser) {
+        await signInAnonymously(auth);
+      }
+
       // 1. Subir archivos
       const urlsAdjuntos = await uploadFiles();
 
