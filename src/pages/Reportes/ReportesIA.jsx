@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { db } from '../../services/firebaseConfig';
-import { Key, Send, Loader, Trash2 } from 'lucide-react';
+import { Key, Send, Loader, Trash2, MessageSquare } from 'lucide-react';
 
 const ReportesIA = () => {
   const [apiKey, setApiKey] = useState(localStorage.getItem('gemini_api_key') || '');
