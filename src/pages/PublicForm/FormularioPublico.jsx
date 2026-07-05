@@ -73,6 +73,8 @@ const FormularioPublico = () => {
         }
       } catch (err) {
         console.error("Error signing in anonymously:", err);
+        alert("Error de autenticación para subir archivos: " + err.message + ". Asegurate de haber habilitado 'Anónimo' en Firebase y refrescá la página.");
+        return;
       }
 
       validFiles.forEach(file => {
@@ -86,6 +88,7 @@ const FormularioPublico = () => {
           size: file.size,
           status: 'uploading',
           progress: 0,
+          error: null,
           url: null
         }]);
 
@@ -95,12 +98,12 @@ const FormularioPublico = () => {
         uploadTask.on(
           'state_changed',
           (snapshot) => {
-            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
             setArchivos(prev => prev.map(a => a.id === fileId ? { ...a, progress } : a));
           },
           (error) => {
             console.error("Error uploading file:", error);
-            setArchivos(prev => prev.map(a => a.id === fileId ? { ...a, status: 'error' } : a));
+            setArchivos(prev => prev.map(a => a.id === fileId ? { ...a, status: 'error', error: error.message } : a));
           },
           async () => {
             try {
@@ -108,7 +111,7 @@ const FormularioPublico = () => {
               setArchivos(prev => prev.map(a => a.id === fileId ? { ...a, status: 'success', url: downloadURL, progress: 100 } : a));
             } catch (e) {
               console.error("Error getting download URL:", e);
-              setArchivos(prev => prev.map(a => a.id === fileId ? { ...a, status: 'error' } : a));
+              setArchivos(prev => prev.map(a => a.id === fileId ? { ...a, status: 'error', error: e.message } : a));
             }
           }
         );
@@ -390,14 +393,17 @@ const FormularioPublico = () => {
                         <>
                           <Loader size={14} className="animate-spin" color="#3b82f6" style={{ minWidth: '14px' }} />
                           <span className="file-item-name" title={file.name}>{file.name}</span>
-                          <div style={{ flex: 1, background: '#e2e8f0', height: '6px', borderRadius: '3px', overflow: 'hidden', minWidth: '40px', marginLeft: '0.5rem' }}>
-                            <div style={{ background: '#3b82f6', height: '100%', width: `${file.progress}%`, transition: 'width 0.2s' }}></div>
+                          <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: '0.5rem' }}>
+                            <div style={{ flex: 1, background: '#e2e8f0', height: '6px', borderRadius: '3px', overflow: 'hidden', minWidth: '40px' }}>
+                              <div style={{ background: '#3b82f6', height: '100%', width: `${file.progress}%`, transition: 'width 0.2s' }}></div>
+                            </div>
+                            <span style={{ fontSize: '0.75rem', color: '#64748b', minWidth: '35px' }}>{file.progress}%</span>
                           </div>
                         </>
                       ) : file.status === 'error' ? (
                         <>
                           <X size={14} color="#ef4444" style={{ minWidth: '14px' }} />
-                          <span className="file-item-name" title={file.name} style={{ color: '#ef4444' }}>{file.name} (Error)</span>
+                          <span className="file-item-name" title={file.name} style={{ color: '#ef4444' }}>{file.name} (Error: {file.error || 'Desconocido'})</span>
                         </>
                       ) : (
                         <>
