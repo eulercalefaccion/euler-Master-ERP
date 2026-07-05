@@ -903,6 +903,35 @@ const KanbanBoard = () => {
     setPaymentAmount('');
   };
 
+  const handleCloseModal = () => {
+    // Check for unsaved changes in Cotizador
+    if (selectedLead && detailTab === 'cotizador') {
+      const originalItems = selectedLead.quoteItems || [];
+      const currentItems = builderItems || [];
+      
+      let hasChanges = false;
+      if (originalItems.length !== currentItems.length) {
+        hasChanges = true;
+      } else {
+        for (let i = 0; i < currentItems.length; i++) {
+          const orig = originalItems[i];
+          const curr = currentItems[i];
+          if (orig.id !== curr.id || orig.quantity !== curr.quantity || orig.unitPrice !== curr.unitPrice || orig.descripcion !== curr.descripcion) {
+            hasChanges = true;
+            break;
+          }
+        }
+      }
+      
+      if (hasChanges) {
+        const confirmClose = window.confirm("¡Atención! Tienes cambios sin guardar en el Cotizador. ¿Deseas salir y perder los cambios?");
+        if (!confirmClose) return;
+      }
+    }
+    
+    setSelectedLead(null);
+  };
+
   // ─── Add new lead ────────────────────────────────────────────────────────────
   const handleAddLead = async () => {
     if (isSavingLead) return;
@@ -1672,7 +1701,7 @@ const KanbanBoard = () => {
       ────────────────────────────────────────────────────────────────────── */}
       {selectedLead && (
         <>
-          <div style={{ position:'fixed',top:0,left:0,right:0,bottom:0,backgroundColor:'rgba(0,0,0,0.5)',zIndex:40 }} onClick={() => setSelectedLead(null)} />
+          <div style={{ position:'fixed',top:0,left:0,right:0,bottom:0,backgroundColor:'rgba(0,0,0,0.5)',zIndex:40 }} onClick={handleCloseModal} />
           <div style={{
             position:'fixed',top:0,right:0,bottom:0,width:'calc(100vw - 250px)',
             backgroundColor:'var(--bg-primary)',boxShadow:'-5px 0 25px rgba(0,0,0,0.15)',
@@ -1693,7 +1722,7 @@ const KanbanBoard = () => {
                   )}
                 </h3>
               </div>
-              <button onClick={() => setSelectedLead(null)} style={{ background:'none',border:'none',cursor:'pointer',color:'var(--text-tertiary)',padding:'0.25rem' }}>
+              <button onClick={handleCloseModal} style={{ background:'none',border:'none',cursor:'pointer',color:'var(--text-tertiary)',padding:'0.25rem' }}>
                 <X size={22} />
               </button>
             </div>
