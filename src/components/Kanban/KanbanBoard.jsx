@@ -177,6 +177,7 @@ const KanbanBoard = () => {
     facturacionCuit: '',
     facturacionDni: '',
     facturacionDireccion: '',
+    notasLead: '',
   });
   const [isSavingLead, setIsSavingLead] = useState(false);
   const [clientSearchQuery, setClientSearchQuery] = useState('');
@@ -998,6 +999,7 @@ const KanbanBoard = () => {
         facturacionCuit: newLead.facturacionIgualCliente ? (newLead.cuit || '') : (newLead.facturacionCuit || ''),
         facturacionDni: newLead.facturacionIgualCliente ? (newLead.dni || '') : (newLead.facturacionDni || ''),
         facturacionDireccion: newLead.facturacionIgualCliente ? (newLead.direccionCliente || '') : (newLead.facturacionDireccion || ''),
+        notasLead: newLead.notasLead || '',
       });
       
       setIsLeadModalOpen(false);
@@ -1025,6 +1027,7 @@ const KanbanBoard = () => {
         facturacionCuit: '',
         facturacionDni: '',
         facturacionDireccion: '',
+        notasLead: '',
       });
     } catch (err) { console.error(err); alert('Error: ' + err.message); }
     setIsSavingLead(false);
@@ -2403,6 +2406,16 @@ const KanbanBoard = () => {
                           <option>Híbrido</option>
                         </select>
                       </div>
+                    </div>
+                    <div className="form-group" style={{ marginTop:'0.75rem' }}>
+                      <label className="form-label">Notas u observaciones del cliente</label>
+                      <textarea
+                        className="input-field"
+                        style={{ minHeight:'80px', resize:'vertical' }}
+                        value={editLeadFields.notasLead || ''}
+                        onChange={e => setEditLeadFields({ ...editLeadFields, notasLead: e.target.value })}
+                        placeholder="Ej: Incluir la galería para calefaccionar..."
+                      />
                     </div>
                     <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem',marginTop:'1rem' }}>
                       <div className="form-group" style={{ marginBottom:0 }}>

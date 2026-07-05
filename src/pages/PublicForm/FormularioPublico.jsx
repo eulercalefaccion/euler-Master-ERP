@@ -31,6 +31,7 @@ const FormularioPublico = () => {
     
     sistema: '',
     sistemaOtro: '',
+    notasLead: '',
     
     profesionalPropietarioNombre: '',
     quienAbona: '',
@@ -173,6 +174,7 @@ const FormularioPublico = () => {
         longitudObra: formData.ubicacionLng,
         
         paramSistema: formData.sistema === 'OTRO (COMPLETE ESCRIBIENDO)' ? formData.sistemaOtro : formData.sistema,
+        notasLead: formData.notasLead,
         
         // Datos específicos de profesional
         contactoNombre: isProfesional ? formData.profesionalPropietarioNombre : '',
@@ -330,6 +332,18 @@ const FormularioPublico = () => {
                 <input type="text" name="sistemaOtro" className="form-input" required value={formData.sistemaOtro} onChange={handleChange} />
               </div>
             )}
+
+            <div className="form-group" style={{ marginTop: '1.5rem' }}>
+              <label className="form-label">Notas u observaciones <span className="optional">(Opcional)</span></label>
+              <textarea 
+                name="notasLead" 
+                className="form-input" 
+                value={formData.notasLead} 
+                onChange={handleChange} 
+                placeholder="Ej: Incluir la galería para calefaccionar, no considerar la cochera..."
+                style={{ minHeight: '80px', resize: 'vertical' }}
+              />
+            </div>
           </div>
 
           {/* SECCIÓN 3: Campos Dinámicos (Profesionales) */}
