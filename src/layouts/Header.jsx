@@ -26,6 +26,19 @@ const Header = () => {
   const [notifications, setNotifications] = React.useState([]);
   const [showNotifications, setShowNotifications] = React.useState(false);
   const [showPopup, setShowPopup] = React.useState(null);
+  const notificationsRef = React.useRef(null);
+
+  React.useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (notificationsRef.current && !notificationsRef.current.contains(event.target)) {
+        setShowNotifications(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   React.useEffect(() => {
     if (!currentUser) return;
@@ -84,7 +97,7 @@ const Header = () => {
       <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
         
         {/* Notificaciones */}
-        <div style={{ position: 'relative' }}>
+        <div style={{ position: 'relative' }} ref={notificationsRef}>
           <button 
             onClick={() => setShowNotifications(!showNotifications)}
             style={{ background: 'none', border: 'none', cursor: 'pointer', position: 'relative', color: 'var(--text-secondary)' }}
