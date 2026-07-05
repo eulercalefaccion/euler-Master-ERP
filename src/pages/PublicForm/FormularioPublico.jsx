@@ -387,18 +387,24 @@ const FormularioPublico = () => {
                   <div key={file.id} className="file-item">
                     <div className="file-item-info">
                       {file.status === 'uploading' ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
-                          <Loader size={14} className="animate-spin" color="#3b82f6" />
-                          <div style={{ flex: 1, background: '#e2e8f0', height: '6px', borderRadius: '3px', overflow: 'hidden' }}>
+                        <>
+                          <Loader size={14} className="animate-spin" color="#3b82f6" style={{ minWidth: '14px' }} />
+                          <span className="file-item-name" title={file.name}>{file.name}</span>
+                          <div style={{ flex: 1, background: '#e2e8f0', height: '6px', borderRadius: '3px', overflow: 'hidden', minWidth: '40px', marginLeft: '0.5rem' }}>
                             <div style={{ background: '#3b82f6', height: '100%', width: `${file.progress}%`, transition: 'width 0.2s' }}></div>
                           </div>
-                        </div>
+                        </>
                       ) : file.status === 'error' ? (
-                        <X size={14} color="#ef4444" />
+                        <>
+                          <X size={14} color="#ef4444" style={{ minWidth: '14px' }} />
+                          <span className="file-item-name" title={file.name} style={{ color: '#ef4444' }}>{file.name} (Error)</span>
+                        </>
                       ) : (
-                        <CheckCircle size={14} color="#10b981" />
+                        <>
+                          <CheckCircle size={14} color="#10b981" style={{ minWidth: '14px' }} />
+                          <span className="file-item-name" title={file.name}>{file.name}</span>
+                        </>
                       )}
-                      <span className="file-item-name" title={file.name}>{file.name}</span>
                     </div>
                     {file.status !== 'uploading' && !isSubmitting && (
                       <button type="button" className="btn-remove-file" onClick={() => removeFile(file.id)}>
