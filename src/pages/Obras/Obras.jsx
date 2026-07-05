@@ -904,7 +904,7 @@ const Obras = () => {
         <div>
           <h2 style={{ fontSize: '1.5rem', fontWeight: '600', margin: 0 }}>Gestión de Obras</h2>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginTop: '0.25rem' }}>
-            {obras.length} obras • {obras.filter(o => o.estado === 'En Proceso' || o.estado === 'Instalación en Proceso').length} en curso
+            {obras.filter(o => !o.deleted).length} obras • {obras.filter(o => !o.deleted && (o.estado === 'En Proceso' || o.estado === 'Instalación en Proceso')).length} en curso
           </p>
         </div>
       </div>
