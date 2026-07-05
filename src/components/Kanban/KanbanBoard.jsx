@@ -9,11 +9,12 @@ import { db } from '../../services/firebaseConfig';
 import { dbJornadas } from '../../services/firebaseJornadas';
 import {
   collection, onSnapshot, query, addDoc, updateDoc, deleteDoc, doc,
-  serverTimestamp, increment, setDoc
+  serverTimestamp, increment, setDoc, arrayUnion
 } from 'firebase/firestore';
 import { getTipoCambio, calcularPrecios, calcularPrecioManoDeObra, IVA } from '../../services/tipoCambioService';
 import { generarPDFPresupuesto } from '../../services/pdfPresupuesto';
 import { getNextSequenceValue, formatPresupuestoNumber, formatObraNumber } from '../../utils/sequenceGenerator';
+import { useAuth } from '../../context/AuthContext';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 const COEF_CANAL2 = 1.105;
@@ -115,6 +116,7 @@ const getBrochureNameFromUrl = (url, fallback) => {
 
 // ─── Componente principal ──────────────────────────────────────────────────────
 const KanbanBoard = () => {
+  const { currentUser } = useAuth();
   const [data, setData] = useState({
     items: {},
     columns: {
@@ -753,7 +755,15 @@ const KanbanBoard = () => {
       return;
     }
     try {
-      await updateDoc(doc(db, 'presupuestos', draggableId), { status: finishCol.id });
+      const moveEvent = {
+        status: finishCol.id,
+        date: new Date().toISOString(),
+        user: currentUser?.email || 'Desconocido'
+      };
+      await updateDoc(doc(db, 'presupuestos', draggableId), {
+        status: finishCol.id,
+        statusHistory: arrayUnion(moveEvent)
+      });
     } catch (err) { console.error(err); }
   };
 
@@ -767,10 +777,16 @@ const KanbanBoard = () => {
 
     try {
       // 1. Actualizar presupuesto a "aprobado"
+      const moveEvent = {
+        status: 'aprobado',
+        date: new Date().toISOString(),
+        user: currentUser?.email || 'Desconocido'
+      };
       await updateDoc(doc(db, 'presupuestos', draggableId), {
         status: 'aprobado',
         paymentStatus: paymentStatus,
         amount: paymentAmount ? parseInt(paymentAmount) : (item.amount || 0),
+        statusHistory: arrayUnion(moveEvent)
       });
 
       // 2. Reservar stock en lista_precios

@@ -18,6 +18,7 @@ import EncuestaObra from './pages/EncuestaObra/EncuestaObra';
 import Papelera from './pages/Papelera/Papelera';
 import Estandares from './pages/Estandares/Estandares';
 import FormularioPublico from './pages/PublicForm/FormularioPublico';
+import Reportes from './pages/Reportes/Reportes';
 
 // Rutas Privadas
 const PrivateRoute = ({ children }) => {
@@ -46,6 +47,7 @@ function App() {
         <Route path="/personas" element={<PrivateRoute><Personas /></PrivateRoute>} />
         <Route path="/balance" element={<PrivateRoute><Balance /></PrivateRoute>} />
         <Route path="/sueldos" element={<PrivateRoute><Sueldos /></PrivateRoute>} />
+        <Route path="/reportes" element={<PrivateRoute><Reportes /></PrivateRoute>} />
         <Route path="/papelera" element={<PrivateRoute><Papelera /></PrivateRoute>} />
       </Routes>
     </BrowserRouter>
