@@ -186,8 +186,7 @@ const FormularioPublico = () => {
     return (
       <div className="public-form-container">
         <div className="public-form-header">
-          <h1>⚡ EULER</h1>
-          <p>CALEFACCIÓN POR AGUA</p>
+          <img src="/logo_euler.png" alt="Euler Calefacción" />
         </div>
         <div className="success-screen">
           <CheckCircle size={64} className="success-icon" />
@@ -203,8 +202,7 @@ const FormularioPublico = () => {
   return (
     <div className="public-form-container">
       <div className="public-form-header">
-        <h1>⚡ EULER</h1>
-        <p>SOLICITUD DE PRESUPUESTO</p>
+        <img src="/logo_euler.png" alt="Euler Calefacción" />
       </div>
 
       <div className="public-form-content">
