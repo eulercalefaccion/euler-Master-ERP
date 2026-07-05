@@ -624,33 +624,58 @@ const KanbanBoard = () => {
     const prevCanal = selectedLead.canal || 'iva';
     const prevNotas = selectedLead.notas || '';
 
-    let hasChanges = canal !== prevCanal;
-    if (detailNotes !== prevNotas) hasChanges = true;
-    
-    if (builderItems.length !== prevItems.length) {
-      hasChanges = true;
-    } else {
-      for (let i = 0; i < builderItems.length; i++) {
-        const current = builderItems[i];
-        const prev = prevItems[i];
-        if (
-          current.id !== prev.id ||
-          current.quantity !== prev.quantity ||
-          current.listaItemId !== prev.listaItemId ||
-          current.precio !== prev.precio
-        ) {
-          hasChanges = true;
-          break;
-        }
-      }
+    const changes = [];
+
+    if (canal !== prevCanal) {
+      changes.push(`Se cambió el modo de venta de "${prevCanal === 'iva' ? 'Con IVA' : 'Canal 2'}" a "${canal === 'iva' ? 'Con IVA' : 'Canal 2'}".`);
     }
 
-    if (!hasChanges) {
+    if (detailNotes !== prevNotas) {
+      changes.push('Se modificaron los comentarios/condiciones.');
+    }
+    
+    const prevMap = new Map();
+    prevItems.forEach(item => prevMap.set(item.id, item));
+    
+    const currentMap = new Map();
+    builderItems.forEach(item => currentMap.set(item.id, item));
+    
+    // Check for removed items
+    prevItems.forEach(prev => {
+      if (!currentMap.has(prev.id)) {
+        changes.push(`Se eliminó: ${prev.descripcion}`);
+      }
+    });
+    
+    // Check for added or modified items
+    builderItems.forEach(current => {
+      if (!prevMap.has(current.id)) {
+        changes.push(`Se agregó: ${current.descripcion} (Cant: ${current.quantity})`);
+      } else {
+        const prev = prevMap.get(current.id);
+        const itemChanges = [];
+        if (current.quantity !== prev.quantity) {
+          itemChanges.push(`cantidad de ${prev.quantity} a ${current.quantity}`);
+        }
+        if (current.precio !== prev.precio) {
+          itemChanges.push(`precio modificado`);
+        }
+        if (current.descripcion !== prev.descripcion) {
+          itemChanges.push(`artículo cambiado a "${current.descripcion}"`);
+        }
+        
+        if (itemChanges.length > 0) {
+          changes.push(`Se modificó [${current.descripcion}]: ${itemChanges.join(', ')}.`);
+        }
+      }
+    });
+
+    if (changes.length === 0) {
       alert('NO HUBO CAMBIOS, SE MANTIENE LA REVISIÓN ACTUAL.\nPara crear una nueva revisión, debés realizar algún cambio en el cotizador.');
       return;
     }
 
-    setRevChangeNote('');
+    setRevChangeNote(changes.join('\n'));
     setIsRevModalOpen(true);
   };
 
