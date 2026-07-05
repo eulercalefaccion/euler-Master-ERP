@@ -92,7 +92,7 @@ ${JSON.stringify(contextData)}
 Responde la pregunta del usuario basándote SOLO en estos datos si te pide métricas. Si es una consulta general, sé amable y profesional. Responde corto y al punto, usando formato markdown. No expongas el JSON al usuario.`;
 
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
       
       const result = await model.generateContent({
         contents: [
