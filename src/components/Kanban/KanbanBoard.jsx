@@ -576,14 +576,7 @@ const KanbanBoard = () => {
     if (!selectedLead || !editLeadFields) return;
     setIsSavingDetail(true);
     try {
-      const amount = calcTotal(builderItems);
-      
       const updatedFields = {
-        notas: detailNotes,
-        amount,
-        quoteItems: builderItems,
-        canal,
-        
         name: editLeadFields.name,
         tipoCliente: editLeadFields.tipoCliente,
         email: editLeadFields.email,
@@ -611,7 +604,31 @@ const KanbanBoard = () => {
 
       await updateDoc(doc(db, 'presupuestos', selectedLead.id), updatedFields);
       setSelectedLead(prev => ({ ...prev, ...updatedFields }));
-      alert('Cambios guardados con éxito.');
+      
+      let changedBudget = false;
+      const prevCanal = selectedLead.canal || 'iva';
+      const prevNotas = selectedLead.notas || '';
+      const prevItems = selectedLead.quoteItems || [];
+      if (canal !== prevCanal || detailNotes !== prevNotas || prevItems.length !== builderItems.length) {
+        changedBudget = true;
+      } else {
+        const prevMap = new Map();
+        prevItems.forEach(item => prevMap.set(item.id, item));
+        for (const current of builderItems) {
+          if (!prevMap.has(current.id)) { changedBudget = true; break; }
+          const prev = prevMap.get(current.id);
+          if (current.quantity !== prev.quantity || current.precio !== prev.precio || current.descripcion !== prev.descripcion) {
+            changedBudget = true;
+            break;
+          }
+        }
+      }
+
+      if (changedBudget) {
+        alert('Se guardaron los datos del cliente.\n\nATENCIÓN: Detectamos modificaciones en los artículos, precios o comentarios del cotizador. Para guardar esos cambios, debés usar el botón "Guardar Nueva Revisión".');
+      } else {
+        alert('Datos del cliente guardados con éxito.');
+      }
     } catch (err) { alert('Error: ' + err.message); }
     setIsSavingDetail(false);
   };
@@ -2723,8 +2740,8 @@ const KanbanBoard = () => {
                   >
                     <FileText size={15}/> Generar PDF
                   </button>
-                  <button className="btn btn-secondary" onClick={saveDetail} disabled={isSavingDetail}>
-                    Guardar Cambios
+                  <button className="btn btn-secondary" onClick={saveDetail} disabled={isSavingDetail} title="Solo guarda la información y metadatos del cliente (nombre, teléfono, etc)">
+                    Guardar Datos Cliente
                   </button>
                   <button className="btn btn-primary" onClick={handleOpenRevModal} disabled={isSavingDetail} style={{ display:'flex',alignItems:'center',gap:'0.35rem' }}>
                     <Save size={16}/> {isSavingDetail ? 'Guardando...' : 'Guardar Nueva Revisión'}
