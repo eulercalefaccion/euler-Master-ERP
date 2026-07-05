@@ -8,9 +8,20 @@ import { Key, Send, Loader, Trash2, MessageSquare } from 'lucide-react';
 const ReportesIA = () => {
   const [apiKey, setApiKey] = useState(localStorage.getItem('gemini_api_key') || '');
   const [isKeyConfigured, setIsKeyConfigured] = useState(!!localStorage.getItem('gemini_api_key'));
-  const [messages, setMessages] = useState([
-    { role: 'model', text: '¡Hola! Soy tu Analista de Datos de Euler. Puedo responder preguntas sobre tiempos de venta, métricas de obras, encuestas, clientes, sueldos y liquidaciones del personal. ¿En qué te ayudo hoy?' }
-  ]);
+  const [messages, setMessages] = useState(() => {
+    const saved = localStorage.getItem('gemini_chat_history');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return [
+      { role: 'model', text: '¡Hola! Soy tu Analista de Datos de Euler. Puedo responder preguntas sobre tiempos de venta, métricas de obras, encuestas, clientes, sueldos y liquidaciones del personal. ¿En qué te ayudo hoy?' }
+    ];
+  });
+  
+  useEffect(() => {
+    localStorage.setItem('gemini_chat_history', JSON.stringify(messages));
+  }, [messages]);
+
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [contextData, setContextData] = useState(null);
@@ -166,13 +177,25 @@ Responde la pregunta del usuario basándote SOLO en estos datos si te pide métr
           <MessageSquare size={18} color="var(--primary-600)" /> 
           Asistente IA (Gemini 1.5)
         </h4>
-        <button 
-          onClick={removeApiKey} 
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem' }}
-          title="Eliminar API Key"
-        >
-          <Trash2 size={14} /> Cambiar Key
-        </button>
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          <button 
+            onClick={() => {
+              if(window.confirm('¿Borrar todo el historial de conversación?')) {
+                setMessages([{ role: 'model', text: '¡Hola! Soy tu Analista de Datos de Euler. Puedo responder preguntas sobre tiempos de venta, métricas de obras, encuestas, clientes, sueldos y liquidaciones del personal. ¿En qué te ayudo hoy?' }]);
+              }
+            }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem' }}
+          >
+            <Trash2 size={14} /> Limpiar Chat
+          </button>
+          <button 
+            onClick={removeApiKey} 
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem' }}
+            title="Eliminar API Key"
+          >
+            <Key size={14} /> Cambiar Key
+          </button>
+        </div>
       </div>
 
       <div className="ai-chat-messages">
