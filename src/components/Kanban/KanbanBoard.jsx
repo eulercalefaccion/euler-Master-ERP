@@ -618,6 +618,38 @@ const KanbanBoard = () => {
 
   // ─── New Revision (with change note) ────────────────────────────────────────
   const handleOpenRevModal = () => {
+    if (!selectedLead) return;
+    
+    const prevItems = selectedLead.quoteItems || [];
+    const prevCanal = selectedLead.canal || 'iva';
+    const prevNotas = selectedLead.notas || '';
+
+    let hasChanges = canal !== prevCanal;
+    if (detailNotes !== prevNotas) hasChanges = true;
+    
+    if (builderItems.length !== prevItems.length) {
+      hasChanges = true;
+    } else {
+      for (let i = 0; i < builderItems.length; i++) {
+        const current = builderItems[i];
+        const prev = prevItems[i];
+        if (
+          current.id !== prev.id ||
+          current.quantity !== prev.quantity ||
+          current.listaItemId !== prev.listaItemId ||
+          current.precio !== prev.precio
+        ) {
+          hasChanges = true;
+          break;
+        }
+      }
+    }
+
+    if (!hasChanges) {
+      alert('NO HUBO CAMBIOS, SE MANTIENE LA REVISIÓN ACTUAL.\nPara crear una nueva revisión, debés realizar algún cambio en el cotizador.');
+      return;
+    }
+
     setRevChangeNote('');
     setIsRevModalOpen(true);
   };
