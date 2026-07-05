@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { DragDropContext } from '@hello-pangea/dnd';
 import {
   Plus, X, Save, MessageSquare, DollarSign, MapPin, Calendar, Tag,
-  Trash2, ListPlus, Target, History, FileText, RefreshCw, Receipt, Download, Loader
+  Trash2, ListPlus, Target, History, FileText, RefreshCw, Receipt, Download, Loader, Search
 } from 'lucide-react';
 import KanbanColumn from './KanbanColumn';
 import { db } from '../../services/firebaseConfig';
