@@ -2466,6 +2466,30 @@ const KanbanBoard = () => {
                     </div>
                   </div>
 
+                  {/* SECCIÓN 5: Archivos Adjuntos */}
+                  {selectedLead.archivos && selectedLead.archivos.length > 0 && (
+                    <div style={{ borderBottom:'1px solid var(--border-light)',paddingBottom:'1rem', marginTop: '0.5rem' }}>
+                      <h4 style={{ margin:'0 0 0.75rem 0',color:'var(--primary-700)',fontSize:'0.9rem',textTransform:'uppercase',letterSpacing:'0.05em' }}>Archivos Adjuntos ({selectedLead.archivos.length})</h4>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        {selectedLead.archivos.map((archivo, index) => (
+                          <div key={index} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0.75rem', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden' }}>
+                              <span style={{ fontSize: '1.2rem' }}>
+                                {archivo.tipo === 'image' ? '🖼️' : archivo.tipo === 'video' ? '🎥' : '📄'}
+                              </span>
+                              <span style={{ fontSize: '0.85rem', fontWeight: '500', color: '#334155', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={archivo.nombre || archivo.name}>
+                                {archivo.nombre || archivo.name}
+                              </span>
+                            </div>
+                            <a href={archivo.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.75rem', fontWeight: '600', color: '#2563eb', textDecoration: 'none', padding: '0.2rem 0.5rem', backgroundColor: '#eff6ff', borderRadius: '4px', border: '1px solid #bfdbfe' }}>
+                              Ver / Descargar
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                 </div>
               )}
 
