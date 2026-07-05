@@ -42,8 +42,8 @@ const KanbanCard = ({ item, index, onCardClick }) => {
             ...provided.draggableProps.style,
           }}
         >
-          {/* Badges de revisión y canal arriba a la derecha */}
-          <div style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', display: 'flex', gap: '0.25rem' }}>
+          {/* Badges de revisión y canal */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.25rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem', backgroundColor: '#e0e7ff', color: '#3730a3', borderRadius: '8px', fontWeight: '700' }}>
               {item.presupuestoNumber || 'S/N'}{hasRevisions ? `-V${item.revision}` : ''}
             </span>
@@ -54,7 +54,7 @@ const KanbanCard = ({ item, index, onCardClick }) => {
             )}
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', paddingRight: hasRevisions || isCanal2 ? '3rem' : '0' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <h4 style={{ fontSize: '0.875rem', fontWeight: '600', margin: 0 }}>{item.name}</h4>
             {getPaymentBadge(item.paymentStatus)}
           </div>
