@@ -86,7 +86,16 @@ const ReportesIA = () => {
           sueldosData = {
             empleados: (sData.employees || []).map(e => ({ nombre: e.name, rol: e.category, base: e.baseSalary })),
             historialParitarias: sData.paritariasHistory || [],
-            ultimasLiquidaciones: (sData.liquidations || []).map(l => ({ empleado: l.employeeName, totalAbonado: l.totalToPay, fecha: l.date }))
+            ultimasLiquidaciones: (sData.liquidations || []).map(l => ({ 
+              empleado: l.employeeName, 
+              salario: l.calculations?.totalSalario || 0,
+              gastos: l.calculations?.totalGastos || 0,
+              totalAbonado: l.calculations?.total || 0, 
+              semana: l.week,
+              mes: l.monthName,
+              año: l.year,
+              fecha: l.createdAt 
+            }))
           };
         }
       } catch (err) {
