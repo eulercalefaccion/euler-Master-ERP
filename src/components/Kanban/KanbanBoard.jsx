@@ -47,8 +47,8 @@ const calcPrecioItem = (item, canal, tcValor) => {
       factor = COEF_CANAL2; // 1.105
     }
   } else {
-    // Con IVA: 21% para todo
-    factor = IVA; // 1.21
+    // Con IVA: mostramos el precio unitario neto (sin IVA)
+    factor = 1.0;
   }
   
   return Math.round(basePrice * factor);
@@ -2019,7 +2019,8 @@ const KanbanBoard = () => {
                       <table style={{ width:'100%',borderCollapse:'collapse',fontSize:'0.825rem' }}>
                         <thead style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--bg-primary)' }}>
                           <tr style={{ backgroundColor:'var(--bg-surface-hover)',borderTop:'1px solid var(--border-light)',borderBottom:'1px solid var(--border-light)' }}>
-                            <th style={{ padding:'0.45rem 0.5rem',textAlign:'left',width:'42%' }}>Artículo</th>
+                            <th style={{ padding:'0.45rem 0.5rem',textAlign:'center',width:'4%' }}>#</th>
+                            <th style={{ padding:'0.45rem 0.5rem',textAlign:'left',width:'38%' }}>Artículo</th>
                             <th style={{ padding:'0.45rem 0.5rem',textAlign:'center',width:'12%' }}>Tipo</th>
                             <th style={{ padding:'0.45rem 0.5rem',textAlign:'center',width:'12%' }}>Cant</th>
                             <th style={{ padding:'0.45rem 0.5rem',textAlign:'right',width:'17%' }}>P.Unit</th>
@@ -2028,8 +2029,11 @@ const KanbanBoard = () => {
                           </tr>
                         </thead>
                         <tbody>
-                          {builderItems.map(item => (
+                          {builderItems.map((item, index) => (
                             <tr key={item.id} style={{ borderBottom:'1px solid #e2e8f0', backgroundColor: item.tipo === 'mano_de_obra' || item.tipo === 'servicio' ? '#f0f9ff' : 'white' }}>
+                              <td style={{ padding:'0.35rem 0.5rem',textAlign:'center',fontWeight:'600',color:'var(--text-tertiary)',fontSize:'0.75rem' }}>
+                                {index + 1}
+                              </td>
                               <td style={{ padding:'0.35rem 0.5rem',fontWeight:'500',position:'relative' }}>
                                 {activeReplaceItemId === item.id ? (
                                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
@@ -2165,7 +2169,7 @@ const KanbanBoard = () => {
                             </tr>
                           ))}
                           {builderItems.length === 0 && (
-                            <tr><td colSpan="6" style={{ padding:'2rem',textAlign:'center',color:'#94a3b8',fontStyle:'italic' }}>Agrega artículos al presupuesto</td></tr>
+                            <tr><td colSpan="7" style={{ padding:'2rem',textAlign:'center',color:'#94a3b8',fontStyle:'italic' }}>Agrega artículos al presupuesto</td></tr>
                           )}
                         </tbody>
                       </table>
@@ -2184,18 +2188,18 @@ const KanbanBoard = () => {
                       {canal === 'iva' ? (
                         <div style={{ display: 'flex', width: '100%', justifyContent: 'space-around', alignItems: 'center', gap: '1rem' }}>
                           <div style={{ display: 'flex', gap: '0.35rem' }}>
-                            <span style={{ fontWeight: '500', color: 'var(--text-secondary)' }}>Precio sin IVA:</span>
-                            <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>$ {Math.round(calcTotal(builderItems) / 1.21).toLocaleString('es-AR')}</span>
+                            <span style={{ fontWeight: '500', color: 'var(--text-secondary)' }}>Subtotal:</span>
+                            <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>$ {calcTotal(builderItems).toLocaleString('es-AR')}</span>
                           </div>
                           <div style={{ width: '1px', height: '14px', backgroundColor: 'var(--border-light)' }}></div>
                           <div style={{ display: 'flex', gap: '0.35rem' }}>
                             <span style={{ fontWeight: '500', color: 'var(--text-secondary)' }}>IVA (21%):</span>
-                            <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>$ {Math.round(calcTotal(builderItems) - (calcTotal(builderItems) / 1.21)).toLocaleString('es-AR')}</span>
+                            <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>$ {Math.round(calcTotal(builderItems) * 0.21).toLocaleString('es-AR')}</span>
                           </div>
                           <div style={{ width: '1px', height: '14px', backgroundColor: 'var(--border-light)' }}></div>
                           <div style={{ display: 'flex', gap: '0.35rem' }}>
                             <span style={{ fontWeight: '800', color: 'var(--primary-800)' }}>TOTAL:</span>
-                            <span style={{ fontWeight: '800', color: 'var(--primary-700)' }}>$ {calcTotal(builderItems).toLocaleString('es-AR')}</span>
+                            <span style={{ fontWeight: '800', color: 'var(--primary-700)' }}>$ {Math.round(calcTotal(builderItems) * 1.21).toLocaleString('es-AR')}</span>
                           </div>
                         </div>
                       ) : (

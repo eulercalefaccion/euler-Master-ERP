@@ -159,7 +159,8 @@ const buildTablaItems = (doc, presupuesto) => {
     doc.setTextColor(...EULER_DARK);
     doc.text(titulo, 14, startY);
 
-    const tableData = items.map(item => [
+    const tableData = items.map((item, idx) => [
+      (idx + 1).toString(),
       item.descripcion || '—',
       `${item.quantity || 1} ${item.unidad || 'u.'}`,
       formatARS(item.unitPrice),
@@ -168,7 +169,7 @@ const buildTablaItems = (doc, presupuesto) => {
 
     autoTable(doc, {
       startY: startY + 3,
-      head: [['Descripción', 'Cantidad', 'Precio Unit.', 'Subtotal']],
+      head: [['#', 'Descripción', 'Cantidad', 'Precio Unit.', 'Subtotal']],
       body: tableData,
       theme: 'grid',
       headStyles: {
@@ -180,10 +181,11 @@ const buildTablaItems = (doc, presupuesto) => {
       bodyStyles: { fontSize: 9, textColor: GRAY_TEXT },
       alternateRowStyles: { fillColor: GRAY_LIGHT },
       columnStyles: {
-        0: { cellWidth: 'auto' },
-        1: { cellWidth: 28, halign: 'center' },
-        2: { cellWidth: 32, halign: 'right' },
-        3: { cellWidth: 32, halign: 'right', fontStyle: 'bold' },
+        0: { cellWidth: 8, halign: 'center' },
+        1: { cellWidth: 'auto' },
+        2: { cellWidth: 28, halign: 'center' },
+        3: { cellWidth: 32, halign: 'right' },
+        4: { cellWidth: 32, halign: 'right', fontStyle: 'bold' },
       },
       margin: { left: 14, right: 14 },
     });
@@ -208,8 +210,9 @@ const buildTablaItems = (doc, presupuesto) => {
     doc.text(formatARS(total), W - 14, startY + 9.5, { align: 'right' });
     startY += 20;
   } else {
-    const subtotalSinIva = Math.round(total / 1.21);
-    const iva = total - subtotalSinIva;
+    const subtotalSinIva = total;
+    const iva = Math.round(total * 0.21);
+    const totalConIva = subtotalSinIva + iva;
 
     doc.setFillColor(...EULER_LIGHT);
     doc.roundedRect(14, startY, W - 28, 28, 2, 2, 'F');
@@ -228,7 +231,7 @@ const buildTablaItems = (doc, presupuesto) => {
     doc.setTextColor(...EULER_DARK);
     doc.text('TOTAL (Precio IVA incluido):', 20, startY + 22);
     doc.setTextColor(...EULER_MID);
-    doc.text(formatARS(total), W - 14, startY + 22, { align: 'right' });
+    doc.text(formatARS(totalConIva), W - 14, startY + 22, { align: 'right' });
 
     startY += 34;
   }
