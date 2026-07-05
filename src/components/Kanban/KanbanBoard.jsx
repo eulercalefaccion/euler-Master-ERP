@@ -1170,7 +1170,7 @@ const KanbanBoard = () => {
       </div>
 
       {/* ── Kanban Board ── */}
-      <div style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '1rem', flex: 1, minHeight: '500px' }}>
+      <div className="mobile-kanban-container" style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '1rem', flex: 1, minHeight: '500px' }}>
         <DragDropContext onDragEnd={onDragEnd}>
           {data.columnOrder.map(colId => {
             const col = data.columns[colId];
@@ -1296,7 +1296,7 @@ const KanbanBoard = () => {
               <button onClick={() => setIsLeadModalOpen(false)} style={{ background:'none',border:'none',cursor:'pointer',color:'var(--text-tertiary)' }}><X size={20}/></button>
             </div>
             
-            <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1.25rem' }}>
+            <div className="mobile-grid-1" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1.25rem' }}>
               
               {/* COLUMNA IZQUIERDA: Identidad del Cliente */}
               <div style={{ display:'flex',flexDirection:'column',gap:'1rem' }}>
@@ -1465,7 +1465,7 @@ const KanbanBoard = () => {
                   })()}
                 </div>
 
-                <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem' }}>
+                <div className="mobile-grid-1" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem' }}>
                   <div className="form-group" style={{ marginBottom:0 }}>
                     <label className="form-label">Teléfono principal</label>
                     <input
@@ -1488,7 +1488,7 @@ const KanbanBoard = () => {
                   </div>
                 </div>
 
-                <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem' }}>
+                <div className="mobile-grid-1" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem' }}>
                   <div className="form-group" style={{ marginBottom:0 }}>
                     <label className="form-label">CUIT</label>
                     <input
@@ -1530,7 +1530,7 @@ const KanbanBoard = () => {
                 {newLead.tipoCliente !== 'consumidor_final' && (
                   <div style={{ background:'var(--primary-50)',padding:'0.75rem',borderRadius:'8px',border:'1px solid var(--primary-100)',display:'flex',flexDirection:'column',gap:'0.75rem' }}>
                     <span style={{ fontSize:'0.8rem',fontWeight:'700',color:'var(--primary-700)' }}>Persona de Contacto</span>
-                    <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.5rem' }}>
+                    <div className="mobile-grid-1" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.5rem' }}>
                       <input
                         type="text"
                         className="input-field"
@@ -1562,7 +1562,7 @@ const KanbanBoard = () => {
                   />
                 </div>
 
-                <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem' }}>
+                <div className="mobile-grid-1" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem' }}>
                   <div className="form-group" style={{ marginBottom:0 }}>
                     <label className="form-label">Localidad / Zona (Obra)</label>
                     <input
@@ -1588,7 +1588,7 @@ const KanbanBoard = () => {
                   </div>
                 </div>
 
-                <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem' }}>
+                <div className="mobile-grid-1" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem' }}>
                   <div className="form-group" style={{ marginBottom:0 }}>
                     <label className="form-label">Canal de Llegada</label>
                     <select
@@ -1616,7 +1616,7 @@ const KanbanBoard = () => {
                   </div>
                 </div>
 
-                <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem' }}>
+                <div className="mobile-grid-1" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem' }}>
                   <div className="form-group" style={{ marginBottom:0 }}>
                     <label className="form-label">Estado de Obra</label>
                     <select
@@ -1661,7 +1661,7 @@ const KanbanBoard = () => {
                 </label>
               </div>
 
-              <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1.25rem' }}>
+              <div className="mobile-grid-1" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1.25rem' }}>
                 <div style={{ display:'flex',flexDirection:'column',gap:'0.75rem' }}>
                   <div className="form-group" style={{ marginBottom:0 }}>
                     <label className="form-label">Nombre / Razón Social Facturación</label>
@@ -1759,7 +1759,7 @@ const KanbanBoard = () => {
       {selectedLead && (
         <>
           <div style={{ position:'fixed',top:0,left:0,right:0,bottom:0,backgroundColor:'rgba(0,0,0,0.5)',zIndex:40 }} onClick={handleCloseModal} />
-          <div style={{
+          <div className="mobile-modal-width" style={{
             position:'fixed',top:0,right:0,bottom:0,width:'calc(100vw - 250px)',
             backgroundColor:'var(--bg-primary)',boxShadow:'-5px 0 25px rgba(0,0,0,0.15)',
             zIndex:50,display:'flex',flexDirection:'column',animation:'slideIn 0.25s ease',
@@ -2050,7 +2050,7 @@ const KanbanBoard = () => {
                     )}
 
                     {/* Tabla */}
-                    <div style={{ borderBottom:'1px solid var(--border-light)' }}>
+                    <div className="mobile-table-wrapper" style={{ borderBottom:'1px solid var(--border-light)' }}>
                       <table style={{ width:'100%',borderCollapse:'collapse',fontSize:'0.825rem' }}>
                         <thead style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--bg-primary)' }}>
                           <tr style={{ backgroundColor:'var(--bg-surface-hover)',borderTop:'1px solid var(--border-light)',borderBottom:'1px solid var(--border-light)' }}>
@@ -2237,7 +2237,7 @@ const KanbanBoard = () => {
                       />
                     </div>
                     
-                    <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem',marginTop:'0.75rem' }}>
+                    <div className="mobile-grid-1" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem',marginTop:'0.75rem' }}>
                       <div className="form-group" style={{ marginBottom:0 }}>
                         <label className="form-label">Tipo de Cliente</label>
                         <select
@@ -2270,7 +2270,7 @@ const KanbanBoard = () => {
                       </div>
                     </div>
                     
-                    <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem',marginTop:'1rem' }}>
+                    <div className="mobile-grid-1" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem',marginTop:'1rem' }}>
                       <div className="form-group" style={{ marginBottom:0 }}>
                         <label className="form-label">DNI</label>
                         <input
@@ -2300,7 +2300,7 @@ const KanbanBoard = () => {
                       </div>
                     </div>
                     
-                    <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem',marginTop:'1rem' }}>
+                    <div className="mobile-grid-1" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem',marginTop:'1rem' }}>
                       <div className="form-group" style={{ marginBottom:0 }}>
                         <label className="form-label">Teléfono / Móvil</label>
                         <input
@@ -2335,7 +2335,7 @@ const KanbanBoard = () => {
                   {editLeadFields.tipoCliente !== 'consumidor_final' && (
                     <div style={{ borderBottom:'1px solid var(--border-light)',paddingBottom:'1rem' }}>
                       <h4 style={{ margin:'0 0 0.75rem 0',color:'var(--primary-700)',fontSize:'0.9rem',textTransform:'uppercase',letterSpacing:'0.05em' }}>Persona de Contacto</h4>
-                      <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem' }}>
+                      <div className="mobile-grid-1" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem' }}>
                         <div className="form-group" style={{ marginBottom:0 }}>
                           <label className="form-label">Nombre y Apellido</label>
                           <input
@@ -2373,7 +2373,7 @@ const KanbanBoard = () => {
                         onChange={e => setEditLeadFields({ ...editLeadFields, direccionObra: e.target.value })}
                       />
                     </div>
-                    <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem',marginTop:'0.75rem' }}>
+                    <div className="mobile-grid-1" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem',marginTop:'0.75rem' }}>
                       <div className="form-group" style={{ marginBottom:0 }}>
                         <label className="form-label">Localidad / Zona de Obra</label>
                         <input
@@ -2408,7 +2408,7 @@ const KanbanBoard = () => {
                         placeholder="Ej: Incluir la galería para calefaccionar..."
                       />
                     </div>
-                    <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem',marginTop:'1rem' }}>
+                    <div className="mobile-grid-1" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem',marginTop:'1rem' }}>
                       <div className="form-group" style={{ marginBottom:0 }}>
                         <label className="form-label">Canal de Llegada</label>
                         <select
@@ -2436,7 +2436,7 @@ const KanbanBoard = () => {
                       </div>
                     </div>
 
-                    <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem',marginTop:'1rem' }}>
+                    <div className="mobile-grid-1" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem',marginTop:'1rem' }}>
                       <div className="form-group" style={{ marginBottom:0 }}>
                         <label className="form-label">Estado de Obra</label>
                         <select
@@ -2491,7 +2491,7 @@ const KanbanBoard = () => {
                       </label>
                     </div>
                     
-                    <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem' }}>
+                    <div className="mobile-grid-1" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem' }}>
                       <div className="form-group" style={{ marginBottom:0 }}>
                         <label className="form-label">Nombre / Razón Social Facturación</label>
                         <input
@@ -2514,7 +2514,7 @@ const KanbanBoard = () => {
                       </div>
                     </div>
                     
-                    <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem',marginTop:'1rem' }}>
+                    <div className="mobile-grid-1" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem',marginTop:'1rem' }}>
                       <div className="form-group" style={{ marginBottom:0 }}>
                         <label className="form-label">CUIT Facturación</label>
                         <input

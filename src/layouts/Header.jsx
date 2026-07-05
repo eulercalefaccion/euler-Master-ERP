@@ -1,7 +1,7 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, User, Bell, CheckCircle, X } from 'lucide-react';
+import { LogOut, User, Bell, CheckCircle, X, Menu } from 'lucide-react';
 import { db } from '../services/firebaseConfig';
 import { collection, query, onSnapshot, where, orderBy, updateDoc, doc } from 'firebase/firestore';
 
@@ -18,7 +18,7 @@ const pageNames = {
   '/balance': 'Balance General',
 };
 
-const Header = () => {
+const Header = ({ onOpenMenu }) => {
   const { currentUser, logout } = useAuth();
   const location = useLocation();
   const pageName = pageNames[location.pathname] || 'Panel de Control';
@@ -90,7 +90,14 @@ const Header = () => {
       background: 'var(--bg-surface)',
       flexShrink: 0
     }}>
-      <div style={{ display: 'flex', alignItems: 'center' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <button 
+          onClick={onOpenMenu}
+          className="mobile-header-menu"
+          style={{ display: 'none', background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}
+        >
+          <Menu size={24} />
+        </button>
         <h1 style={{ fontSize: '1.25rem', fontWeight: '600', margin: 0 }}>{pageName}</h1>
       </div>
       
@@ -153,7 +160,7 @@ const Header = () => {
 
         <button 
           onClick={logout}
-          className="btn btn-secondary" 
+          className="btn btn-secondary mobile-hidden" 
           style={{ padding: '0.375rem 0.75rem', fontSize: '0.875rem' }}
           title="Cerrar sesión"
         >

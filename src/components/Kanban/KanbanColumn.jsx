@@ -6,7 +6,7 @@ const KanbanColumn = ({ column, items, onCardClick }) => {
   const totalAmount = items.reduce((acc, item) => item.amount ? acc + item.amount : acc, 0);
 
   return (
-    <div style={{
+    <div className="mobile-kanban-column" style={{
       display: 'flex',
       flexDirection: 'column',
       minWidth: '280px',

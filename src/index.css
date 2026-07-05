@@ -187,3 +187,33 @@ button {
 .h-full { height: 100%; }
 .h-screen { height: 100vh; }
 .grid { display: grid; }
+
+/* Responsive Utilities (Mobile) */
+@media (max-width: 768px) {
+  .mobile-hidden { display: none !important; }
+  .mobile-header-menu { display: flex !important; }
+  .mobile-modal-width { width: 100vw !important; right: 0 !important; }
+  .mobile-main-padding { padding: 1rem !important; }
+  .mobile-col { flex-direction: column !important; }
+  .mobile-grid-1 { grid-template-columns: 1fr !important; }
+  .mobile-kanban-container { 
+    display: flex !important; 
+    flex-direction: row !important; 
+    overflow-x: auto !important; 
+    scroll-snap-type: x mandatory;
+    padding-bottom: 1rem;
+    gap: 1rem !important;
+  }
+  .mobile-kanban-column { 
+    min-width: 85vw !important; 
+    flex-shrink: 0 !important;
+    scroll-snap-align: center;
+  }
+  .mobile-table-wrapper {
+    overflow-x: auto !important;
+    width: 100% !important;
+  }
+  /* Ajuste de fuentes para celular */
+  .mobile-text-sm { font-size: 0.75rem !important; }
+  .mobile-text-xs { font-size: 0.65rem !important; }
+}

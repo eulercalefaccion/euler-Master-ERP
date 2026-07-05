@@ -1,8 +1,10 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, Calculator, ClipboardList, Package, MapPin, Receipt, HardHat, Wallet, DollarSign, Trash2, Zap, BarChart2 } from 'lucide-react';
+import { LayoutDashboard, Users, Calculator, ClipboardList, Package, MapPin, Receipt, HardHat, Wallet, DollarSign, Trash2, Zap, BarChart2, X, LogOut } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
-const Sidebar = () => {
+const Sidebar = ({ className = '', isMobile, onClose }) => {
+  const { logout } = useAuth();
   const sections = [
     {
       label: null,
@@ -50,9 +52,14 @@ const Sidebar = () => {
   ];
 
   return (
-    <div style={{ width: '250px', background: 'var(--bg-sidebar)', color: 'var(--text-sidebar)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
-      <div style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', borderBottom: '1px solid #1e293b' }}>
+    <div className={className} style={{ width: '250px', background: 'var(--bg-sidebar)', color: 'var(--text-sidebar)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+      <div style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #1e293b' }}>
         <img src="/logo_euler.png" alt="Euler Logo" style={{ height: '40px', objectFit: 'contain' }} />
+        {isMobile && (
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
+            <X size={24} />
+          </button>
+        )}
       </div>
       
       <nav style={{ flex: 1, padding: '0.75rem 0', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
@@ -73,6 +80,7 @@ const Sidebar = () => {
                 <li key={item.path}>
                   <NavLink 
                     to={item.path}
+                    onClick={() => isMobile && onClose && onClose()}
                     style={({ isActive }) => ({
                       display: 'flex',
                       alignItems: 'center',
@@ -97,8 +105,15 @@ const Sidebar = () => {
         ))}
       </nav>
 
-      <div style={{ padding: '1rem', borderTop: '1px solid #1e293b', fontSize: '0.7rem', color: '#475569', textAlign: 'center' }}>
-        Euler Master ERP v2.1
+      <div style={{ padding: '1rem', borderTop: '1px solid #1e293b', display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
+        {isMobile && (
+          <button onClick={logout} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: 'rgba(255,255,255,0.1)', color: 'white', border: 'none', borderRadius: '4px', fontSize: '0.875rem' }}>
+            <LogOut size={16} /> Cerrar Sesión
+          </button>
+        )}
+        <div style={{ fontSize: '0.7rem', color: '#475569', textAlign: 'center' }}>
+          Euler Master ERP v2.1
+        </div>
       </div>
     </div>
   );
