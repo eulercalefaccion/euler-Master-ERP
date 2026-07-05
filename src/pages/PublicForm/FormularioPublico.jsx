@@ -34,7 +34,6 @@ const FormularioPublico = () => {
     notasLead: '',
     
     profesionalPropietarioNombre: '',
-    quienAbona: '',
     profesionalPropietarioTelefono: ''
   });
 
@@ -188,7 +187,6 @@ const FormularioPublico = () => {
         // Datos específicos de profesional
         contactoNombre: isProfesional ? formData.profesionalPropietarioNombre : '',
         contactoTelefono: isProfesional ? formData.profesionalPropietarioTelefono : '',
-        quienAbona: isProfesional ? formData.quienAbona : '',
         
         // Datos internos
         status: 'presupuesto', // Columna: Presupuesto Pendiente
@@ -367,16 +365,6 @@ const FormularioPublico = () => {
               <div className="form-group">
                 <label className="form-label">Nombre del propietario / Referencia de obra <span className="required">*</span></label>
                 <input type="text" name="profesionalPropietarioNombre" className="form-input" required value={formData.profesionalPropietarioNombre} onChange={handleChange} placeholder="Ej: Obra Familia González" />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">¿Quién abona? <span className="required">*</span></label>
-                <select name="quienAbona" className="form-select" required value={formData.quienAbona} onChange={handleChange}>
-                  <option value="" disabled>Seleccionar...</option>
-                  <option value="El profesional">El profesional</option>
-                  <option value="El propietario">El propietario</option>
-                  <option value="A definir">A definir</option>
-                </select>
               </div>
 
               <div className="form-group">
