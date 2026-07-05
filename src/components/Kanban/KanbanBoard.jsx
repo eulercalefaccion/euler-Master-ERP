@@ -2151,54 +2151,6 @@ const KanbanBoard = () => {
                         </tbody>
                       </table>
                     </div>
-
-                    {/* Resumen de totales fijo fuera del scroll */}
-                    <div style={{
-                      backgroundColor: '#f8fafc',
-                      borderTop: '2px solid var(--primary-200)',
-                      padding: '0.5rem 1rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      fontSize: '0.85rem'
-                    }}>
-                      {canal === 'iva' ? (
-                        <div style={{ display: 'flex', width: '100%', justifyContent: 'space-around', alignItems: 'center', gap: '1rem' }}>
-                          <div style={{ display: 'flex', gap: '0.35rem' }}>
-                            <span style={{ fontWeight: '500', color: 'var(--text-secondary)' }}>Subtotal:</span>
-                            <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>$ {calcTotal(builderItems).toLocaleString('es-AR')}</span>
-                          </div>
-                          <div style={{ width: '1px', height: '14px', backgroundColor: 'var(--border-light)' }}></div>
-                          <div style={{ display: 'flex', gap: '0.35rem' }}>
-                            <span style={{ fontWeight: '500', color: 'var(--text-secondary)' }}>IVA (21%):</span>
-                            <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>$ {Math.round(calcTotal(builderItems) * 0.21).toLocaleString('es-AR')}</span>
-                          </div>
-                          <div style={{ width: '1px', height: '14px', backgroundColor: 'var(--border-light)' }}></div>
-                          <div style={{ display: 'flex', gap: '0.35rem' }}>
-                            <span style={{ fontWeight: '800', color: 'var(--primary-800)' }}>TOTAL:</span>
-                            <span style={{ fontWeight: '800', color: 'var(--primary-700)' }}>$ {Math.round(calcTotal(builderItems) * 1.21).toLocaleString('es-AR')}</span>
-                          </div>
-                        </div>
-                      ) : (
-                        <div style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontWeight: '800', color: 'var(--primary-800)' }}>TOTAL PRESUPUESTO (Canal 2 sin factura):</span>
-                          <span style={{ fontWeight: '800', color: 'var(--primary-700)', fontSize: '0.95rem' }}>$ {calcTotal(builderItems).toLocaleString('es-AR')}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* ── Notas ── */}
-                  <div className="form-group" style={{ marginBottom:0 }}>
-                    <label className="form-label" style={{ display:'flex',alignItems:'center',gap:'0.35rem' }}>
-                      <MessageSquare size={16}/> Comentarios y Condiciones
-                    </label>
-                    <textarea
-                      className="input-field" rows={2}
-                      placeholder="Notas comerciales, tiempo de entrega, validez..."
-                      value={detailNotes} onChange={e => setDetailNotes(e.target.value)}
-                      style={{ resize:'vertical',fontFamily:'inherit' }}
-                    />
                   </div>
                 </>
               )}
@@ -2631,6 +2583,51 @@ const KanbanBoard = () => {
                 </div>
               )}
             </div>
+
+            {/* ── Fixed block for Cotizador (Notas y Totales) ── */}
+            {detailTab === 'cotizador' && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', padding: '1rem 1.5rem', borderTop: '2px solid var(--primary-200)', backgroundColor: '#fff', alignItems: 'center' }}>
+                {/* Notas */}
+                <div>
+                  <label className="form-label" style={{ display:'flex',alignItems:'center',gap:'0.35rem', marginBottom: '0.35rem' }}>
+                    <MessageSquare size={16}/> Comentarios y Condiciones
+                  </label>
+                  <textarea
+                    className="input-field" rows={2}
+                    placeholder="Notas comerciales, tiempo de entrega, validez..."
+                    value={detailNotes} onChange={e => setDetailNotes(e.target.value)}
+                    style={{ resize:'vertical',fontFamily:'inherit', margin: 0 }}
+                  />
+                </div>
+                
+                {/* Totals */}
+                <div style={{ backgroundColor: '#f8fafc', border: '1px solid var(--border-light)', borderRadius: '8px', padding: '0.75rem 1rem', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                  {canal === 'iva' ? (
+                    <div style={{ display: 'flex', width: '100%', justifyContent: 'space-around', alignItems: 'center', gap: '1rem' }}>
+                      <div style={{ display: 'flex', gap: '0.35rem' }}>
+                        <span style={{ fontWeight: '500', color: 'var(--text-secondary)' }}>Subtotal:</span>
+                        <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>$ {calcTotal(builderItems).toLocaleString('es-AR')}</span>
+                      </div>
+                      <div style={{ width: '1px', height: '14px', backgroundColor: 'var(--border-light)' }}></div>
+                      <div style={{ display: 'flex', gap: '0.35rem' }}>
+                        <span style={{ fontWeight: '500', color: 'var(--text-secondary)' }}>IVA (21%):</span>
+                        <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>$ {Math.round(calcTotal(builderItems) * 0.21).toLocaleString('es-AR')}</span>
+                      </div>
+                      <div style={{ width: '1px', height: '14px', backgroundColor: 'var(--border-light)' }}></div>
+                      <div style={{ display: 'flex', gap: '0.35rem' }}>
+                        <span style={{ fontWeight: '800', color: 'var(--primary-800)' }}>TOTAL:</span>
+                        <span style={{ fontWeight: '800', color: 'var(--primary-700)' }}>$ {Math.round(calcTotal(builderItems) * 1.21).toLocaleString('es-AR')}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontWeight: '800', color: 'var(--primary-800)' }}>TOTAL PRESUPUESTO (Canal 2 sin factura):</span>
+                      <span style={{ fontWeight: '800', color: 'var(--primary-700)', fontSize: '0.95rem' }}>$ {calcTotal(builderItems).toLocaleString('es-AR')}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Panel footer */}
             <div style={{ padding:'1rem 1.5rem',borderTop:'1px solid var(--border-light)',display:'flex',justifyContent:'space-between',alignItems:'center',backgroundColor:'#f8fafc',flexWrap:'wrap',gap:'0.5rem' }}>
