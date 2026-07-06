@@ -618,7 +618,7 @@ const KanbanBoard = () => {
         for (const current of builderItems) {
           if (!prevMap.has(current.id)) { changedBudget = true; break; }
           const prev = prevMap.get(current.id);
-          if (current.quantity !== prev.quantity || current.precio !== prev.precio || current.descripcion !== prev.descripcion) {
+          if (current.quantity !== prev.quantity || current.unitPrice !== prev.unitPrice || current.descripcion !== prev.descripcion) {
             changedBudget = true;
             break;
           }
@@ -686,7 +686,7 @@ const KanbanBoard = () => {
           itemChanges.push(m);
           itemChangesPublic.push(m);
         }
-        if ((Number(current.precio) || 0) !== (Number(prev.precio) || 0)) {
+        if ((Number(current.unitPrice) || 0) !== (Number(prev.unitPrice) || 0)) {
           itemChanges.push(`precio modificado`);
         }
         if (current.descripcion !== prev.descripcion) {
