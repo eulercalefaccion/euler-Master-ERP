@@ -1767,7 +1767,7 @@ const KanbanBoard = () => {
       ────────────────────────────────────────────────────────────────────── */}
       {isRevModalOpen && (
         <div style={{ position:'fixed',top:0,left:0,right:0,bottom:0,backgroundColor:'rgba(0,0,0,0.6)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2000 }}>
-          <div className="card" style={{ width:'480px',display:'flex',flexDirection:'column',gap:'1rem' }}>
+          <div className="card" style={{ width:'650px',display:'flex',flexDirection:'column',gap:'1rem' }}>
             <h3 style={{ margin:0,display:'flex',alignItems:'center',gap:'0.5rem' }}>
               <History size={18} /> Nueva Revisión — {selectedLead?.presupuestoNumber}
             </h3>
@@ -1777,7 +1777,7 @@ const KanbanBoard = () => {
             <div className="form-group" style={{ marginBottom:0 }}>
               <label className="form-label">Historial Interno (CRM) <span style={{ color:'var(--accent-600)' }}>*</span></label>
               <textarea
-                style={{ ...inp, minHeight:'60px', resize:'vertical' }}
+                style={{ ...inp, minHeight:'120px', resize:'vertical' }}
                 placeholder="Ej: Se reemplazó caldera..."
                 value={revChangeNote}
                 onChange={e => setRevChangeNote(e.target.value)}
@@ -1787,7 +1787,7 @@ const KanbanBoard = () => {
             <div className="form-group" style={{ marginBottom:0 }}>
               <label className="form-label">Carátula PDF (Para el Cliente)</label>
               <textarea
-                style={{ ...inp, minHeight:'60px', resize:'vertical' }}
+                style={{ ...inp, minHeight:'120px', resize:'vertical' }}
                 placeholder="Ej: Se agregó bomba..."
                 value={revChangeNotePDF}
                 onChange={e => setRevChangeNotePDF(e.target.value)}
