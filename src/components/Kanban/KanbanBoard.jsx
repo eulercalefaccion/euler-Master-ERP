@@ -5,6 +5,7 @@ import {
   Trash2, ListPlus, Target, History, FileText, RefreshCw, Receipt, Download, Loader, Search
 } from 'lucide-react';
 import KanbanColumn from './KanbanColumn';
+import BalanceTermico from './BalanceTermico';
 import { db } from '../../services/firebaseConfig';
 import { dbJornadas } from '../../services/firebaseJornadas';
 import {
@@ -1830,6 +1831,7 @@ const KanbanBoard = () => {
                 </h3>
                 <div style={{ display:'flex',gap:'0.5rem' }}>
                   <button onClick={() => setDetailTab('cotizador')} style={{ padding:'0.35rem 0.75rem',fontSize:'0.85rem',fontWeight:'600',color:detailTab==='cotizador'?'var(--primary-600)':'var(--text-secondary)',backgroundColor:detailTab==='cotizador'?'var(--primary-50)':'transparent',border:'none',borderRadius:'6px',cursor:'pointer',transition:'all 0.2s' }}>💰 Cotizador</button>
+                  <button onClick={() => setDetailTab('balance')} style={{ padding:'0.35rem 0.75rem',fontSize:'0.85rem',fontWeight:'600',color:detailTab==='balance'?'var(--primary-600)':'var(--text-secondary)',backgroundColor:detailTab==='balance'?'var(--primary-50)':'transparent',border:'none',borderRadius:'6px',cursor:'pointer',transition:'all 0.2s' }}>🌡️ Balance Térmico</button>
                   <button onClick={() => setDetailTab('datos')} style={{ padding:'0.35rem 0.75rem',fontSize:'0.85rem',fontWeight:'600',color:detailTab==='datos'?'var(--primary-600)':'var(--text-secondary)',backgroundColor:detailTab==='datos'?'var(--primary-50)':'transparent',border:'none',borderRadius:'6px',cursor:'pointer',transition:'all 0.2s' }}>📋 Datos del Lead</button>
                   <button onClick={() => setDetailTab('historial')} style={{ padding:'0.35rem 0.75rem',fontSize:'0.85rem',fontWeight:'600',color:detailTab==='historial'?'var(--primary-600)':'var(--text-secondary)',backgroundColor:detailTab==='historial'?'var(--primary-50)':'transparent',border:'none',borderRadius:'6px',cursor:'pointer',transition:'all 0.2s' }}>🕰️ Historial {(selectedLead.revisionsHistory?.length||0)>0?` (${selectedLead.revisionsHistory.length})`:''}</button>
                 </div>
@@ -2614,6 +2616,14 @@ const KanbanBoard = () => {
                   )}
 
                 </div>
+              )}
+
+              {detailTab === 'balance' && (
+                <BalanceTermico
+                  selectedLead={selectedLead}
+                  setSelectedLead={setSelectedLead}
+                  db={db}
+                />
               )}
 
               {detailTab === 'historial' && (
