@@ -297,6 +297,7 @@ const KanbanBoard = () => {
 
   // Revision modal
   const [revChangeNote, setRevChangeNote] = useState('');
+  const [revChangeNotePDF, setRevChangeNotePDF] = useState('');
 
   // PDF
   const [isPDFModalOpen, setIsPDFModalOpen]   = useState(false);
@@ -642,9 +643,12 @@ const KanbanBoard = () => {
     const prevNotas = selectedLead.notas || '';
 
     const changes = [];
+    const publicChanges = [];
 
     if (canal !== prevCanal) {
-      changes.push(`Se cambió el modo de venta de "${prevCanal === 'iva' ? 'Con IVA' : 'Canal 2'}" a "${canal === 'iva' ? 'Con IVA' : 'Canal 2'}".`);
+      const msg = `Se cambió el modo de venta de "${prevCanal === 'iva' ? 'Con IVA' : 'Canal 2'}" a "${canal === 'iva' ? 'Con IVA' : 'Canal 2'}".`;
+      changes.push(msg);
+      publicChanges.push(msg);
     }
 
     if (detailNotes !== prevNotas) {
@@ -660,21 +664,29 @@ const KanbanBoard = () => {
     // Check for removed items
     prevItems.forEach(prev => {
       if (!currentMap.has(prev.id)) {
-        changes.push(`Se eliminó: ${prev.descripcion}`);
+        const msg = `Se eliminó: ${prev.descripcion}`;
+        changes.push(msg);
+        publicChanges.push(msg);
       }
     });
     
     // Check for added or modified items
     builderItems.forEach(current => {
       if (!prevMap.has(current.id)) {
-        changes.push(`Se agregó: ${current.descripcion} (Cant: ${current.quantity})`);
+        const msg = `Se agregó: ${current.descripcion} (Cant: ${current.quantity})`;
+        changes.push(msg);
+        publicChanges.push(msg);
       } else {
         const prev = prevMap.get(current.id);
         const itemChanges = [];
-        if (current.quantity !== prev.quantity) {
-          itemChanges.push(`cantidad de ${prev.quantity} a ${current.quantity}`);
+        const itemChangesPublic = [];
+        
+        if (Number(current.quantity) !== Number(prev.quantity)) {
+          const m = `cantidad de ${prev.quantity} a ${current.quantity}`;
+          itemChanges.push(m);
+          itemChangesPublic.push(m);
         }
-        if (current.precio !== prev.precio) {
+        if (Number(current.precio) !== Number(prev.precio)) {
           itemChanges.push(`precio modificado`);
         }
         if (current.descripcion !== prev.descripcion) {
@@ -683,6 +695,9 @@ const KanbanBoard = () => {
         
         if (itemChanges.length > 0) {
           changes.push(`Se modificó [${current.descripcion}]: ${itemChanges.join(', ')}.`);
+        }
+        if (itemChangesPublic.length > 0) {
+          publicChanges.push(`Se modificó [${current.descripcion}]: ${itemChangesPublic.join(', ')}.`);
         }
       }
     });
@@ -693,6 +708,7 @@ const KanbanBoard = () => {
     }
 
     setRevChangeNote(changes.join('\n'));
+    setRevChangeNotePDF(publicChanges.join('\n'));
     setIsRevModalOpen(true);
   };
 
@@ -711,6 +727,7 @@ const KanbanBoard = () => {
         notas:            selectedLead.notas || '',
         canal:            selectedLead.canal || 'iva',
         cambiosRealizados: revChangeNote.trim(),
+        cambiosPublicos: revChangeNotePDF.trim(),
         savedAt:          new Date().toISOString(),
       }];
       const newRevision = prevRev + 1;
@@ -754,8 +771,9 @@ const KanbanBoard = () => {
 
       await updateDoc(doc(db, 'presupuestos', selectedLead.id), updatedFields);
       setSelectedLead(prev => ({ ...prev, ...updatedFields }));
-      setIsRevModalOpen(false);
       setRevChangeNote('');
+      setRevChangeNotePDF('');
+      setIsRevModalOpen(false);
       alert('Revisión guardada con éxito.');
     } catch (err) { alert('Error: ' + err.message); }
     setIsSavingDetail(false);
@@ -1751,14 +1769,24 @@ const KanbanBoard = () => {
               El número de presupuesto no cambia. Describí qué cambió en esta versión para que quede registrado en el historial.
             </p>
             <div className="form-group" style={{ marginBottom:0 }}>
-              <label className="form-label">¿Qué cambió? <span style={{ color:'var(--accent-600)' }}>*</span></label>
+              <label className="form-label">Historial Interno (CRM) <span style={{ color:'var(--accent-600)' }}>*</span></label>
               <textarea
-                style={{ ...inp, minHeight:'80px', resize:'vertical' }}
-                placeholder="Ej: Se reemplazó caldera Baxi Luna 3 por Baxi Eco Nova. Se eliminó radiador del baño principal."
+                style={{ ...inp, minHeight:'60px', resize:'vertical' }}
+                placeholder="Ej: Se reemplazó caldera..."
                 value={revChangeNote}
                 onChange={e => setRevChangeNote(e.target.value)}
                 autoFocus
               />
+            </div>
+            <div className="form-group" style={{ marginBottom:0 }}>
+              <label className="form-label">Carátula PDF (Para el Cliente)</label>
+              <textarea
+                style={{ ...inp, minHeight:'60px', resize:'vertical' }}
+                placeholder="Ej: Se agregó bomba..."
+                value={revChangeNotePDF}
+                onChange={e => setRevChangeNotePDF(e.target.value)}
+              />
+              <p style={{ margin:'0.25rem 0 0 0',fontSize:'0.75rem',color:'var(--text-secondary)' }}>Solo se mostrarán cambios en cantidades y artículos. Podés modificarlo. Si lo dejás vacío, no figurará nada en el PDF.</p>
             </div>
             <div style={{ display:'flex',justifyContent:'flex-end',gap:'0.5rem' }}>
               <button className="btn btn-secondary" onClick={() => setIsRevModalOpen(false)}>Cancelar</button>

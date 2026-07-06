@@ -85,8 +85,8 @@ const buildPortada = (doc, presupuesto, logoBase64) => {
     ['Modo de precios:',   presupuesto.canal === 'canal2' ? 'Sin Factura (Canal 2)' : 'Con IVA 21% discriminado'],
   ];
 
-  if (presupuesto.revision > 0 && presupuesto.cambiosRealizados) {
-    campos.push(['Cambio realizado:', presupuesto.cambiosRealizados]);
+  if (presupuesto.revision > 0 && presupuesto.cambiosPublicos) {
+    campos.push(['Cambio realizado:', presupuesto.cambiosPublicos]);
   }
 
   const labelColor = [106, 159, 192];
