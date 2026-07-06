@@ -150,7 +150,6 @@ export const generarPDFBalance = async (presupuesto, balanceData) => {
           vol.toFixed(2),
           qWatts.toFixed(0),
           kcal.toFixed(0),
-          r.coeficiente.toString(),
           r.isToallero ? 'TOALLERO' : elemTotales.toString(),
           cantRadiadores.toString(),
           r.isToallero ? '-' : radiadoresArr.join(' + ')
@@ -163,7 +162,6 @@ export const generarPDFBalance = async (presupuesto, balanceData) => {
         '', '', 
         { content: totalW.toFixed(0), styles: { fontStyle: 'bold' } }, 
         { content: totalKcal.toFixed(0), styles: { fontStyle: 'bold' } }, 
-        '', 
         { content: totalElementos.toString(), styles: { fontStyle: 'bold' } }, 
         { content: totalRadiadores.toString(), styles: { fontStyle: 'bold' } }, 
         ''
@@ -171,7 +169,7 @@ export const generarPDFBalance = async (presupuesto, balanceData) => {
 
       autoTable(doc, {
         startY: cursorY,
-        head: [['Ambiente', 'm2', 'm3', 'Q Total\n(W)', 'Q Total\n(kcal/h)', 'Carga Termica\n(kcal/h*m3)', 'Elem.\nTotales', 'Cant.\nRadiadores', 'Elem./Radiador']],
+        head: [['Ambiente', 'm2', 'm3', 'Q Total\n(W)', 'Q Total\n(kcal/h)', 'Elem.\nTotales', 'Cant.\nRadiadores', 'Elem./Radiador']],
         body: tableBody,
         theme: 'plain',
         headStyles: { fillColor: [91, 74, 146], textColor: 255, halign: 'center', valign: 'middle' },

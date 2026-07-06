@@ -216,15 +216,14 @@ export default function BalanceTermico({ selectedLead, setSelectedLead, db }) {
               <thead>
                 <tr style={{ background: '#5b4a92', color: 'white', textAlign: 'left' }}>
                   <th style={{ padding: '0.6rem 0.5rem' }}>Ambiente</th>
-                  <th style={{ padding: '0.6rem 0.5rem', width: '50px' }}>L (m)</th>
-                  <th style={{ padding: '0.6rem 0.5rem', width: '50px' }}>A (m)</th>
-                  <th style={{ padding: '0.6rem 0.5rem', width: '50px' }}>H (m)</th>
+                  <th style={{ padding: '0.6rem 0.5rem', width: '65px' }}>L (m)</th>
+                  <th style={{ padding: '0.6rem 0.5rem', width: '65px' }}>A (m)</th>
+                  <th style={{ padding: '0.6rem 0.5rem', width: '65px' }}>H (m)</th>
                   <th style={{ padding: '0.6rem 0.5rem' }}>m²</th>
                   <th style={{ padding: '0.6rem 0.5rem' }}>m³</th>
-                  <th style={{ padding: '0.6rem 0.5rem', width: '60px' }}>Coef.</th>
+                  <th style={{ padding: '0.6rem 0.5rem', width: '75px' }}>Carga Térmica (kcal/m³)</th>
                   <th style={{ padding: '0.6rem 0.5rem' }}>Q Total (W)</th>
                   <th style={{ padding: '0.6rem 0.5rem' }}>Q Total (kcal/h)</th>
-                  <th style={{ padding: '0.6rem 0.5rem' }}>Carga Térmica (kcal/h·m³)</th>
                   <th style={{ padding: '0.6rem 0.5rem' }}>Elem. Totales</th>
                   <th style={{ padding: '0.6rem 0.5rem' }}>Cant. Radiadores</th>
                   <th style={{ padding: '0.6rem 0.5rem' }}>Elem./Radiador</th>
@@ -273,15 +272,14 @@ export default function BalanceTermico({ selectedLead, setSelectedLead, db }) {
                           </select>
                         </div>
                       </td>
-                      <td style={{ padding: '0.6rem 0.5rem' }}><input type="number" step="0.1" value={row.largo} onChange={e => updateRadiador(row.id, 'largo', e.target.value)} style={inps} /></td>
-                      <td style={{ padding: '0.6rem 0.5rem' }}><input type="number" step="0.1" value={row.ancho} onChange={e => updateRadiador(row.id, 'ancho', e.target.value)} style={inps} /></td>
-                      <td style={{ padding: '0.6rem 0.5rem' }}><input type="number" step="0.1" value={row.altura} onChange={e => updateRadiador(row.id, 'altura', e.target.value)} style={inps} /></td>
+                      <td style={{ padding: '0.6rem 0.5rem' }}><input type="number" step="0.1" value={row.largo} onChange={e => updateRadiador(row.id, 'largo', e.target.value)} style={{...inps, padding: '0.2rem'}} /></td>
+                      <td style={{ padding: '0.6rem 0.5rem' }}><input type="number" step="0.1" value={row.ancho} onChange={e => updateRadiador(row.id, 'ancho', e.target.value)} style={{...inps, padding: '0.2rem'}} /></td>
+                      <td style={{ padding: '0.6rem 0.5rem' }}><input type="number" step="0.1" value={row.altura} onChange={e => updateRadiador(row.id, 'altura', e.target.value)} style={{...inps, padding: '0.2rem'}} /></td>
                       <td style={{ padding: '0.6rem 0.5rem', fontWeight: '500' }}>{sup.toFixed(2)}</td>
                       <td style={{ padding: '0.6rem 0.5rem', fontWeight: '500' }}>{vol.toFixed(2)}</td>
-                      <td style={{ padding: '0.6rem 0.5rem' }}><input type="number" value={row.coeficiente} onChange={e => updateRadiador(row.id, 'coeficiente', e.target.value)} style={inps} /></td>
+                      <td style={{ padding: '0.6rem 0.5rem' }}><input type="number" value={row.coeficiente} onChange={e => updateRadiador(row.id, 'coeficiente', e.target.value)} style={{...inps, padding: '0.2rem'}} /></td>
                       <td style={{ padding: '0.6rem 0.5rem', fontWeight: '700' }}>{qWatts.toFixed(0)}</td>
                       <td style={{ padding: '0.6rem 0.5rem', fontWeight: '700' }}>{kcal.toFixed(0)}</td>
-                      <td style={{ padding: '0.6rem 0.5rem', fontWeight: '500' }}>{row.coeficiente}</td>
                       <td style={{ padding: '0.6rem 0.5rem', fontWeight: '700' }}>
                         {row.isToallero ? 'TOALLERO' : elemTotales}
                       </td>
