@@ -681,12 +681,12 @@ const KanbanBoard = () => {
         const itemChanges = [];
         const itemChangesPublic = [];
         
-        if (Number(current.quantity) !== Number(prev.quantity)) {
+        if ((Number(current.quantity) || 0) !== (Number(prev.quantity) || 0)) {
           const m = `cantidad de ${prev.quantity} a ${current.quantity}`;
           itemChanges.push(m);
           itemChangesPublic.push(m);
         }
-        if (Number(current.precio) !== Number(prev.precio)) {
+        if ((Number(current.precio) || 0) !== (Number(prev.precio) || 0)) {
           itemChanges.push(`precio modificado`);
         }
         if (current.descripcion !== prev.descripcion) {
@@ -784,12 +784,17 @@ const KanbanBoard = () => {
     setIsGeneratingPDF(true);
     setPdfProgress(0);
     try {
+      const baseNum = (selectedLead.presupuestoNumber || '').split('_V')[0];
+      const historicalPresupuestoNumber = `${baseNum}_V${rev.revisionNumber || 0}`;
+      
       const historicalPresupuestoData = {
         ...selectedLead,
+        presupuestoNumber: historicalPresupuestoNumber,
         quoteItems: rev.quoteItems || [],
         canal: rev.canal || 'iva',
         notas: rev.notas || '',
         cambiosRealizados: rev.cambiosRealizados || '',
+        cambiosPublicos: rev.cambiosPublicos || '',
         revision: rev.revisionNumber || 0,
         amount: rev.amount || 0,
         date: new Date(rev.savedAt).toLocaleDateString('es-AR')
