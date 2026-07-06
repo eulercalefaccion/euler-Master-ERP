@@ -184,9 +184,9 @@ const FormularioPublico = () => {
         paramSistema: formData.sistema === 'OTRO (COMPLETE ESCRIBIENDO)' ? formData.sistemaOtro : formData.sistema,
         notasLead: formData.notasLead,
         
-        // Datos específicos de profesional
-        contactoNombre: isProfesional ? formData.profesionalPropietarioNombre : '',
-        contactoTelefono: isProfesional ? formData.profesionalPropietarioTelefono : '',
+        // Datos específicos de profesional o dueño (contacto secundario)
+        contactoNombre: formData.profesionalPropietarioNombre,
+        contactoTelefono: formData.profesionalPropietarioTelefono,
         
         // Datos internos
         status: 'presupuesto', // Columna: Presupuesto Pendiente
@@ -273,6 +273,33 @@ const FormularioPublico = () => {
                 <option value="Otro">Otro</option>
               </select>
             </div>
+
+            {formData.tipoContacto === 'Consumidor Final / Dueño' && (
+              <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem', marginBottom: '1rem' }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Nombre del Profesional/Arquitecto</label>
+                  <input 
+                    type="text" 
+                    name="profesionalPropietarioNombre" 
+                    className="form-input" 
+                    value={formData.profesionalPropietarioNombre} 
+                    onChange={handleChange} 
+                    placeholder="Ej: Arq. M. Rodríguez" 
+                  />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Teléfono del Profesional/Arquitecto</label>
+                  <input 
+                    type="tel" 
+                    name="profesionalPropietarioTelefono" 
+                    className="form-input" 
+                    value={formData.profesionalPropietarioTelefono} 
+                    onChange={handleChange} 
+                    placeholder="Ej: +54 9 341 7654321" 
+                  />
+                </div>
+              </div>
+            )}
 
             <div className="form-group">
               <label className="form-label">Teléfono / WhatsApp <span className="required">*</span></label>
