@@ -6,12 +6,11 @@ import { Star, CheckCircle, Loader } from 'lucide-react';
 import './EncuestaObra.css';
 
 const questions = [
-  { id: 'q1', text: '¿Cómo calificás el tiempo y la calidad del presupuesto recibido?' },
-  { id: 'q2', text: '¿Cómo calificás el tiempo de ejecución y la calidad de la obra finalizada?' },
-  { id: 'q3', text: '¿Cómo evaluás la presencia y el profesionalismo de los instaladores?' },
-  { id: 'q4', text: '¿Cómo calificás el nivel de conocimiento técnico de los instaladores?' },
-  { id: 'q5', text: '¿Cómo evaluás el tiempo de respuesta y el conocimiento de la oficina técnica?' },
-  { id: 'q6', text: '¿Considerás que la obra se realizó en los tiempos acordados?' },
+  { id: 'q1', text: '¿Cómo calificas el tiempo y la calidad del presupuesto recibido?' },
+  { id: 'q2', text: '¿Cómo calificas la calidad de la obra finalizada?' },
+  { id: 'q3', text: '¿Cómo evaluas la presencia y el profesionalismo de los instaladores?' },
+  { id: 'q5', text: '¿Cómo evaluas el tiempo de respuesta y el conocimiento de la oficina técnica?' },
+  { id: 'q6', text: '¿Consideras que la obra se realizó en los tiempos acordados?' },
   { id: 'q7', text: '¿Cuál es tu nivel de satisfacción general con el resultado final de la obra y la atención del equipo?' }
 ];
 
@@ -24,7 +23,7 @@ export default function EncuestaObra() {
   const [error, setError] = useState('');
   
   const [answers, setAnswers] = useState({
-    q1: 0, q2: 0, q3: 0, q4: 0, q5: 0, q6: 0, q7: 0
+    q1: 0, q2: 0, q3: 0, q5: 0, q6: 0, q7: 0
   });
   
   const [comentarios, setComentarios] = useState('');
@@ -157,7 +156,7 @@ export default function EncuestaObra() {
             <textarea
               className="encuesta-textarea"
               rows="4"
-              placeholder="Dejanos tus sugerencias o felicitaciones..."
+              placeholder="Dejanos tus sugerencias o comentarios..."
               value={comentarios}
               onChange={e => setComentarios(e.target.value)}
             />
