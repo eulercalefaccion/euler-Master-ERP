@@ -9,6 +9,16 @@ export default function BalanceTermico({ selectedLead, setSelectedLead, db }) {
   const [radiadores, setRadiadores] = useState(selectedLead?.balance?.radiadores || []);
   const [piso, setPiso] = useState(selectedLead?.balance?.piso || []);
   const [colectores, setColectores] = useState(selectedLead?.balance?.colectores || []);
+  
+  const [rendimientoElemento, setRendimientoElemento] = useState(selectedLead?.balance?.rendimientoElemento || 180);
+  const [condicionesDiseno, setCondicionesDiseno] = useState(selectedLead?.balance?.condicionesDiseno || {
+    provincia: 'Santa Fe',
+    ciudad: 'Rosario',
+    tempExt: -2,
+    tempInt: 20
+  });
+  const [sistemaConstructivo, setSistemaConstructivo] = useState(selectedLead?.balance?.sistemaConstructivo || 'Ladrillo hueco 18 cm + aislación EPS 20-30mm');
+  
   const [isSaving, setIsSaving] = useState(false);
 
   // --- Lógica Radiadores ---
@@ -87,7 +97,10 @@ export default function BalanceTermico({ selectedLead, setSelectedLead, db }) {
         tipo,
         radiadores,
         piso,
-        colectores
+        colectores,
+        rendimientoElemento,
+        condicionesDiseno,
+        sistemaConstructivo
       };
       await updateDoc(doc(db, 'presupuestos', selectedLead.id), { balance: balanceData });
       setSelectedLead(prev => ({ ...prev, balance: balanceData }));
@@ -100,7 +113,7 @@ export default function BalanceTermico({ selectedLead, setSelectedLead, db }) {
 
   const handleExportPDF = async () => {
     try {
-      await generarPDFBalance(selectedLead, { tipo, radiadores, piso, colectores });
+      await generarPDFBalance(selectedLead, { tipo, radiadores, piso, colectores, rendimientoElemento, condicionesDiseno, sistemaConstructivo });
     } catch (err) {
       alert('Error al generar PDF: ' + err.message);
     }
@@ -150,35 +163,84 @@ export default function BalanceTermico({ selectedLead, setSelectedLead, db }) {
       </div>
 
       {tipo === 'radiadores' && (
-        <div>
-          <div style={{ overflowX: 'auto', marginBottom: '1rem' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          
+          {/* Parámetros Generales */}
+          <div style={{ background: 'var(--bg-surface-hover)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-light)' }}>
+            <h3 style={{ fontSize: '1rem', margin: '0 0 1rem 0', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              ⚙️ Parámetros Generales
+            </h3>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Provincia</label>
+                <input type="text" value={condicionesDiseno.provincia} onChange={e => setCondicionesDiseno({...condicionesDiseno, provincia: e.target.value})} style={inps} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Ciudad</label>
+                <input type="text" value={condicionesDiseno.ciudad} onChange={e => setCondicionesDiseno({...condicionesDiseno, ciudad: e.target.value})} style={inps} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Temp. Ext. (ºC)</label>
+                <input type="number" value={condicionesDiseno.tempExt} onChange={e => setCondicionesDiseno({...condicionesDiseno, tempExt: Number(e.target.value)})} style={inps} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Temp. Int. Objetivo (ºC)</label>
+                <input type="number" value={condicionesDiseno.tempInt} onChange={e => setCondicionesDiseno({...condicionesDiseno, tempInt: Number(e.target.value)})} style={inps} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>ΔT (Diferencia)</label>
+                <div style={{ padding: '0.35rem 0.5rem', background: 'white', border: '1px solid var(--border-light)', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-secondary)' }}>
+                  {(condicionesDiseno.tempInt - condicionesDiseno.tempExt).toFixed(1)} ºC
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Sistema Constructivo</label>
+                <input type="text" value={sistemaConstructivo} onChange={e => setSistemaConstructivo(e.target.value)} style={inps} placeholder="Ej: Ladrillo hueco 18 cm + EPS" />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Rendimiento Elem. (kcal/h)</label>
+                <input type="number" value={rendimientoElemento} onChange={e => setRendimientoElemento(Number(e.target.value) || 180)} style={inps} />
+              </div>
+            </div>
+          </div>
+
+          <div style={{ overflowX: 'auto', marginBottom: '1rem', border: '1px solid var(--border-strong)', borderRadius: '8px' }}>
+            <div style={{ padding: '0.5rem 1rem', background: '#fef9c3', color: '#854d0e', fontSize: '0.8rem', fontWeight: '500', borderBottom: '1px solid #fde047' }}>
+              💡 Cada elemento emite {rendimientoElemento} kcal/h. Máximo 12 elementos por radiador.
+            </div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
               <thead>
-                <tr style={{ background: 'var(--bg-surface-hover)', borderBottom: '2px solid var(--border-strong)', textAlign: 'left' }}>
-                  <th style={{ padding: '0.5rem' }}>Planta</th>
-                  <th style={{ padding: '0.5rem', width: '200px' }}>Ambiente</th>
-                  <th style={{ padding: '0.5rem', width: '70px' }}>L (m)</th>
-                  <th style={{ padding: '0.5rem', width: '70px' }}>A (m)</th>
-                  <th style={{ padding: '0.5rem', width: '70px' }}>H (m)</th>
-                  <th style={{ padding: '0.5rem' }}>Sup.</th>
-                  <th style={{ padding: '0.5rem' }}>Vol.</th>
-                  <th style={{ padding: '0.5rem', width: '70px' }}>Coef.</th>
-                  <th style={{ padding: '0.5rem' }}>Kcal</th>
-                  <th style={{ padding: '0.5rem' }}>Elem.</th>
-                  <th style={{ padding: '0.5rem' }}>Emisor</th>
-                  <th style={{ padding: '0.5rem' }}>Radiadores</th>
-                  <th style={{ padding: '0.5rem', textAlign: 'center' }}></th>
+                <tr style={{ background: '#5b4a92', color: 'white', textAlign: 'left' }}>
+                  <th style={{ padding: '0.6rem 0.5rem' }}>Ambiente</th>
+                  <th style={{ padding: '0.6rem 0.5rem', width: '50px' }}>L (m)</th>
+                  <th style={{ padding: '0.6rem 0.5rem', width: '50px' }}>A (m)</th>
+                  <th style={{ padding: '0.6rem 0.5rem', width: '50px' }}>H (m)</th>
+                  <th style={{ padding: '0.6rem 0.5rem' }}>m²</th>
+                  <th style={{ padding: '0.6rem 0.5rem' }}>m³</th>
+                  <th style={{ padding: '0.6rem 0.5rem', width: '60px' }}>Coef.</th>
+                  <th style={{ padding: '0.6rem 0.5rem' }}>Q Total (W)</th>
+                  <th style={{ padding: '0.6rem 0.5rem' }}>Q Total (kcal/h)</th>
+                  <th style={{ padding: '0.6rem 0.5rem' }}>Carga Térmica (kcal/h·m³)</th>
+                  <th style={{ padding: '0.6rem 0.5rem' }}>Elem. Totales</th>
+                  <th style={{ padding: '0.6rem 0.5rem' }}>Cant. Radiadores</th>
+                  <th style={{ padding: '0.6rem 0.5rem' }}>Elem./Radiador</th>
+                  <th style={{ padding: '0.6rem 0.5rem', textAlign: 'center' }}>Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 {radiadores.length === 0 && (
-                  <tr><td colSpan="13" style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-tertiary)' }}>No hay ambientes. Presioná el botón abajo para agregar.</td></tr>
+                  <tr><td colSpan="14" style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-tertiary)' }}>No hay ambientes. Presioná el botón abajo para agregar.</td></tr>
                 )}
                 {radiadores.map((row, i) => {
                   const sup = (Number(row.largo) || 0) * (Number(row.ancho) || 0);
                   const vol = sup * (Number(row.altura) || 0);
                   const kcal = vol * (Number(row.coeficiente) || 0);
-                  const elementos = kcal / 180;
+                  const qWatts = kcal / 0.86;
+                  const elementos = kcal / rendimientoElemento;
                   const elemTotales = Math.ceil(elementos);
                   
                   let radiadoresArr = [];
@@ -199,48 +261,46 @@ export default function BalanceTermico({ selectedLead, setSelectedLead, db }) {
                     }
                   }
 
-                  // Agrupación visual por planta (opcional, solo colorear fila si es distinta a la anterior no es fácil acá, pero dejamos un dropdow)
                   return (
-                    <tr key={row.id} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                      <td style={{ padding: '0.4rem' }}>
-                        <select value={row.planta} onChange={e => updateRadiador(row.id, 'planta', e.target.value)} style={inps}>
-                          <option value="Planta Baja">PB</option>
-                          <option value="Planta Alta">PA</option>
-                          <option value="Exterior">Ext</option>
-                        </select>
+                    <tr key={row.id} style={{ borderBottom: '1px solid var(--border-light)', background: i % 2 === 0 ? 'white' : '#f8fafc' }}>
+                      <td style={{ padding: '0.6rem 0.5rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                          <input type="text" value={row.ambiente} onChange={e => updateRadiador(row.id, 'ambiente', e.target.value)} style={{...inps, fontWeight: '700', textTransform: 'uppercase'}} placeholder="Ej: Living" />
+                          <select value={row.planta} onChange={e => updateRadiador(row.id, 'planta', e.target.value)} style={{...inps, padding: '0.15rem', fontSize: '0.7rem'}}>
+                            <option value="Planta Baja">PB</option>
+                            <option value="Planta Alta">PA</option>
+                            <option value="Exterior">Ext</option>
+                          </select>
+                        </div>
                       </td>
-                      <td style={{ padding: '0.4rem' }}><input type="text" value={row.ambiente} onChange={e => updateRadiador(row.id, 'ambiente', e.target.value)} style={inps} placeholder="Ej: Living" /></td>
-                      <td style={{ padding: '0.4rem' }}><input type="number" step="0.1" value={row.largo} onChange={e => updateRadiador(row.id, 'largo', e.target.value)} style={inps} /></td>
-                      <td style={{ padding: '0.4rem' }}><input type="number" step="0.1" value={row.ancho} onChange={e => updateRadiador(row.id, 'ancho', e.target.value)} style={inps} /></td>
-                      <td style={{ padding: '0.4rem' }}><input type="number" step="0.1" value={row.altura} onChange={e => updateRadiador(row.id, 'altura', e.target.value)} style={inps} /></td>
-                      <td style={{ padding: '0.4rem', fontWeight: '600', color: 'var(--text-secondary)' }}>{sup.toFixed(2)}</td>
-                      <td style={{ padding: '0.4rem', fontWeight: '600', color: 'var(--text-secondary)' }}>{vol.toFixed(2)}</td>
-                      <td style={{ padding: '0.4rem' }}><input type="number" value={row.coeficiente} onChange={e => updateRadiador(row.id, 'coeficiente', e.target.value)} style={inps} /></td>
-                      <td style={{ padding: '0.4rem', fontWeight: '700' }}>{kcal.toFixed(0)}</td>
-                      <td style={{ padding: '0.4rem' }}>{elementos.toFixed(1)}</td>
-                      <td style={{ padding: '0.4rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.7rem' }}>
-                          <input type="radio" checked={!row.isToallero} onChange={() => toggleToallero(row.id, false)} />
-                          Radiador
-                        </label>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.7rem' }}>
-                          <input type="radio" checked={row.isToallero} onChange={() => toggleToallero(row.id, true)} />
-                          Toallero
-                        </label>
+                      <td style={{ padding: '0.6rem 0.5rem' }}><input type="number" step="0.1" value={row.largo} onChange={e => updateRadiador(row.id, 'largo', e.target.value)} style={inps} /></td>
+                      <td style={{ padding: '0.6rem 0.5rem' }}><input type="number" step="0.1" value={row.ancho} onChange={e => updateRadiador(row.id, 'ancho', e.target.value)} style={inps} /></td>
+                      <td style={{ padding: '0.6rem 0.5rem' }}><input type="number" step="0.1" value={row.altura} onChange={e => updateRadiador(row.id, 'altura', e.target.value)} style={inps} /></td>
+                      <td style={{ padding: '0.6rem 0.5rem', fontWeight: '500' }}>{sup.toFixed(2)}</td>
+                      <td style={{ padding: '0.6rem 0.5rem', fontWeight: '500' }}>{vol.toFixed(2)}</td>
+                      <td style={{ padding: '0.6rem 0.5rem' }}><input type="number" value={row.coeficiente} onChange={e => updateRadiador(row.id, 'coeficiente', e.target.value)} style={inps} /></td>
+                      <td style={{ padding: '0.6rem 0.5rem', fontWeight: '700' }}>{qWatts.toFixed(0)}</td>
+                      <td style={{ padding: '0.6rem 0.5rem', fontWeight: '700' }}>{kcal.toFixed(0)}</td>
+                      <td style={{ padding: '0.6rem 0.5rem', fontWeight: '500' }}>{row.coeficiente}</td>
+                      <td style={{ padding: '0.6rem 0.5rem', fontWeight: '700' }}>
+                        {row.isToallero ? 'TOALLERO' : elemTotales}
                       </td>
-                      <td style={{ padding: '0.4rem' }}>
-                        {row.isToallero ? (
-                          <span style={{ fontSize: '0.7rem', padding: '0.2rem 0.4rem', background: '#e0f2fe', color: '#0369a1', borderRadius: '4px', fontWeight: '700' }}>TOALLERO</span>
-                        ) : (
-                          <span style={{ fontWeight: '700', color: 'var(--primary-700)' }}>
-                            {radiadoresArr.length > 0 ? radiadoresArr.join(' + ') : '-'}
-                          </span>
-                        )}
+                      <td style={{ padding: '0.6rem 0.5rem' }}>
+                        {row.isToallero ? '1' : (radiadoresArr.length > 0 ? radiadoresArr.length : '-')}
                       </td>
-                      <td style={{ padding: '0.4rem', textAlign: 'center' }}>
-                        <button onClick={() => removeRadiador(row.id)} style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer', padding: '0.2rem' }}>
-                          <Trash2 size={16} />
-                        </button>
+                      <td style={{ padding: '0.6rem 0.5rem', fontWeight: '600' }}>
+                        {row.isToallero ? '-' : (radiadoresArr.length > 0 ? radiadoresArr.join(' + ') : '-')}
+                      </td>
+                      <td style={{ padding: '0.6rem 0.5rem', textAlign: 'center' }}>
+                        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', flexDirection: 'column' }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.65rem' }}>
+                            <input type="checkbox" checked={row.isToallero} onChange={e => toggleToallero(row.id, e.target.checked)} />
+                            Toallero
+                          </label>
+                          <button onClick={() => removeRadiador(row.id)} style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', padding: '0.2rem' }}>
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
