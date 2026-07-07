@@ -74,19 +74,29 @@ const buildPortada = (doc, presupuesto, logoBase64) => {
   doc.text('PRESUPUESTO DE CALEFACCIÓN POR AGUA', W / 2, 116, { align: 'center' });
 
   // Datos del presupuesto
-  const versionSuffix = (presupuesto.revisionsHistory?.length > 0) ? `-V${presupuesto.revisionsHistory.length}` : '';
-
+  const versionSuffix = (presupuesto.revision !== undefined) ? '' : ''; // The filename already has _RevX, we don't append it here because it might duplicate. Let's just use the presupuestoNumber directly since we updated it in KanbanBoard.
+  
   const campos = [
     ['Cliente:',           presupuesto.clientName || presupuesto.name || '—'],
-    ['N° Presupuesto:',    `${presupuesto.presupuestoNumber || '—'}${versionSuffix}`],
-    ['Revisión:',          presupuesto.revisionsHistory?.length > 0 ? `V${presupuesto.revisionsHistory.length}` : 'Original'],
+    ['N° Presupuesto:',    `${presupuesto.presupuestoNumber || '—'}`],
+    ['Revisión:',          presupuesto.revision !== undefined ? `Rev${presupuesto.revision}` : 'Rev0'],
     ['Dirección de obra:', presupuesto.location || '—'],
     ['Fecha:',             presupuesto.date || new Date().toLocaleDateString('es-AR')],
     ['Modo de precios:',   presupuesto.canal === 'canal2' ? 'Sin Factura (Canal 2)' : 'Con IVA 21% discriminado'],
   ];
 
-  if (presupuesto.revision > 0 && presupuesto.cambiosPublicos) {
-    campos.push(['Cambio realizado:', presupuesto.cambiosPublicos]);
+  if (presupuesto.revision > 0) {
+    const allChanges = [];
+    if (presupuesto.revisionsHistory) {
+      presupuesto.revisionsHistory.forEach((hist, idx) => {
+        if (hist.cambiosPublicos) {
+          allChanges.push(`Rev${idx + 1}: ${hist.cambiosPublicos}`);
+        }
+      });
+    }
+    if (allChanges.length > 0) {
+      campos.push(['Historial de Cambios:', allChanges.join('\n')]);
+    }
   }
 
   const labelColor = [106, 159, 192];
@@ -554,8 +564,7 @@ export async function generarPDFPresupuesto(presupuesto, folletoUrls = [], onPro
 const getNombreArchivo = (p) => {
   const cliente = (p.clientName || p.name || 'cliente').replace(/\s+/g, '_').substring(0, 25);
   const numero  = p.presupuestoNumber || 'S-N';
-  const rev     = p.revision > 0 ? `_Rev${p.revision}` : '';
-  return `Presupuesto_Euler_${cliente}_${numero}${rev}.pdf`;
+  return `Presupuesto_Euler_${cliente}_${numero}.pdf`;
 };
 
 export default generarPDFPresupuesto;

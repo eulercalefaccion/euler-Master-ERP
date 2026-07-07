@@ -635,10 +635,98 @@ const KanbanBoard = () => {
     setIsSavingDetail(false);
   };
 
+  const executeRevisionSave = async (isInitial, changeNoteInternal, changeNotePublic) => {
+    if (!selectedLead || !editLeadFields) return;
+    setIsSavingDetail(true);
+    try {
+      const amount = calcTotal(builderItems);
+      const prevRev = selectedLead.revision || 0;
+      
+      let history = selectedLead.revisionsHistory || [];
+      let newRevision = prevRev;
+      
+      if (!isInitial) {
+        history = [...history, {
+          revisionNumber:   prevRev,
+          revisionTitle:    prevRev === 0 ? 'Rev0' : `Rev${prevRev}`,
+          quoteItems:       selectedLead.quoteItems || [],
+          amount:           selectedLead.amount || 0,
+          notas:            selectedLead.notas || '',
+          canal:            selectedLead.canal || 'iva',
+          cambiosRealizados: changeNoteInternal.trim(),
+          cambiosPublicos: changeNotePublic.trim(),
+          savedAt:          new Date().toISOString(),
+        }];
+        newRevision = prevRev + 1;
+      } else {
+        newRevision = 0;
+      }
+      
+      const baseNum = (selectedLead.presupuestoNumber || '').split('_Rev')[0].split('_V')[0];
+      const newPresupuestoNumber = `${baseNum}_Rev${newRevision}`;
+      
+      const updatedFields = {
+        notas: detailNotes,
+        amount,
+        quoteItems: builderItems,
+        canal,
+        revision: newRevision,
+        presupuestoNumber: newPresupuestoNumber,
+        cambiosRealizados: changeNoteInternal.trim(),
+        revisionsHistory: history,
+        
+        name: editLeadFields.name,
+        tipoCliente: editLeadFields.tipoCliente,
+        email: editLeadFields.email,
+        telefono: editLeadFields.telefono,
+        dni: editLeadFields.dni,
+        cuit: editLeadFields.cuit,
+        direccionCliente: editLeadFields.direccionCliente,
+        contactoNombre: editLeadFields.contactoNombre,
+        contactoTelefono: editLeadFields.contactoTelefono,
+        direccionObra: editLeadFields.direccionObra,
+        location: editLeadFields.location,
+        source: editLeadFields.source,
+        paramSistema: editLeadFields.paramSistema,
+        tipoObra: editLeadFields.tipoObra,
+        estadoObra: editLeadFields.estadoObra,
+        tipoProyecto: editLeadFields.tipoProyecto,
+        tags: [editLeadFields.paramSistema],
+        
+        facturacionIgualCliente: editLeadFields.facturacionIgualCliente,
+        facturacionNombre: editLeadFields.facturacionIgualCliente ? editLeadFields.name : editLeadFields.facturacionNombre,
+        facturacionCuit: editLeadFields.facturacionIgualCliente ? editLeadFields.cuit : editLeadFields.facturacionCuit,
+        facturacionDni: editLeadFields.facturacionIgualCliente ? editLeadFields.dni : editLeadFields.facturacionDni,
+        facturacionDireccion: editLeadFields.facturacionIgualCliente ? editLeadFields.direccionCliente : editLeadFields.facturacionDireccion,
+      };
+
+      await updateDoc(doc(db, 'presupuestos', selectedLead.id), updatedFields);
+      setSelectedLead(prev => ({ ...prev, ...updatedFields }));
+      setRevChangeNote('');
+      setRevChangeNotePDF('');
+      setIsRevModalOpen(false);
+      alert(isInitial ? 'Presupuesto Inicial (Rev0) guardado con éxito.' : `Revisión ${newRevision} guardada con éxito.`);
+    } catch (err) {
+      alert('Error guardando revisión: ' + err.message);
+    }
+    setIsSavingDetail(false);
+  };
+
+  const handleConfirmRevision = async () => {
+    if (!revChangeNote.trim()) { alert('Describí brevemente qué cambió en esta revisión.'); return; }
+    await executeRevisionSave(false, revChangeNote, revChangeNotePDF);
+  };
+
   // ─── New Revision (with change note) ────────────────────────────────────────
   const handleOpenRevModal = () => {
     if (!selectedLead) return;
     
+    // Check if it's the very first time we save a budget
+    if (selectedLead.revision === undefined) {
+      executeRevisionSave(true, 'Presupuesto Inicial', 'Presupuesto Inicial');
+      return;
+    }
+
     const prevItems = selectedLead.quoteItems || [];
     const prevCanal = selectedLead.canal || 'iva';
     const prevNotas = selectedLead.notas || '';
@@ -711,73 +799,6 @@ const KanbanBoard = () => {
     setRevChangeNote(changes.join('\n'));
     setRevChangeNotePDF(publicChanges.join('\n'));
     setIsRevModalOpen(true);
-  };
-
-  const handleConfirmRevision = async () => {
-    if (!revChangeNote.trim()) { alert('Describí brevemente qué cambió en esta revisión.'); return; }
-    if (!selectedLead || !editLeadFields) return;
-    setIsSavingDetail(true);
-    try {
-      const amount = calcTotal(builderItems);
-      const prevRev = selectedLead.revision || 0;
-      const history = [...(selectedLead.revisionsHistory || []), {
-        revisionNumber:   prevRev,
-        revisionTitle:    prevRev === 0 ? 'Original' : `Rev ${prevRev}`,
-        quoteItems:       selectedLead.quoteItems || [],
-        amount:           selectedLead.amount || 0,
-        notas:            selectedLead.notas || '',
-        canal:            selectedLead.canal || 'iva',
-        cambiosRealizados: revChangeNote.trim(),
-        cambiosPublicos: revChangeNotePDF.trim(),
-        savedAt:          new Date().toISOString(),
-      }];
-      const newRevision = prevRev + 1;
-      const baseNum = (selectedLead.presupuestoNumber || '').split('_V')[0];
-      const newPresupuestoNumber = `${baseNum}_V${newRevision}`;
-      
-      const updatedFields = {
-        notas: detailNotes,
-        amount,
-        quoteItems: builderItems,
-        canal,
-        revision: newRevision,
-        presupuestoNumber: newPresupuestoNumber,
-        cambiosRealizados: revChangeNote.trim(),
-        revisionsHistory: history,
-        
-        name: editLeadFields.name,
-        tipoCliente: editLeadFields.tipoCliente,
-        email: editLeadFields.email,
-        telefono: editLeadFields.telefono,
-        dni: editLeadFields.dni,
-        cuit: editLeadFields.cuit,
-        direccionCliente: editLeadFields.direccionCliente,
-        contactoNombre: editLeadFields.contactoNombre,
-        contactoTelefono: editLeadFields.contactoTelefono,
-        direccionObra: editLeadFields.direccionObra,
-        location: editLeadFields.location,
-        source: editLeadFields.source,
-        paramSistema: editLeadFields.paramSistema,
-        tipoObra: editLeadFields.tipoObra,
-        estadoObra: editLeadFields.estadoObra,
-        tipoProyecto: editLeadFields.tipoProyecto,
-        tags: [editLeadFields.paramSistema],
-        
-        facturacionIgualCliente: editLeadFields.facturacionIgualCliente,
-        facturacionNombre: editLeadFields.facturacionIgualCliente ? editLeadFields.name : editLeadFields.facturacionNombre,
-        facturacionCuit: editLeadFields.facturacionIgualCliente ? editLeadFields.cuit : editLeadFields.facturacionCuit,
-        facturacionDni: editLeadFields.facturacionIgualCliente ? editLeadFields.dni : editLeadFields.facturacionDni,
-        facturacionDireccion: editLeadFields.facturacionIgualCliente ? editLeadFields.direccionCliente : editLeadFields.facturacionDireccion,
-      };
-
-      await updateDoc(doc(db, 'presupuestos', selectedLead.id), updatedFields);
-      setSelectedLead(prev => ({ ...prev, ...updatedFields }));
-      setRevChangeNote('');
-      setRevChangeNotePDF('');
-      setIsRevModalOpen(false);
-      alert('Revisión guardada con éxito.');
-    } catch (err) { alert('Error: ' + err.message); }
-    setIsSavingDetail(false);
   };
 
   // ─── Delete lead ────────────────────────────────────────────────────────────
@@ -1769,7 +1790,7 @@ const KanbanBoard = () => {
         <div style={{ position:'fixed',top:0,left:0,right:0,bottom:0,backgroundColor:'rgba(0,0,0,0.6)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2000 }}>
           <div className="card" style={{ width:'650px',display:'flex',flexDirection:'column',gap:'1rem' }}>
             <h3 style={{ margin:0,display:'flex',alignItems:'center',gap:'0.5rem' }}>
-              <History size={18} /> Nueva Revisión — {selectedLead?.presupuestoNumber}
+              <History size={16} /> {selectedLead.revision === undefined ? 'Guardar Presupuesto Inicial' : 'Guardar Nueva Revisión'} — {selectedLead?.presupuestoNumber}
             </h3>
             <p style={{ margin:0,fontSize:'0.875rem',color:'var(--text-secondary)' }}>
               El número de presupuesto no cambia. Describí qué cambió en esta versión para que quede registrado en el historial.
