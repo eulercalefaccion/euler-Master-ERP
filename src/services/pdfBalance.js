@@ -122,7 +122,8 @@ export const generarPDFBalance = async (presupuesto, balanceData) => {
         
         if (r.isToallero) {
           cantRadiadores = 1;
-          totalElementos += 1;
+          const equivalencia = r.toalleroSize === '120' ? 5 : 3;
+          totalElementos += equivalencia;
           totalRadiadores += 1;
         } else if (elemTotales > 0) {
           totalElementos += elemTotales;
@@ -150,7 +151,7 @@ export const generarPDFBalance = async (presupuesto, balanceData) => {
           vol.toFixed(2),
           qWatts.toFixed(0),
           kcal.toFixed(0),
-          r.isToallero ? 'TOALLERO' : elemTotales.toString(),
+          r.isToallero ? `T. ${r.toalleroSize || '80'}` : elemTotales.toString(),
           cantRadiadores.toString(),
           r.isToallero ? '-' : radiadoresArr.join(' + ')
         ];

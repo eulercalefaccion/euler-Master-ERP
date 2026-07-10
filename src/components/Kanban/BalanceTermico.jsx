@@ -31,7 +31,8 @@ export default function BalanceTermico({ selectedLead, setSelectedLead, db }) {
       ancho: 1,
       altura: 2.8,
       coeficiente: 45,
-      isToallero: false
+      isToallero: false,
+      toalleroSize: '80'
     }]);
   };
 
@@ -40,7 +41,7 @@ export default function BalanceTermico({ selectedLead, setSelectedLead, db }) {
     // Auto toggle toallero si escriben baño
     if (field === 'ambiente' && typeof value === 'string') {
       const isBano = value.toLowerCase().includes('baño');
-      setRadiadores(prev => prev.map(r => r.id === id ? { ...r, ambiente: value, isToallero: isBano } : r));
+      setRadiadores(prev => prev.map(r => r.id === id ? { ...r, ambiente: value, isToallero: isBano, toalleroSize: r.toalleroSize || '80' } : r));
     }
   };
 
@@ -49,7 +50,7 @@ export default function BalanceTermico({ selectedLead, setSelectedLead, db }) {
   };
 
   const toggleToallero = (id, isToallero) => {
-    setRadiadores(prev => prev.map(r => r.id === id ? { ...r, isToallero } : r));
+    setRadiadores(prev => prev.map(r => r.id === id ? { ...r, isToallero, toalleroSize: r.toalleroSize || '80' } : r));
   };
 
   // --- Lógica Piso Radiante ---
@@ -268,7 +269,7 @@ export default function BalanceTermico({ selectedLead, setSelectedLead, db }) {
                           <select value={row.planta} onChange={e => updateRadiador(row.id, 'planta', e.target.value)} style={{...inps, padding: '0.15rem', fontSize: '0.7rem'}}>
                             <option value="Planta Baja">PB</option>
                             <option value="Planta Alta">PA</option>
-                            <option value="Exterior">Ext</option>
+                            <option value="Exterior">Exterior</option>
                           </select>
                         </div>
                       </td>
@@ -281,7 +282,7 @@ export default function BalanceTermico({ selectedLead, setSelectedLead, db }) {
                       <td style={{ padding: '0.6rem 0.5rem', fontWeight: '700' }}>{qWatts.toFixed(0)}</td>
                       <td style={{ padding: '0.6rem 0.5rem', fontWeight: '700' }}>{kcal.toFixed(0)}</td>
                       <td style={{ padding: '0.6rem 0.5rem', fontWeight: '700' }}>
-                        {row.isToallero ? 'TOALLERO' : elemTotales}
+                        {row.isToallero ? `T. ${row.toalleroSize || '80'}` : elemTotales}
                       </td>
                       <td style={{ padding: '0.6rem 0.5rem' }}>
                         {row.isToallero ? '1' : (radiadoresArr.length > 0 ? radiadoresArr.length : '-')}
@@ -295,6 +296,12 @@ export default function BalanceTermico({ selectedLead, setSelectedLead, db }) {
                             <input type="checkbox" checked={row.isToallero} onChange={e => toggleToallero(row.id, e.target.checked)} />
                             Toallero
                           </label>
+                          {row.isToallero && (
+                            <select value={row.toalleroSize || '80'} onChange={e => updateRadiador(row.id, 'toalleroSize', e.target.value)} style={{...inps, padding: '0.1rem', fontSize: '0.65rem', width: '100%'}}>
+                              <option value="80">T. 80</option>
+                              <option value="120">T. 120</option>
+                            </select>
+                          )}
                           <button onClick={() => removeRadiador(row.id)} style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', padding: '0.2rem' }}>
                             <Trash2 size={16} />
                           </button>
