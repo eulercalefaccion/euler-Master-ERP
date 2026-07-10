@@ -653,9 +653,9 @@ const KanbanBoard = () => {
           amount:           selectedLead.amount || 0,
           notas:            selectedLead.notas || '',
           canal:            selectedLead.canal || 'iva',
-          cambiosRealizados: changeNoteInternal.trim(),
-          cambiosPublicos: changeNotePublic.trim(),
-          savedAt:          new Date().toISOString(),
+          cambiosRealizados: selectedLead.cambiosRealizados || (prevRev === 0 ? 'Presupuesto Inicial' : ''),
+          cambiosPublicos: selectedLead.cambiosPublicos || '',
+          savedAt:          selectedLead.revisionSavedAt || new Date().toISOString(),
         }];
         newRevision = prevRev + 1;
       } else {
@@ -672,7 +672,9 @@ const KanbanBoard = () => {
         canal,
         revision: newRevision,
         presupuestoNumber: newPresupuestoNumber,
-        cambiosRealizados: changeNoteInternal.trim(),
+        cambiosRealizados: isInitial ? 'Presupuesto Inicial' : changeNoteInternal.trim(),
+        cambiosPublicos: isInitial ? '' : changeNotePublic.trim(),
+        revisionSavedAt: new Date().toISOString(),
         revisionsHistory: history,
         
         name: editLeadFields.name,
@@ -2670,6 +2672,11 @@ const KanbanBoard = () => {
                       {builderItems.length > 0 && ': ' + builderItems.slice(0,3).map(i => `${i.descripcion} (×${i.quantity})`).join(' · ')}
                       {builderItems.length > 3 && ` ... +${builderItems.length - 3} más`}
                     </div>
+                    {selectedLead.cambiosRealizados && selectedLead.revision > 0 && (
+                      <div style={{ background:'#fefce8',border:'1px solid #fde68a',borderRadius:'6px',padding:'0.5rem 0.75rem',fontSize:'0.8rem',color:'#92400e',marginBottom:'0.5rem', marginTop: '0.5rem' }}>
+                        <strong>Cambios desde la revisión anterior:</strong> {selectedLead.cambiosRealizados}
+                      </div>
+                    )}
                     {detailNotes && (
                       <div style={{ marginTop:'0.4rem',fontSize:'0.75rem',color:'#64748b',fontStyle:'italic' }}>📝 {detailNotes.substring(0, 120)}{detailNotes.length > 120 ? '...' : ''}</div>
                     )}

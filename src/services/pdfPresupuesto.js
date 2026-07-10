@@ -88,12 +88,16 @@ const buildPortada = (doc, presupuesto, logoBase64) => {
   if (presupuesto.revision > 0) {
     const allChanges = [];
     if (presupuesto.revisionsHistory) {
-      presupuesto.revisionsHistory.forEach((hist, idx) => {
-        if (hist.cambiosPublicos) {
-          allChanges.push(`Rev${idx + 1}: ${hist.cambiosPublicos}`);
+      presupuesto.revisionsHistory.forEach((hist) => {
+        if (hist.cambiosPublicos && hist.revisionNumber > 0) {
+          allChanges.push(`Rev${hist.revisionNumber}: ${hist.cambiosPublicos}`);
         }
       });
     }
+    if (presupuesto.cambiosPublicos) {
+      allChanges.push(`Rev${presupuesto.revision}: ${presupuesto.cambiosPublicos}`);
+    }
+    
     if (allChanges.length > 0) {
       campos.push(['Historial de Cambios:', allChanges.join('\n')]);
     }
