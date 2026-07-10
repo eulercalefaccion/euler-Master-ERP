@@ -269,7 +269,6 @@ export default function BalanceTermico({ selectedLead, setSelectedLead, db }) {
                           <select value={row.planta} onChange={e => updateRadiador(row.id, 'planta', e.target.value)} style={{...inps, padding: '0.15rem', fontSize: '0.7rem'}}>
                             <option value="Planta Baja">PB</option>
                             <option value="Planta Alta">PA</option>
-                            <option value="Exterior">Exterior</option>
                           </select>
                         </div>
                       </td>
