@@ -165,13 +165,10 @@ export default function BalanceTermico({ selectedLead, setSelectedLead, db }) {
 
       {tipo === 'radiadores' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          
-          {/* Parámetros Generales */}
           <div style={{ background: 'var(--bg-surface-hover)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-light)' }}>
             <h3 style={{ fontSize: '1rem', margin: '0 0 1rem 0', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               ⚙️ Parámetros Generales
             </h3>
-            
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Provincia</label>
@@ -196,7 +193,6 @@ export default function BalanceTermico({ selectedLead, setSelectedLead, db }) {
                 </div>
               </div>
             </div>
-
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Sistema Constructivo</label>
@@ -310,6 +306,21 @@ export default function BalanceTermico({ selectedLead, setSelectedLead, db }) {
                   );
                 })}
               </tbody>
+              {radiadores.length > 0 && (
+                <tfoot style={{ background: '#f1f5f9', borderTop: '2px solid var(--border-strong)' }}>
+                  <tr>
+                    <td colSpan="4" style={{ padding: '0.8rem 0.5rem', textAlign: 'right', fontWeight: 'bold' }}>TOTALES:</td>
+                    <td style={{ padding: '0.8rem 0.5rem', fontWeight: 'bold' }}>{totalM2.toFixed(2)}</td>
+                    <td style={{ padding: '0.8rem 0.5rem' }}></td>
+                    <td style={{ padding: '0.8rem 0.5rem' }}></td>
+                    <td style={{ padding: '0.8rem 0.5rem', fontWeight: 'bold' }}>{totalW.toFixed(0)}</td>
+                    <td style={{ padding: '0.8rem 0.5rem', fontWeight: 'bold' }}>{totalKcal.toFixed(0)}</td>
+                    <td style={{ padding: '0.8rem 0.5rem', fontWeight: 'bold' }}>{totalElementos}</td>
+                    <td style={{ padding: '0.8rem 0.5rem', fontWeight: 'bold' }}>{totalRadiadores}</td>
+                    <td colSpan="2"></td>
+                  </tr>
+                </tfoot>
+              )}
             </table>
           </div>
           <button onClick={addRowRadiadores} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem' }}>
