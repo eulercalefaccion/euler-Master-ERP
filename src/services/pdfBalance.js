@@ -122,8 +122,6 @@ export const generarPDFBalance = async (presupuesto, balanceData) => {
         
         if (r.isToallero) {
           cantRadiadores = 1;
-          const equivalencia = r.toalleroSize === '120' ? 5 : 3;
-          totalElementos += equivalencia;
           totalRadiadores += 1;
         } else if (elemTotales > 0) {
           totalElementos += elemTotales;

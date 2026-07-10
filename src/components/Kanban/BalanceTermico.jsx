@@ -130,6 +130,39 @@ export default function BalanceTermico({ selectedLead, setSelectedLead, db }) {
     boxSizing: 'border-box'
   };
 
+  // --- Calcular Totales de Balance ---
+  let totalM2 = 0;
+  let totalKcal = 0;
+  let totalW = 0;
+  let totalElementos = 0;
+  let totalRadiadores = 0;
+
+  radiadores.forEach(r => {
+    const sup = (Number(r.largo) || 0) * (Number(r.ancho) || 0);
+    const vol = sup * (Number(r.altura) || 0);
+    const kcal = vol * (Number(r.coeficiente) || 0);
+    const qWatts = kcal / 0.86;
+    const elementos = kcal / rendimientoElemento;
+    const elemTotales = Math.ceil(elementos);
+
+    totalM2 += sup;
+    totalKcal += kcal;
+    totalW += qWatts;
+
+    if (r.isToallero) {
+      totalRadiadores += 1;
+    } else if (elemTotales > 0) {
+      totalElementos += elemTotales;
+      if (elemTotales <= 12) {
+        totalRadiadores += 1;
+      } else if (elemTotales <= 24) {
+        totalRadiadores += 2;
+      } else {
+        totalRadiadores += Math.ceil(elemTotales / 12);
+      }
+    }
+  });
+
   return (
     <div style={{ padding: '1.5rem', background: 'white', borderRadius: '8px', minHeight: '100%', border: '1px solid var(--border-light)' }}>
       
