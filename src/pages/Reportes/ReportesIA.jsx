@@ -1,13 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { collection, getDocs, query, orderBy, limit, doc, getDoc } from 'firebase/firestore';
-import { db } from '../../services/firebaseConfig';
+import { httpsCallable } from 'firebase/functions';
+import { db, functions } from '../../services/firebaseConfig';
 import { dbSueldos } from '../../services/firebaseSueldos';
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import { Key, Send, Loader, Trash2, MessageSquare } from 'lucide-react';
+import { Send, Loader, Trash2, MessageSquare } from 'lucide-react';
 
 const ReportesIA = () => {
-  const [apiKey, setApiKey] = useState(localStorage.getItem('gemini_api_key') || '');
-  const [isKeyConfigured, setIsKeyConfigured] = useState(!!localStorage.getItem('gemini_api_key'));
   const [messages, setMessages] = useState(() => {
     const saved = localStorage.getItem('gemini_chat_history');
     if (saved) {
@@ -32,19 +30,6 @@ const ReportesIA = () => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
-
-  const saveApiKey = () => {
-    if (apiKey.trim()) {
-      localStorage.setItem('gemini_api_key', apiKey.trim());
-      setIsKeyConfigured(true);
-    }
-  };
-
-  const removeApiKey = () => {
-    localStorage.removeItem('gemini_api_key');
-    setApiKey('');
-    setIsKeyConfigured(false);
-  };
 
   // Pre-cargar datos del ERP para inyectar como contexto
   const loadContextData = async () => {
@@ -109,13 +94,11 @@ const ReportesIA = () => {
   };
 
   useEffect(() => {
-    if (isKeyConfigured) {
-      loadContextData();
-    }
-  }, [isKeyConfigured]);
+    loadContextData();
+  }, []);
 
   const handleSend = async () => {
-    if (!input.trim() || !isKeyConfigured) return;
+    if (!input.trim()) return;
     
     const userMessage = input.trim();
     setInput('');
@@ -129,22 +112,12 @@ Aquí tienes los datos recientes (en formato JSON resuelto) para responder:
 ${JSON.stringify(contextData)}
 Responde la pregunta del usuario basándote SOLO en estos datos si te pide métricas. Si es una consulta general, sé amable y profesional. Responde corto y al punto, usando formato markdown. No expongas el JSON al usuario.`;
 
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-      
-      const result = await model.generateContent({
-        contents: [
-          {
-            role: 'user',
-            parts: [{ text: systemContext + "\n\nPregunta del usuario: " + userMessage }]
-          }
-        ],
-        generationConfig: {
-          temperature: 0.2
-        }
+      const askGemini = httpsCallable(functions, 'askGemini');
+      const response = await askGemini({
+        prompt: systemContext + "\n\nPregunta del usuario: " + userMessage
       });
       
-      const botReply = result.response.text();
+      const botReply = response.data.response;
       setMessages(prev => [...prev, { role: 'model', text: botReply }]);
     } catch (error) {
       console.error(error);
@@ -153,31 +126,6 @@ Responde la pregunta del usuario basándote SOLO en estos datos si te pide métr
       setLoading(false);
     }
   };
-
-  if (!isKeyConfigured) {
-    return (
-      <div className="report-card" style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'center' }}>
-        <div style={{ backgroundColor: 'var(--primary-50)', width: '64px', height: '64px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem auto' }}>
-          <Key size={32} color="var(--primary-700)" />
-        </div>
-        <h3 style={{ margin: 0, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>Configurar Asistente IA</h3>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1.5rem', lineHeight: 1.5 }}>
-          Para usar el analista de datos basado en inteligencia artificial, necesitas ingresar tu clave API de Google Gemini (gratuita).
-        </p>
-        <input
-          type="password"
-          placeholder="Pega tu API Key de Gemini aquí..."
-          className="input-field"
-          style={{ width: '100%', marginBottom: '1rem', textAlign: 'center' }}
-          value={apiKey}
-          onChange={(e) => setApiKey(e.target.value)}
-        />
-        <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={saveApiKey}>
-          Guardar y Activar Analista IA
-        </button>
-      </div>
-    );
-  }
 
   return (
     <div className="ai-chat-container">
@@ -196,13 +144,6 @@ Responde la pregunta del usuario basándote SOLO en estos datos si te pide métr
             style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem' }}
           >
             <Trash2 size={14} /> Limpiar Chat
-          </button>
-          <button 
-            onClick={removeApiKey} 
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem' }}
-            title="Eliminar API Key"
-          >
-            <Key size={14} /> Cambiar Key
           </button>
         </div>
       </div>

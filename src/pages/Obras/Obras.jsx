@@ -12,6 +12,7 @@ import {
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { generarPDFPresupuesto } from '../../services/pdfPresupuesto';
 import { getTipoCambio } from '../../services/tipoCambioService';
+import { useAuth } from '../../context/AuthContext';
 
 const addBusinessDays = (startDateStr, days) => {
   if (!days) return startDateStr;
@@ -138,6 +139,8 @@ const fmt = (v) =>
 /*  Component                                              */
 /* ─────────────────────────────────────────────────────── */
 const Obras = () => {
+  const { currentUser } = useAuth();
+  
   /* ── state ── */
   const [obras, setObras]             = useState([]);
   const [searchTerm, setSearchTerm]   = useState('');
@@ -331,7 +334,8 @@ const Obras = () => {
     if (!newBitacora.trim() || !selectedObra) return;
     setIsSaving(true);
     try {
-      const entry = { texto: newBitacora.trim(), fecha: new Date().toISOString() };
+      const authorName = currentUser?.name || currentUser?.email || 'Usuario';
+      const entry = { texto: newBitacora.trim(), fecha: new Date().toISOString(), autor: authorName };
       const existing = selectedObra.bitacoraHistory || [];
       await updateDoc(doc(db, 'obras', selectedObra.id), {
         bitacoraPreview: newBitacora.trim(),
@@ -349,11 +353,12 @@ const Obras = () => {
     if (!newObra.name) { alert('Nombre es requerido'); return; }
     setIsSaving(true);
     try {
+      const authorName = currentUser?.name || currentUser?.email || 'Usuario';
       await addDoc(collection(db, 'obras'), {
         ...newObra,
         progress: parseInt(newObra.progress) || 0,
         bitacoraPreview: 'Obra creada manualmente.',
-        bitacoraHistory: [{ texto: 'Obra creada manualmente.', fecha: new Date().toISOString() }],
+        bitacoraHistory: [{ texto: 'Obra creada manualmente.', fecha: new Date().toISOString(), autor: authorName }],
         personal: [],
         archivos: [],
         createdAt: serverTimestamp(),
@@ -890,9 +895,15 @@ const Obras = () => {
             </div>
             {history.slice(0, 20).map((entry, i) => (
               <div key={i} style={{ padding: '0.75rem 1rem', borderTop: '1px solid var(--border-light)', fontSize: '0.875rem' }}>
-                <div style={{ color: 'var(--text-primary)', marginBottom: '2px' }}>{entry.texto}</div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)' }}>
-                  {new Date(entry.fecha).toLocaleString('es-AR')}
+                <div style={{ color: 'var(--text-primary)', marginBottom: '4px' }}>{entry.texto}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
+                  <span>{new Date(entry.fecha).toLocaleString('es-AR')}</span>
+                  {entry.autor && (
+                    <>
+                      <span>•</span>
+                      <span style={{ fontWeight: '500', color: 'var(--primary-600)' }}>{entry.autor}</span>
+                    </>
+                  )}
                 </div>
               </div>
             ))}
