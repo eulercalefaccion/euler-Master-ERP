@@ -153,6 +153,9 @@ const KanbanBoard = () => {
   const [paymentAmount, setPaymentAmount] = useState('');
   const [isApproving, setIsApproving]     = useState(false);
 
+  // Follow ups
+  const [hasDismissedFollowUps, setHasDismissedFollowUps] = useState(false);
+
   // New lead form
   const [isNewClient, setIsNewClient] = useState(false);
   const [newLead, setNewLead] = useState({
@@ -421,6 +424,7 @@ const KanbanBoard = () => {
       facturacionCuit: item.facturacionCuit || '',
       facturacionDni: item.facturacionDni || '',
       facturacionDireccion: item.facturacionDireccion || '',
+      fechaSeguimiento: item.fechaSeguimiento || '',
     });
   };
 
@@ -602,6 +606,7 @@ const KanbanBoard = () => {
         facturacionCuit: editLeadFields.facturacionIgualCliente ? editLeadFields.cuit : editLeadFields.facturacionCuit,
         facturacionDni: editLeadFields.facturacionIgualCliente ? editLeadFields.dni : editLeadFields.facturacionDni,
         facturacionDireccion: editLeadFields.facturacionIgualCliente ? editLeadFields.direccionCliente : editLeadFields.facturacionDireccion,
+        fechaSeguimiento: editLeadFields.fechaSeguimiento || '',
       };
 
       await updateDoc(doc(db, 'presupuestos', selectedLead.id), updatedFields);
@@ -700,6 +705,7 @@ const KanbanBoard = () => {
         facturacionCuit: editLeadFields.facturacionIgualCliente ? editLeadFields.cuit : editLeadFields.facturacionCuit,
         facturacionDni: editLeadFields.facturacionIgualCliente ? editLeadFields.dni : editLeadFields.facturacionDni,
         facturacionDireccion: editLeadFields.facturacionIgualCliente ? editLeadFields.direccionCliente : editLeadFields.facturacionDireccion,
+        fechaSeguimiento: editLeadFields.fechaSeguimiento || '',
       };
 
       await updateDoc(doc(db, 'presupuestos', selectedLead.id), updatedFields);
@@ -1193,9 +1199,58 @@ const KanbanBoard = () => {
     fontSize: '0.875rem', outline: 'none', background: 'var(--bg-primary)',
   };
 
+  const todayStr = new Date().toISOString().split('T')[0];
+  const dueFollowUps = Object.values(data.items).filter(lead => {
+    if (lead.deleted) return false;
+    if (lead.status !== 'enviado' && lead.status !== 'seguimiento') return false;
+    if (!lead.fechaSeguimiento) return false;
+    return lead.fechaSeguimiento <= todayStr;
+  });
+
   // ─── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' }}>
+      
+      {/* ── ALERTA DE SEGUIMIENTOS ── */}
+      {dueFollowUps.length > 0 && !hasDismissedFollowUps && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="card" style={{ width: '450px', maxWidth: '90%', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', animation: 'scaleIn 0.2s ease-out' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#d97706' }}>
+              <AlertCircle size={24} />
+              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '600' }}>Seguimientos Pendientes</h3>
+            </div>
+            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+              Tenés {dueFollowUps.length} lead{dueFollowUps.length !== 1 ? 's' : ''} que requieren tu seguimiento hoy (o están vencidos):
+            </p>
+            <div style={{ maxHeight: '250px', overflowY: 'auto', border: '1px solid var(--border-light)', borderRadius: '8px', padding: '0.5rem' }}>
+              {dueFollowUps.map(lead => (
+                <div key={lead.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem', borderBottom: '1px solid var(--border-light)' }}>
+                  <div>
+                    <div style={{ fontWeight: '600', fontSize: '0.875rem', color: 'var(--text-primary)' }}>{lead.name}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>{lead.presupuestoNumber || 'S/N'}</div>
+                  </div>
+                  <button 
+                    className="btn btn-secondary"
+                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                    onClick={() => {
+                      setHasDismissedFollowUps(true);
+                      openDetail(lead);
+                    }}
+                  >
+                    Abrir Lead
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+              <button className="btn btn-primary" onClick={() => setHasDismissedFollowUps(true)}>
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Header ── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
@@ -2510,6 +2565,24 @@ const KanbanBoard = () => {
                         </select>
                       </div>
                     </div>
+
+                    {(selectedLead.status === 'enviado' || selectedLead.status === 'seguimiento') && (
+                      <div className="form-group" style={{ marginTop: '1rem', padding: '0.75rem', backgroundColor: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '8px' }}>
+                        <label className="form-label" style={{ color: '#0369a1', display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.5rem' }}>
+                          <Calendar size={14} /> Fecha de Seguimiento (Vencimiento)
+                        </label>
+                        <input
+                          type="date"
+                          className="input-field"
+                          value={editLeadFields.fechaSeguimiento || ''}
+                          onChange={e => setEditLeadFields({ ...editLeadFields, fechaSeguimiento: e.target.value })}
+                          style={{ borderColor: '#bae6fd' }}
+                        />
+                        <div style={{ fontSize: '0.75rem', color: '#0284c7', marginTop: '0.35rem' }}>
+                          Configurá cuándo debemos contactar nuevamente a este lead. Recibirás una alerta en el sistema al llegar la fecha.
+                        </div>
+                      </div>
+                    )}
 
                     <div className="mobile-grid-1" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem',marginTop:'1rem' }}>
                       <div className="form-group" style={{ marginBottom:0 }}>
