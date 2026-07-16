@@ -2,10 +2,11 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { DragDropContext } from '@hello-pangea/dnd';
 import {
   Plus, X, Save, MessageSquare, DollarSign, MapPin, Calendar, Tag,
-  Trash2, ListPlus, Target, History, FileText, RefreshCw, Receipt, Download, Loader, Search
+  Trash2, ListPlus, Target, History, FileText, RefreshCw, Receipt, Download, Loader, Search, Settings, AlertCircle
 } from 'lucide-react';
 import KanbanColumn from './KanbanColumn';
 import BalanceTermico from './BalanceTermico';
+import FolletosManagerModal from './FolletosManagerModal';
 import { db } from '../../services/firebaseConfig';
 import { dbJornadas } from '../../services/firebaseJornadas';
 import {
@@ -308,6 +309,9 @@ const KanbanBoard = () => {
   const [pdfProgress, setPdfProgress]         = useState(0);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [selectedFolletos, setSelectedFolletos] = useState([]);
+  const [isFolletosManagerOpen, setIsFolletosManagerOpen] = useState(false);
+  const [folletosAdicionales, setFolletosAdicionales] = useState([]);
+
   // Lista de folletos disponibles (artículos con folletoUrl en lista_precios o folletos locales por palabra clave)
   const folletosDisponibles = useMemo(() => {
     const uniqueUrls = new Set();
@@ -325,9 +329,20 @@ const KanbanBoard = () => {
         });
       }
     });
+
+    folletosAdicionales.forEach(f => {
+      if (!uniqueUrls.has(f.url)) {
+        uniqueUrls.add(f.url);
+        result.push({
+          id: f.id,
+          descripcion: f.nombre,
+          folletoUrl: f.url
+        });
+      }
+    });
     
     return result;
-  }, [listaItems]);
+  }, [listaItems, folletosAdicionales]);
 
   // Quote builder add-item selectors
   const [selectedItemId, setSelectedItemId]   = useState('');
@@ -385,11 +400,17 @@ const KanbanBoard = () => {
       setData(prev => ({ ...prev, items: newItems, columns: newCols }));
     });
 
+    // Folletos Generales
+    const unsubFolletos = onSnapshot(collection(db, 'folletos'), snap => {
+      setFolletosAdicionales(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+
     return () => { 
       unsubClientes(); 
       unsubLista(); 
       unsubEstandares();
       unsubPresupuestos(); 
+      unsubFolletos();
     };
   }, []);
 
@@ -2923,8 +2944,16 @@ const KanbanBoard = () => {
 
             {/* Folletos */}
             <div style={{ flex:1,overflowY:'auto' }}>
-              <div style={{ fontWeight:'600',fontSize:'0.875rem',marginBottom:'0.5rem',color:'var(--text-primary)' }}>
-                📄 Incluir folletos de productos ({folletosDisponibles.length} disponibles)
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.5rem' }}>
+                <div style={{ fontWeight:'600',fontSize:'0.875rem',color:'var(--text-primary)' }}>
+                  📄 Incluir folletos de productos ({folletosDisponibles.length} disponibles)
+                </div>
+                <button 
+                  onClick={() => setIsFolletosManagerOpen(true)}
+                  style={{ display:'flex', alignItems:'center', gap:'0.25rem', background:'none', border:'none', color:'#0284c7', fontSize:'0.75rem', fontWeight:'600', cursor:'pointer' }}
+                >
+                  <Settings size={14} /> Administrar Folletos
+                </button>
               </div>
                {folletosDisponibles.length === 0 ? (
                 <div style={{ padding:'0.75rem',background:'#f8fafc',borderRadius:'8px',fontSize:'0.8rem',color:'#64748b',textAlign:'center' }}>
@@ -2999,6 +3028,16 @@ const KanbanBoard = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ──────────────────────────────────────────────────────────────────────
+          MODAL: Folletos Manager
+      ────────────────────────────────────────────────────────────────────── */}
+      {isFolletosManagerOpen && (
+        <FolletosManagerModal 
+          folletos={folletosAdicionales} 
+          onClose={() => setIsFolletosManagerOpen(false)} 
+        />
       )}
 
       <style>{`
