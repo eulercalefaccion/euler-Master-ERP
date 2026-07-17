@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { collection, onSnapshot } from 'firebase/firestore';
-import { db } from '../../services/firebaseConfig';
+import { httpsCallable } from 'firebase/functions';
+import { db, functions } from '../../services/firebaseConfig';
 import { Loader, Sparkles, AlertTriangle } from 'lucide-react';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const questionsMap = {
   q1: 'Presupuesto',
@@ -19,7 +19,6 @@ const ReportesEncuestas = () => {
   
   const [aiLoading, setAiLoading] = useState(false);
   const [aiAnalysis, setAiAnalysis] = useState('');
-  const [apiKey] = useState(localStorage.getItem('gemini_api_key') || '');
 
   useEffect(() => {
     // Escuchar todas las obras y filtrar localmente las que tienen encuesta
@@ -81,17 +80,10 @@ const ReportesEncuestas = () => {
   });
 
   const handleAIAnalysis = async () => {
-    if (!apiKey) {
-      alert("Por favor, configura tu API Key de Gemini en la pestaña 'Asistente IA'.");
-      return;
-    }
     setAiLoading(true);
     setAiAnalysis('');
     
     try {
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-      
       const comentarios = recientes.map(e => `- ${e.comentarios}`).filter(c => c.length > 5).join('\n');
       
       const prompt = `
@@ -109,8 +101,9 @@ Elabora un reporte breve en Markdown que incluya:
 3. Propuesta de plan de acción (3 a 5 puntos claros) para mejorar las métricas más bajas.
 No uses títulos gigantes, usa h3 (###) o negritas. Sé directo y profesional.`;
 
-      const result = await model.generateContent(prompt);
-      setAiAnalysis(result.response.text());
+      const askGemini = httpsCallable(functions, 'askGemini');
+      const response = await askGemini({ prompt });
+      setAiAnalysis(response.data.response);
     } catch (err) {
       console.error(err);
       setAiAnalysis(`Error al generar análisis: ${err.message}`);

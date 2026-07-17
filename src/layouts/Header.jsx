@@ -185,7 +185,7 @@ const Header = ({ onOpenMenu }) => {
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
               <button 
-                onClick={() => setShowPopup(null)} 
+                onClick={() => { markAsRead(showPopup.id); setShowPopup(null); }} 
                 style={{ background: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', padding: '0.75rem 2rem', fontSize: '1.1rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(59, 130, 246, 0.3)' }}
               >
                 ENTENDIDO

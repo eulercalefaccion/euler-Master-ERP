@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Filter, Plus, FileText, Wrench, MoreVertical, Building, User, Mail, Phone, X, Save, Edit2, Trash2 } from 'lucide-react';
+import ValidatedInput from '../../components/Form/ValidatedInput';
 import { db } from '../../services/firebaseConfig';
 import { collection, onSnapshot, query, addDoc, updateDoc, deleteDoc, writeBatch, doc } from 'firebase/firestore';
 
@@ -442,8 +443,14 @@ const Clientes = () => {
             <h4 style={{ margin: 0, color: 'var(--primary-700)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Identidad del Contacto</h4>
             
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">Nombre o Razón Social del Cliente <span style={{ color: 'var(--accent-600)' }}>*</span></label>
-              <input type="text" name="name" value={formData.name} onChange={handleInputChange} className="input-field" placeholder="Ej: Constructora San Juan S.A." required />
+              <ValidatedInput 
+                label="Nombre o Razón Social del Cliente"
+                name="name" 
+                value={formData.name} 
+                onChange={(val) => setFormData(prev => ({...prev, name: val}))}
+                placeholder="Ej: Constructora San Juan S.A." 
+                required 
+              />
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
@@ -465,8 +472,15 @@ const Clientes = () => {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">CUIT</label>
-                <input type="text" name="cuit" value={formData.cuit} onChange={handleInputChange} className="input-field" placeholder="30-12345678-9" />
+                <ValidatedInput 
+                  label="CUIT"
+                  name="cuit" 
+                  value={formData.cuit} 
+                  onChange={(val) => setFormData(prev => ({...prev, cuit: val}))}
+                  placeholder="30-12345678-9"
+                  pattern="^\\d{2}-\\d{8}-\\d$"
+                  errorMsg="Formato esperado: XX-XXXXXXXX-X"
+                />
               </div>
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label className="form-label">DNI</label>
@@ -476,12 +490,24 @@ const Clientes = () => {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">Teléfono Principal</label>
-                <input type="text" name="phone" value={formData.phone} onChange={handleInputChange} className="input-field" placeholder="+54 9 341 1234567" />
+                <ValidatedInput 
+                  label="Teléfono Principal"
+                  name="phone" 
+                  value={formData.phone} 
+                  onChange={(val) => setFormData(prev => ({...prev, phone: val}))}
+                  placeholder="+54 9 341 1234567" 
+                  inputMode="tel"
+                />
               </div>
               <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">Correo Electrónico</label>
-                <input type="email" name="email" value={formData.email} onChange={handleInputChange} className="input-field" placeholder="contacto@empresa.com" />
+                <ValidatedInput 
+                  label="Correo Electrónico"
+                  type="email" 
+                  name="email" 
+                  value={formData.email} 
+                  onChange={(val) => setFormData(prev => ({...prev, email: val}))}
+                  placeholder="contacto@empresa.com" 
+                />
               </div>
             </div>
 

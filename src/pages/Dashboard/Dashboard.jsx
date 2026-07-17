@@ -144,7 +144,8 @@ const Dashboard = () => {
     const map = {};
     PIPELINE_STEPS.forEach(s => { map[s.key] = { count: 0, total: 0 }; });
     presupuestos.forEach(p => {
-      const key = p.status;
+      if (p.deleted) return; // ignora los borrados
+      const key = p.status || 'pendiente';
       if (map[key]) {
         map[key].count += 1;
         map[key].total += Number(p.amount) || 0;
@@ -161,9 +162,9 @@ const Dashboard = () => {
   [pipelineMap]);
 
   // ── Derived: Obras ──
-  const obrasEnProceso = useMemo(() => obras.filter(o => !o.deleted && o.estado === 'En Proceso'), [obras]);
-  const obrasPendientesInicio = useMemo(() => obras.filter(o => !o.deleted && o.estado === 'Pendiente de Inicio'), [obras]);
-  const obrasActivasList = useMemo(() => obras.filter(o => !o.deleted && (o.estado === 'En Proceso' || o.estado === 'Pendiente de Inicio')), [obras]);
+  const obrasEnProceso = useMemo(() => obras.filter(o => !o.deleted && (o.estado === 'En Proceso' || o.estado === 'Instalación en Proceso')), [obras]);
+  const obrasPendientesInicio = useMemo(() => obras.filter(o => !o.deleted && (o.estado === 'Pendiente de Inicio' || o.estado === 'Instalación Pendiente')), [obras]);
+  const obrasActivasList = useMemo(() => obras.filter(o => !o.deleted && (o.estado === 'En Proceso' || o.estado === 'Pendiente de Inicio' || o.estado === 'Instalación en Proceso' || o.estado === 'Instalación Pendiente')), [obras]);
 
   const progAvg = useMemo(() => {
     if (!obrasEnProceso.length) return 0;

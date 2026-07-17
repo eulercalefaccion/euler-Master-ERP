@@ -1,0 +1,63 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Función auxiliar para verificar si el usuario es admin
+    function isAdmin() {
+      return request.auth != null && request.auth.token.role == 'admin';
+    }
+
+    // Regla base: por defecto, todo cerrado.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ─── COLECCIONES PRINCIPALES ─────────────────────────────────────
+    
+    // Clientes: Solo administradores pueden escribir. Cualquier autenticado lee.
+    match /clientes/{clienteId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    // Presupuestos: Solo administradores pueden escribir. Autenticados leen.
+    match /presupuestos/{presupuestoId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    // Obras: Lectura para todos los autenticados. Escritura solo admin.
+    match /obras/{obraId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    // Lista de Precios / Stock / Estandares: Lectura autenticados, escritura admin.
+    match /lista_precios/{itemId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+    
+    match /estandares/{estandarId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    match /transacciones/{trxId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin() || request.auth != null; // Usuarios pueden marcar como leída
+    }
+
+    match /encuestas_obra/{encuestaId} {
+      // Las encuestas son creadas desde el exterior por clientes (o una function)
+      // Si se crean directo desde el cliente web:
+      allow create: if true; 
+      allow read: if request.auth != null;
+      allow update, delete: if isAdmin();
+    }
+  }
+}

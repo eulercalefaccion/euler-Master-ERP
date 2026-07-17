@@ -10,22 +10,20 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const mockUser = localStorage.getItem('mockUser');
-    if (mockUser) {
-      setCurrentUser(JSON.parse(mockUser));
-      setLoading(false);
-      return () => {};
-    }
-
+    // Escuchar el estado de autenticación real de Firebase
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         try {
+          // Obtener custom claims para seguridad
+          const tokenResult = await user.getIdTokenResult();
+          const role = tokenResult.claims.role || 'user'; // role asignado server-side
+
           const userDoc = await getDoc(doc(db, 'users', user.uid));
           if (userDoc.exists()) {
-            setCurrentUser({ ...user, ...userDoc.data() });
+            setCurrentUser({ ...user, ...userDoc.data(), role });
           } else {
             // Documento no existe, lo creamos (esto pasa la primera vez que se registra)
-            const newUserProfile = { email: user.email, role: 'admin', name: user.email.split('@')[0] };
+            const newUserProfile = { email: user.email, name: user.email.split('@')[0], role };
             await setDoc(doc(db, 'users', user.uid), newUserProfile);
             setCurrentUser({ ...user, ...newUserProfile });
           }
@@ -43,23 +41,10 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = (email, password) => {
-    if (email.toLowerCase() === 'nicolas' && password === '1234') {
-      const user = { uid: 'mock_nicolas', email: 'nicolas@euler.com', name: 'Nicolás', role: 'admin' };
-      localStorage.setItem('mockUser', JSON.stringify(user));
-      setCurrentUser(user);
-      return Promise.resolve(user);
-    }
-    if (email.toLowerCase() === 'agustin' && password === '1234') {
-      const user = { uid: 'mock_agustin', email: 'agustin@euler.com', name: 'Agustín', role: 'admin' };
-      localStorage.setItem('mockUser', JSON.stringify(user));
-      setCurrentUser(user);
-      return Promise.resolve(user);
-    }
     return signInWithEmailAndPassword(auth, email, password);
   };
 
   const register = (email, password) => {
-    // Función adicional por si usamos registro desde la app en el setup inicial
     return createUserWithEmailAndPassword(auth, email, password);
   }
 
@@ -69,11 +54,6 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
-    if (localStorage.getItem('mockUser')) {
-      localStorage.removeItem('mockUser');
-      setCurrentUser(null);
-      return Promise.resolve();
-    }
     return signOut(auth);
   };
 
