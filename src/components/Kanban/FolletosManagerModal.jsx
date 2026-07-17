@@ -56,7 +56,7 @@ const FolletosManagerModal = ({ onClose, folletos = [] }) => {
   };
 
   const handleDelete = async (folleto) => {
-    if (!window.confirm(`¿Seguro que deseas eliminar el folleto "${folleto.nombre}"?`)) return;
+    if (!window.confirm(`¿Seguro que deseas eliminar el folleto "${folleto.descripcion}"?`)) return;
     try {
       if (folleto.storagePath) {
         const fileRef = ref(storage, folleto.storagePath);
@@ -111,13 +111,14 @@ const FolletosManagerModal = ({ onClose, folletos = [] }) => {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {folletos.map(f => (
-                <div key={f.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem', border: '1px solid var(--border-light)', borderRadius: '8px', backgroundColor: '#fff' }}>
+                <div key={f.folletoUrl} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem', border: '1px solid var(--border-light)', borderRadius: '8px', backgroundColor: '#fff' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden' }}>
                     <FileText size={16} color="#64748b" style={{ flexShrink: 0 }} />
-                    <a href={f.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.875rem', color: 'var(--primary-600)', fontWeight: '600', textDecoration: 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={f.nombre}>
-                      {f.nombre}
+                    <a href={f.folletoUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.875rem', color: 'var(--primary-600)', fontWeight: '600', textDecoration: 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={f.descripcion}>
+                      {f.descripcion}
                     </a>
                   </div>
+                  {f.isCustom ? (
                   <button 
                     onClick={() => handleDelete(f)}
                     style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0.25rem', flexShrink: 0 }}
@@ -125,6 +126,9 @@ const FolletosManagerModal = ({ onClose, folletos = [] }) => {
                   >
                     <Trash2 size={16} />
                   </button>
+                  ) : (
+                    <span style={{ fontSize:'0.7rem', backgroundColor:'#e2e8f0', color:'#475569', padding:'0.2rem 0.5rem', borderRadius:'12px', fontWeight:'600' }} title="Este folleto proviene automáticamente de los artículos de la lista de precios">Sistema</span>
+                  )}
                 </div>
               ))}
             </div>

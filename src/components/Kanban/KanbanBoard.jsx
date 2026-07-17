@@ -325,7 +325,8 @@ const KanbanBoard = () => {
         result.push({
           id: i.id,
           descripcion: getBrochureNameFromUrl(url, i.descripcion),
-          folletoUrl: url
+          folletoUrl: url,
+          isCustom: false
         });
       }
     });
@@ -336,7 +337,9 @@ const KanbanBoard = () => {
         result.push({
           id: f.id,
           descripcion: f.nombre,
-          folletoUrl: f.url
+          folletoUrl: f.url,
+          isCustom: true,
+          storagePath: f.storagePath
         });
       }
     });
@@ -3035,7 +3038,7 @@ const KanbanBoard = () => {
       ────────────────────────────────────────────────────────────────────── */}
       {isFolletosManagerOpen && (
         <FolletosManagerModal 
-          folletos={folletosAdicionales} 
+          folletos={folletosDisponibles} 
           onClose={() => setIsFolletosManagerOpen(false)} 
         />
       )}
