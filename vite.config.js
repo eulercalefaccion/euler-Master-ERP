@@ -8,5 +8,14 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: './src/setupTests.js',
+  },
+  server: {
+    proxy: {
+      '/proxy/storage': {
+        target: 'https://firebasestorage.googleapis.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/proxy\/storage/, '')
+      }
+    }
   }
 })

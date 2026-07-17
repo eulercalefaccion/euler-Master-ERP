@@ -522,7 +522,14 @@ export async function generarPDFPresupuesto(presupuesto, folletoUrls = [], onPro
     for (let i = 0; i < folletoUrls.length; i++) {
       const { url } = folletoUrls[i];
       try {
-        const res = await fetch(url);
+        let fetchUrl = url;
+        if (url.includes('firebasestorage.googleapis.com')) {
+          fetchUrl = url.replace('https://firebasestorage.googleapis.com/', '/proxy/storage/');
+        }
+        
+        const res = await fetch(fetchUrl);
+        if (!res.ok) throw new Error(`HTTP Error ${res.status}`);
+        
         const contentType = res.headers.get('content-type') || '';
         const bytes = await res.arrayBuffer();
         
