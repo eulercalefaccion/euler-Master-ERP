@@ -2,7 +2,7 @@ import React from 'react';
 import { Draggable } from '@hello-pangea/dnd';
 import { MapPin, Calendar, CheckCircle, Tag, DollarSign } from 'lucide-react';
 
-const KanbanCard = ({ item, index, onCardClick }) => {
+const KanbanCard = ({ item, index, onCardClick, globalLabels = {} }) => {
   const getPaymentBadge = (status) => {
     switch(status) {
       case 'Pago Completo':
@@ -42,6 +42,33 @@ const KanbanCard = ({ item, index, onCardClick }) => {
             ...provided.draggableProps.style,
           }}
         >
+          {/* Custom Labels */}
+          {item.labels && item.labels.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem', marginBottom: '0.25rem' }}>
+              {item.labels.map(lblId => {
+                const lInfo = globalLabels[lblId];
+                if (!lInfo) return null;
+                return (
+                  <span key={lblId} style={{ 
+                    backgroundColor: lInfo.color, 
+                    color: 'white', 
+                    fontSize: '0.65rem', 
+                    padding: '0.15rem 0.4rem', 
+                    borderRadius: '4px', 
+                    fontWeight: '600',
+                    letterSpacing: '0.3px',
+                    maxWidth: '100%',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {lInfo.name}
+                  </span>
+                );
+              })}
+            </div>
+          )}
+
           {/* Badges de revisión y canal */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.25rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem', backgroundColor: '#e0e7ff', color: '#3730a3', borderRadius: '8px', fontWeight: '700' }}>

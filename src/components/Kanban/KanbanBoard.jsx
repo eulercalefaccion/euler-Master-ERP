@@ -2,9 +2,12 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { DragDropContext } from '@hello-pangea/dnd';
 import {
   Plus, X, Save, MessageSquare, DollarSign, MapPin, Calendar, Tag,
-  Trash2, ListPlus, Target, History, FileText, RefreshCw, Receipt, Download, Loader, Search, Settings, AlertCircle
+  Trash2, ListPlus, Target, History, FileText, RefreshCw, Receipt, Download, Loader, Search, Settings, AlertCircle, LayoutGrid, List, Map, CheckCircle
 } from 'lucide-react';
 import KanbanColumn from './KanbanColumn';
+import LabelsManagerModal from './LabelsManagerModal';
+import CrmListView from './CrmListView';
+import CrmMapView from './CrmMapView';
 import BalanceTermico from './BalanceTermico';
 import FolletosManagerModal from './FolletosManagerModal';
 import { db } from '../../services/firebaseConfig';
@@ -123,13 +126,12 @@ const KanbanBoard = () => {
     items: {},
     columns: {
       'pendiente':   { id: 'pendiente',   title: 'Presupuesto Pendiente',  itemsIds: [] },
-      'calculo':     { id: 'calculo',     title: 'En Cálculo',             itemsIds: [] },
       'enviado':     { id: 'enviado',     title: 'Enviado al Cliente',      itemsIds: [] },
       'seguimiento': { id: 'seguimiento', title: 'Seguimiento Activo',     itemsIds: [] },
       'aprobado':    { id: 'aprobado',    title: 'Aprobado',               itemsIds: [] },
       'rechazado':   { id: 'rechazado',   title: 'Rechazado / En Espera', itemsIds: [] },
     },
-    columnOrder: ['pendiente', 'calculo', 'enviado', 'seguimiento', 'aprobado', 'rechazado'],
+    columnOrder: ['pendiente', 'enviado', 'seguimiento', 'aprobado', 'rechazado'],
   });
 
   const [clientesList, setClientesList]   = useState([]);
@@ -141,6 +143,11 @@ const KanbanBoard = () => {
   // Filters
   const [searchCRM, setSearchCRM] = useState('');
   const [dateCRM, setDateCRM] = useState('');
+  const [viewMode, setViewMode] = useState('kanban'); // 'kanban' | 'list' | 'map'
+
+  // Labels
+  const [globalLabels, setGlobalLabels] = useState({});
+  const [isLabelsModalOpen, setIsLabelsModalOpen] = useState(false);
 
   // Modals
   const [isStandardsModalOpen, setIsStandardsModalOpen] = useState(false);
@@ -387,7 +394,6 @@ const KanbanBoard = () => {
       const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       const newCols = {
         'pendiente':   { id: 'pendiente',   title: 'Presupuesto Pendiente',  itemsIds: [] },
-        'calculo':     { id: 'calculo',     title: 'En Cálculo',             itemsIds: [] },
         'enviado':     { id: 'enviado',     title: 'Enviado al Cliente',      itemsIds: [] },
         'seguimiento': { id: 'seguimiento', title: 'Seguimiento Activo',     itemsIds: [] },
         'aprobado':    { id: 'aprobado',    title: 'Aprobado',               itemsIds: [] },
@@ -396,9 +402,17 @@ const KanbanBoard = () => {
       const newItems = {};
       docs.forEach(d => {
         if (d.deleted) return;
+        
+        // Auto-migration for deprecated 'calculo' column
+        let currentStatus = d.status;
+        if (currentStatus === 'calculo') {
+          currentStatus = 'pendiente';
+          updateDoc(doc(db, 'presupuestos', d.id), { status: 'pendiente' }).catch(e => console.error("Auto-migration failed:", e));
+        }
+
         const tags = Array.isArray(d.tags) ? d.tags : [d.paramSistema || 'S/D'];
-        newItems[d.id] = { ...d, tags };
-        (newCols[d.status] || newCols['pendiente']).itemsIds.push(d.id);
+        newItems[d.id] = { ...d, status: currentStatus, tags };
+        (newCols[currentStatus] || newCols['pendiente']).itemsIds.push(d.id);
       });
       setData(prev => ({ ...prev, items: newItems, columns: newCols }));
     });
@@ -408,12 +422,22 @@ const KanbanBoard = () => {
       setFolletosAdicionales(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
 
+    // CRM Labels
+    const unsubLabels = onSnapshot(collection(db, 'crmLabels'), snap => {
+      const labelsMap = {};
+      snap.docs.forEach(d => {
+        labelsMap[d.id] = { id: d.id, ...d.data() };
+      });
+      setGlobalLabels(labelsMap);
+    });
+
     return () => { 
       unsubClientes(); 
       unsubLista(); 
       unsubEstandares();
       unsubPresupuestos(); 
       unsubFolletos();
+      unsubLabels();
     };
   }, []);
 
@@ -443,6 +467,7 @@ const KanbanBoard = () => {
       tipoObra: item.tipoObra || 'VIVIENDA UNIFAMILIAR',
       estadoObra: item.estadoObra || 'OBRA NUEVA',
       tipoProyecto: item.tipoProyecto || 'LLAVE EN MANO (CAÑERIA+EQUIPOS+MANO DE OBRA)',
+      labels: item.labels || [],
       facturacionIgualCliente: item.facturacionIgualCliente !== false,
       facturacionNombre: item.facturacionNombre || '',
       facturacionCuit: item.facturacionCuit || '',
@@ -624,6 +649,7 @@ const KanbanBoard = () => {
         estadoObra: editLeadFields.estadoObra,
         tipoProyecto: editLeadFields.tipoProyecto,
         tags: [editLeadFields.paramSistema],
+        labels: editLeadFields.labels || [],
         
         facturacionIgualCliente: editLeadFields.facturacionIgualCliente,
         facturacionNombre: editLeadFields.facturacionIgualCliente ? editLeadFields.name : editLeadFields.facturacionNombre,
@@ -1153,6 +1179,7 @@ const KanbanBoard = () => {
         source: newLead.source,
         paramSistema: newLead.paramSistema,
         tags: [newLead.paramSistema],
+        labels: [],
         status: 'pendiente',
         date: new Date().toLocaleDateString('es-AR'),
         amount: 0,
@@ -1306,18 +1333,86 @@ const KanbanBoard = () => {
               onChange={e => setDateCRM(e.target.value)}
             />
           </div>
+          <button className="btn btn-secondary" onClick={() => setIsLabelsModalOpen(true)} title="Administrar Etiquetas">
+            <Tag size={18} /> Etiquetas
+          </button>
+          
+          {/* View Toggles */}
+          <div style={{ display: 'flex', border: '1px solid var(--border-light)', borderRadius: '8px', overflow: 'hidden' }}>
+            <button
+              onClick={() => setViewMode('kanban')}
+              style={{ padding: '0.4rem 0.6rem', border: 'none', background: viewMode === 'kanban' ? 'var(--primary-100)' : 'transparent', color: viewMode === 'kanban' ? 'var(--primary-700)' : 'var(--text-secondary)', cursor: 'pointer' }}
+              title="Vista Kanban"
+            >
+              <LayoutGrid size={18} />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              style={{ padding: '0.4rem 0.6rem', border: 'none', borderLeft: '1px solid var(--border-light)', background: viewMode === 'list' ? 'var(--primary-100)' : 'transparent', color: viewMode === 'list' ? 'var(--primary-700)' : 'var(--text-secondary)', cursor: 'pointer' }}
+              title="Vista Lista"
+            >
+              <List size={18} />
+            </button>
+            <button
+              onClick={() => setViewMode('map')}
+              style={{ padding: '0.4rem 0.6rem', border: 'none', borderLeft: '1px solid var(--border-light)', background: viewMode === 'map' ? 'var(--primary-100)' : 'transparent', color: viewMode === 'map' ? 'var(--primary-700)' : 'var(--text-secondary)', cursor: 'pointer' }}
+              title="Vista Mapa"
+            >
+              <Map size={18} />
+            </button>
+          </div>
+
           <button className="btn btn-primary" onClick={() => setIsLeadModalOpen(true)}>
             <Plus size={18} /> Nuevo Lead
           </button>
         </div>
       </div>
 
-      {/* ── Kanban Board ── */}
-      <div className="mobile-kanban-container" style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '1rem', flex: 1, minHeight: '500px' }}>
-        <DragDropContext onDragEnd={onDragEnd}>
-          {data.columnOrder.map(colId => {
-            const col = data.columns[colId];
-            const items = col.itemsIds.map(id => data.items[id]).filter(Boolean).filter(item => {
+      <LabelsManagerModal isOpen={isLabelsModalOpen} onClose={() => setIsLabelsModalOpen(false)} />
+
+      {/* ── Kanban Board / Vistas ── */}
+      <div className={viewMode === 'kanban' ? "mobile-kanban-container" : ""} style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '1rem', flex: 1, minHeight: '500px', flexDirection: viewMode === 'kanban' ? 'row' : 'column' }}>
+        
+        {viewMode === 'kanban' && (
+          <DragDropContext onDragEnd={onDragEnd}>
+            {data.columnOrder.map(colId => {
+              const col = data.columns[colId];
+              const items = col.itemsIds.map(id => data.items[id]).filter(Boolean).filter(item => {
+                if (searchCRM) {
+                  const term = searchCRM.toLowerCase();
+                  const text = `${item.name || ''} ${item.clientName || ''} ${item.location || ''} ${item.direccionObra || ''} ${item.direccionCliente || ''} ${item.presupuestoNumber || ''} ${item.email || ''} ${item.contactoNombre || ''}`.toLowerCase();
+                  if (!text.includes(term)) return false;
+                }
+                if (dateCRM) {
+                  let match = false;
+                  const dCrmParts = dateCRM.split('-');
+                  if (dCrmParts.length === 3) {
+                    const [y, m, d] = dCrmParts;
+                    const targetStr1 = `${d}/${m}/${y}`;
+                    const targetStr2 = `${parseInt(d)}/${parseInt(m)}/${y}`;
+                    if ((item.date || '') === targetStr1 || (item.date || '') === targetStr2) {
+                      match = true;
+                    }
+                    if (!match && item.createdAt) {
+                      const cDate = item.createdAt.toDate ? item.createdAt.toDate() : new Date(item.createdAt);
+                      if (cDate.getFullYear() == y && (cDate.getMonth() + 1) == parseInt(m) && cDate.getDate() == parseInt(d)) {
+                        match = true;
+                      }
+                    }
+                  }
+                  if (!match) return false;
+                }
+                return true;
+              });
+              return <KanbanColumn key={col.id} column={col} items={items} onCardClick={openDetail} globalLabels={globalLabels} />;
+            })}
+          </DragDropContext>
+        )}
+
+        {viewMode === 'list' && (
+          <CrmListView 
+            items={Object.values(data.items).filter(item => {
+              if (item.deleted) return false;
               if (searchCRM) {
                 const term = searchCRM.toLowerCase();
                 const text = `${item.name || ''} ${item.clientName || ''} ${item.location || ''} ${item.direccionObra || ''} ${item.direccionCliente || ''} ${item.presupuestoNumber || ''} ${item.email || ''} ${item.contactoNombre || ''}`.toLowerCase();
@@ -1325,7 +1420,7 @@ const KanbanBoard = () => {
               }
               if (dateCRM) {
                 let match = false;
-                const dCrmParts = dateCRM.split('-'); // YYYY-MM-DD
+                const dCrmParts = dateCRM.split('-');
                 if (dCrmParts.length === 3) {
                   const [y, m, d] = dCrmParts;
                   const targetStr1 = `${d}/${m}/${y}`;
@@ -1343,10 +1438,45 @@ const KanbanBoard = () => {
                 if (!match) return false;
               }
               return true;
-            });
-            return <KanbanColumn key={col.id} column={col} items={items} onCardClick={openDetail} />;
-          })}
-        </DragDropContext>
+            })} 
+            onCardClick={openDetail} 
+            globalLabels={globalLabels} 
+          />
+        )}
+
+        {viewMode === 'map' && (
+          <CrmMapView 
+            items={Object.values(data.items).filter(item => {
+              if (item.deleted) return false;
+              if (searchCRM) {
+                const term = searchCRM.toLowerCase();
+                const text = `${item.name || ''} ${item.clientName || ''} ${item.location || ''} ${item.direccionObra || ''} ${item.direccionCliente || ''} ${item.presupuestoNumber || ''} ${item.email || ''} ${item.contactoNombre || ''}`.toLowerCase();
+                if (!text.includes(term)) return false;
+              }
+              if (dateCRM) {
+                let match = false;
+                const dCrmParts = dateCRM.split('-');
+                if (dCrmParts.length === 3) {
+                  const [y, m, d] = dCrmParts;
+                  const targetStr1 = `${d}/${m}/${y}`;
+                  const targetStr2 = `${parseInt(d)}/${parseInt(m)}/${y}`;
+                  if ((item.date || '') === targetStr1 || (item.date || '') === targetStr2) {
+                    match = true;
+                  }
+                  if (!match && item.createdAt) {
+                    const cDate = item.createdAt.toDate ? item.createdAt.toDate() : new Date(item.createdAt);
+                    if (cDate.getFullYear() == y && (cDate.getMonth() + 1) == parseInt(m) && cDate.getDate() == parseInt(d)) {
+                      match = true;
+                    }
+                  }
+                }
+                if (!match) return false;
+              }
+              return true;
+            })} 
+            onCardClick={openDetail} 
+          />
+        )}
       </div>
 
       {/* ──────────────────────────────────────────────────────────────────────
@@ -2370,6 +2500,51 @@ const KanbanBoard = () => {
               {detailTab === 'datos' && editLeadFields && (
                 <div style={{ display:'flex',flexDirection:'column',gap:'1.25rem' }}>
                   
+                  {/* SECCIÓN 0: Etiquetas */}
+                  <div style={{ borderBottom:'1px solid var(--border-light)',paddingBottom:'1rem' }}>
+                    <h4 style={{ margin:'0 0 0.75rem 0',color:'var(--primary-700)',fontSize:'0.9rem',textTransform:'uppercase',letterSpacing:'0.05em',display:'flex',alignItems:'center',gap:'0.5rem' }}>
+                      <Tag size={16} /> Etiquetas Aplicadas
+                    </h4>
+                    
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      {Object.values(globalLabels).map(lbl => {
+                        const isActive = (editLeadFields.labels || []).includes(lbl.id);
+                        return (
+                          <button
+                            key={lbl.id}
+                            onClick={() => {
+                              const current = editLeadFields.labels || [];
+                              const next = isActive ? current.filter(id => id !== lbl.id) : [...current, lbl.id];
+                              setEditLeadFields({ ...editLeadFields, labels: next });
+                            }}
+                            style={{
+                              backgroundColor: isActive ? lbl.color : 'transparent',
+                              color: isActive ? 'white' : 'var(--text-secondary)',
+                              border: `1px solid ${isActive ? lbl.color : 'var(--border-light)'}`,
+                              padding: '0.25rem 0.75rem',
+                              borderRadius: '16px',
+                              fontSize: '0.75rem',
+                              fontWeight: '600',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.25rem'
+                            }}
+                          >
+                            {isActive && <CheckCircle size={12} />}
+                            {lbl.name}
+                          </button>
+                        );
+                      })}
+                      {Object.keys(globalLabels).length === 0 && (
+                        <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                          No hay etiquetas globales creadas. Crealas desde el botón "Etiquetas" arriba.
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
                   {/* SECCIÓN 1: Identidad del Cliente */}
                   <div style={{ borderBottom:'1px solid var(--border-light)',paddingBottom:'1rem' }}>
                     <h4 style={{ margin:'0 0 0.75rem 0',color:'var(--primary-700)',fontSize:'0.9rem',textTransform:'uppercase',letterSpacing:'0.05em' }}>Identidad del Cliente</h4>

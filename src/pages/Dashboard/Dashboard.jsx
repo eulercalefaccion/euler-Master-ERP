@@ -18,7 +18,6 @@ const fmt = (n) =>
 
 const PIPELINE_STEPS = [
   { key: 'pendiente',   label: 'Pendiente',    color: '#6b7280', bg: '#f3f4f6' },
-  { key: 'calculo',     label: 'En Cálculo',   color: '#3b82f6', bg: '#eff6ff' },
   { key: 'enviado',     label: 'Enviado',      color: '#f59e0b', bg: '#fffbeb' },
   { key: 'seguimiento', label: 'Seguimiento',  color: '#f97316', bg: '#fff7ed' },
   { key: 'aprobado',    label: 'Aprobado',     color: '#10b981', bg: '#ecfdf5' },
@@ -155,7 +154,7 @@ const Dashboard = () => {
   }, [presupuestos]);
 
   const pipelineActivos = useMemo(() =>
-    ['calculo', 'enviado', 'seguimiento'].reduce((acc, k) => ({
+    ['enviado', 'seguimiento'].reduce((acc, k) => ({
       count: acc.count + (pipelineMap[k]?.count || 0),
       total: acc.total + (pipelineMap[k]?.total || 0),
     }), { count: 0, total: 0 }),

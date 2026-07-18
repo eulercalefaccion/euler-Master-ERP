@@ -49,8 +49,7 @@ const ReportesTiempos = () => {
   };
 
   const metrics = [
-    { label: '1 a 2 (Pendiente a En Cálculo)', data: calculateAverageHours('pendiente', 'calculo') },
-    { label: '2 a 3 (En Cálculo a Enviado)', data: calculateAverageHours('calculo', 'enviado') },
+    { label: '1 a 2 (Pendiente a Enviado)', data: calculateAverageHours('pendiente', 'enviado') },
     { label: '3 a 4 (Enviado a Seguimiento)', data: calculateAverageHours('enviado', 'seguimiento') },
     { label: '4 a 5 (Seguimiento a Aprobado)', data: calculateAverageHours('seguimiento', 'aprobado') },
     { label: '1 a 5 (Pendiente a Aprobado)', data: calculateAverageHours('pendiente', 'aprobado') },

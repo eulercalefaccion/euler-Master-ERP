@@ -11,11 +11,6 @@ export const initialData = {
       title: 'Presupuesto Pendiente',
       itemsIds: ['item-1'],
     },
-    'calculo': {
-      id: 'calculo',
-      title: 'En Cálculo',
-      itemsIds: ['item-2'],
-    },
     'enviado': {
       id: 'enviado',
       title: 'Enviado al Cliente',
@@ -37,5 +32,5 @@ export const initialData = {
       itemsIds: [],
     },
   },
-  columnOrder: ['pendiente', 'calculo', 'enviado', 'seguimiento', 'aprobado', 'rechazado'],
+  columnOrder: ['pendiente', 'enviado', 'seguimiento', 'aprobado', 'rechazado'],
 };
