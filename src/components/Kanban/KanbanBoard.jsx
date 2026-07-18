@@ -142,7 +142,7 @@ const KanbanBoard = () => {
 
   // Filters
   const [searchCRM, setSearchCRM] = useState('');
-  const [dateCRM, setDateCRM] = useState('');
+  const [sortDateMode, setSortDateMode] = useState('desc'); // 'desc' | 'asc'
   const [viewMode, setViewMode] = useState('kanban'); // 'kanban' | 'list' | 'map'
 
   // Labels
@@ -1323,15 +1323,21 @@ const KanbanBoard = () => {
               onChange={e => setSearchCRM(e.target.value)}
             />
           </div>
-          <div style={{ position: 'relative', maxWidth: '180px' }}>
-            <Calendar size={18} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
-            <input
-              type="date"
-              className="input-field"
-              style={{ paddingLeft: '2.5rem' }}
-              value={dateCRM}
-              onChange={e => setDateCRM(e.target.value)}
-            />
+          <div style={{ display: 'flex', border: '1px solid var(--border-light)', borderRadius: '8px', overflow: 'hidden' }}>
+            <button
+              onClick={() => setSortDateMode('desc')}
+              style={{ padding: '0.4rem 0.6rem', border: 'none', background: sortDateMode === 'desc' ? 'var(--primary-100)' : 'transparent', color: sortDateMode === 'desc' ? 'var(--primary-700)' : 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.8rem', fontWeight: '600' }}
+              title="Más recientes primero"
+            >
+              <Calendar size={14} /> Recientes
+            </button>
+            <button
+              onClick={() => setSortDateMode('asc')}
+              style={{ padding: '0.4rem 0.6rem', border: 'none', borderLeft: '1px solid var(--border-light)', background: sortDateMode === 'asc' ? 'var(--primary-100)' : 'transparent', color: sortDateMode === 'asc' ? 'var(--primary-700)' : 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.8rem', fontWeight: '600' }}
+              title="Más antiguos primero"
+            >
+              <Calendar size={14} /> Antiguos
+            </button>
           </div>
           <button className="btn btn-secondary" onClick={() => setIsLabelsModalOpen(true)} title="Administrar Etiquetas">
             <Tag size={18} /> Etiquetas
@@ -1373,110 +1379,58 @@ const KanbanBoard = () => {
       {/* ── Kanban Board / Vistas ── */}
       <div className={viewMode === 'kanban' ? "mobile-kanban-container" : ""} style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '1rem', flex: 1, minHeight: '500px', flexDirection: viewMode === 'kanban' ? 'row' : 'column' }}>
         
-        {viewMode === 'kanban' && (
-          <DragDropContext onDragEnd={onDragEnd}>
-            {data.columnOrder.map(colId => {
-              const col = data.columns[colId];
-              const items = col.itemsIds.map(id => data.items[id]).filter(Boolean).filter(item => {
-                if (searchCRM) {
-                  const term = searchCRM.toLowerCase();
-                  const text = `${item.name || ''} ${item.clientName || ''} ${item.location || ''} ${item.direccionObra || ''} ${item.direccionCliente || ''} ${item.presupuestoNumber || ''} ${item.email || ''} ${item.contactoNombre || ''}`.toLowerCase();
-                  if (!text.includes(term)) return false;
-                }
-                if (dateCRM) {
-                  let match = false;
-                  const dCrmParts = dateCRM.split('-');
-                  if (dCrmParts.length === 3) {
-                    const [y, m, d] = dCrmParts;
-                    const targetStr1 = `${d}/${m}/${y}`;
-                    const targetStr2 = `${parseInt(d)}/${parseInt(m)}/${y}`;
-                    if ((item.date || '') === targetStr1 || (item.date || '') === targetStr2) {
-                      match = true;
-                    }
-                    if (!match && item.createdAt) {
-                      const cDate = item.createdAt.toDate ? item.createdAt.toDate() : new Date(item.createdAt);
-                      if (cDate.getFullYear() == y && (cDate.getMonth() + 1) == parseInt(m) && cDate.getDate() == parseInt(d)) {
-                        match = true;
-                      }
-                    }
-                  }
-                  if (!match) return false;
-                }
-                return true;
-              });
-              return <KanbanColumn key={col.id} column={col} items={items} onCardClick={openDetail} globalLabels={globalLabels} />;
-            })}
-          </DragDropContext>
-        )}
-
-        {viewMode === 'list' && (
-          <CrmListView 
-            items={Object.values(data.items).filter(item => {
+        {(() => {
+          const filterAndSortItems = (itemsArray) => {
+            let filtered = itemsArray.filter(item => {
               if (item.deleted) return false;
               if (searchCRM) {
                 const term = searchCRM.toLowerCase();
                 const text = `${item.name || ''} ${item.clientName || ''} ${item.location || ''} ${item.direccionObra || ''} ${item.direccionCliente || ''} ${item.presupuestoNumber || ''} ${item.email || ''} ${item.contactoNombre || ''}`.toLowerCase();
                 if (!text.includes(term)) return false;
               }
-              if (dateCRM) {
-                let match = false;
-                const dCrmParts = dateCRM.split('-');
-                if (dCrmParts.length === 3) {
-                  const [y, m, d] = dCrmParts;
-                  const targetStr1 = `${d}/${m}/${y}`;
-                  const targetStr2 = `${parseInt(d)}/${parseInt(m)}/${y}`;
-                  if ((item.date || '') === targetStr1 || (item.date || '') === targetStr2) {
-                    match = true;
-                  }
-                  if (!match && item.createdAt) {
-                    const cDate = item.createdAt.toDate ? item.createdAt.toDate() : new Date(item.createdAt);
-                    if (cDate.getFullYear() == y && (cDate.getMonth() + 1) == parseInt(m) && cDate.getDate() == parseInt(d)) {
-                      match = true;
-                    }
-                  }
-                }
-                if (!match) return false;
-              }
               return true;
-            })} 
-            onCardClick={openDetail} 
-            globalLabels={globalLabels} 
-          />
-        )}
+            });
+            filtered.sort((a, b) => {
+              const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : (new Date(a.createdAt || 0));
+              const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : (new Date(b.createdAt || 0));
+              return sortDateMode === 'desc' ? dateB - dateA : dateA - dateB;
+            });
+            return filtered;
+          };
 
-        {viewMode === 'map' && (
-          <CrmMapView 
-            items={Object.values(data.items).filter(item => {
-              if (item.deleted) return false;
-              if (searchCRM) {
-                const term = searchCRM.toLowerCase();
-                const text = `${item.name || ''} ${item.clientName || ''} ${item.location || ''} ${item.direccionObra || ''} ${item.direccionCliente || ''} ${item.presupuestoNumber || ''} ${item.email || ''} ${item.contactoNombre || ''}`.toLowerCase();
-                if (!text.includes(term)) return false;
-              }
-              if (dateCRM) {
-                let match = false;
-                const dCrmParts = dateCRM.split('-');
-                if (dCrmParts.length === 3) {
-                  const [y, m, d] = dCrmParts;
-                  const targetStr1 = `${d}/${m}/${y}`;
-                  const targetStr2 = `${parseInt(d)}/${parseInt(m)}/${y}`;
-                  if ((item.date || '') === targetStr1 || (item.date || '') === targetStr2) {
-                    match = true;
-                  }
-                  if (!match && item.createdAt) {
-                    const cDate = item.createdAt.toDate ? item.createdAt.toDate() : new Date(item.createdAt);
-                    if (cDate.getFullYear() == y && (cDate.getMonth() + 1) == parseInt(m) && cDate.getDate() == parseInt(d)) {
-                      match = true;
-                    }
-                  }
-                }
-                if (!match) return false;
-              }
-              return true;
-            })} 
-            onCardClick={openDetail} 
-          />
-        )}
+          if (viewMode === 'kanban') {
+            return (
+              <DragDropContext onDragEnd={onDragEnd}>
+                {data.columnOrder.map(colId => {
+                  const col = data.columns[colId];
+                  const items = filterAndSortItems(col.itemsIds.map(id => data.items[id]).filter(Boolean));
+                  return <KanbanColumn key={col.id} column={col} items={items} onCardClick={openDetail} globalLabels={globalLabels} />;
+                })}
+              </DragDropContext>
+            );
+          }
+
+          if (viewMode === 'list') {
+            return (
+              <CrmListView 
+                items={filterAndSortItems(Object.values(data.items))} 
+                columns={data.columns}
+                columnOrder={data.columnOrder}
+                onCardClick={openDetail} 
+                globalLabels={globalLabels} 
+              />
+            );
+          }
+
+          if (viewMode === 'map') {
+            return (
+              <CrmMapView 
+                items={filterAndSortItems(Object.values(data.items))} 
+                onCardClick={openDetail} 
+              />
+            );
+          }
+        })()}
       </div>
 
       {/* ──────────────────────────────────────────────────────────────────────
