@@ -404,7 +404,10 @@ const FormularioPublico = () => {
           {/* SECCIÓN 4: Archivos */}
           <div className="form-section">
             <h3 className="form-section-title"><UploadCloud size={20} /> Adjuntar archivos <span className="optional" style={{ fontSize: '0.85rem', fontWeight: 'normal' }}>(Opcional)</span></h3>
-            <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1rem' }}>Podés adjuntar fotos, videos, planos (PDF, DWG), etc. (Máx 200MB por archivo).</p>
+            <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '0.5rem' }}>Podés adjuntar fotos, videos, planos (PDF, DWG), etc. (Máx 200MB por archivo).</p>
+            <div style={{ fontSize: '0.85rem', color: '#1e40af', marginBottom: '1.25rem', background: '#eff6ff', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #bfdbfe', lineHeight: '1.4' }}>
+              <strong>Importante:</strong> Para realizar un cálculo preciso, es fundamental contar con los planos o archivos correspondientes. Si tenés dificultades para adjuntarlos aquí, podés enviarlos por WhatsApp al <strong>3415695849</strong>, indicando el nombre y dirección registrados en este formulario.
+            </div>
             
             <div className="file-upload-zone" onClick={() => fileInputRef.current?.click()}>
               <UploadCloud size={32} color="#94a3b8" />
