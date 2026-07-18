@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   HardHat, Search, Plus, MapPin, User, Thermometer, X, Save, Edit2,
   ChevronRight, PlayCircle, Package, Upload, FileText, Users, Calendar,
-  ClipboardList, Trash2, Download, Eye, Phone, Mail, MoreVertical, Clock, MessageSquare, CheckCircle, Shield, Wrench, Settings, Star, AlertCircle
+  ClipboardList, Trash2, Download, Eye, Phone, Mail, MoreVertical, Clock, MessageSquare, CheckCircle, Shield, Wrench, Settings, Star, AlertCircle,
+  LayoutGrid, List, Map
 } from 'lucide-react';
 import { db, storage } from '../../services/firebaseConfig';
 import {
@@ -13,6 +14,8 @@ import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebas
 import { generarPDFPresupuesto } from '../../services/pdfPresupuesto';
 import { getTipoCambio } from '../../services/tipoCambioService';
 import { useAuth } from '../../context/AuthContext';
+import ObrasListView from './ObrasListView';
+import ObrasMapView from './ObrasMapView';
 
 const addBusinessDays = (startDateStr, days) => {
   if (!days) return startDateStr;
@@ -146,6 +149,8 @@ const Obras = () => {
   const [searchTerm, setSearchTerm]   = useState('');
   const [filterPhase, setFilterPhase] = useState('Todas');
   const [filterDate, setFilterDate]   = useState('');
+  const [viewMode, setViewMode]       = useState('grid');
+  const [sortOrder, setSortOrder]     = useState('aprobacion_desc');
 
   const [selectedObra, setSelectedObra] = useState(null);
   const [editForm, setEditForm]         = useState({});
@@ -231,9 +236,21 @@ const Obras = () => {
   const filteredObras = obras.filter(obra => {
     if (obra.deleted) return false;
     const term = searchTerm.toLowerCase();
-    const matchesSearch =
-      (obra.name      && obra.name.toLowerCase().includes(term)) ||
-      (obra.clientName && obra.clientName.toLowerCase().includes(term));
+    const searchString = `
+      ${obra.name || ''} 
+      ${obra.clientName || ''} 
+      ${obra.location || ''} 
+      ${obra.cuit || ''} 
+      ${obra.dni || ''} 
+      ${obra.profesional || ''} 
+      ${obra.arquitecto || ''} 
+      ${obra.propietario || ''} 
+      ${obra.propietarioNombre || ''} 
+      ${obra.presupuestoNumber || ''} 
+      ${obra.id || ''}
+      ${obra.operarios || ''}
+    `.toLowerCase();
+    const matchesSearch = searchString.includes(term);
       
     let matchesDate = true;
     if (filterDate) {
@@ -256,6 +273,22 @@ const Obras = () => {
     else matchesPhase = (obra.phase === filterPhase);
 
     return matchesSearch && matchesDate && matchesPhase;
+  }).sort((a, b) => {
+    const getAprobDate = (o) => {
+      if (o.fechaInicioObra) return new Date(o.fechaInicioObra).getTime();
+      if (o.createdAt) return (o.createdAt.toDate ? o.createdAt.toDate() : new Date(o.createdAt)).getTime();
+      return 0;
+    };
+    const getCierreDate = (o) => {
+      if (o.fechaFinEstimadaObra) return new Date(o.fechaFinEstimadaObra).getTime();
+      return 0;
+    };
+
+    if (sortOrder === 'aprobacion_desc') return getAprobDate(b) - getAprobDate(a);
+    if (sortOrder === 'aprobacion_asc') return getAprobDate(a) - getAprobDate(b);
+    if (sortOrder === 'cierre_desc') return getCierreDate(b) - getCierreDate(a);
+    if (sortOrder === 'cierre_asc') return getCierreDate(a) - getCierreDate(b);
+    return 0;
   });
 
   /* ── Open detail ── */
@@ -974,39 +1007,84 @@ const Obras = () => {
             </button>
           ))}
         </div>
+        
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <select 
+            className="input-field" 
+            style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', maxWidth: '200px' }}
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value)}
+          >
+            <option value="aprobacion_desc">Aprobación (Más recientes)</option>
+            <option value="aprobacion_asc">Aprobación (Más antiguas)</option>
+            <option value="cierre_desc">Cierre (Más lejanas)</option>
+            <option value="cierre_asc">Cierre (Más próximas)</option>
+          </select>
+          
+          <div style={{ display: 'flex', background: 'var(--bg-surface-hover)', borderRadius: '8px', padding: '0.2rem' }}>
+            <button
+              onClick={() => setViewMode('grid')}
+              style={{ padding: '0.4rem', border: 'none', background: viewMode === 'grid' ? 'white' : 'transparent', borderRadius: '6px', cursor: 'pointer', boxShadow: viewMode === 'grid' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none', color: viewMode === 'grid' ? 'var(--primary-600)' : 'var(--text-tertiary)' }}
+              title="Vista de Tarjetas"
+            >
+              <LayoutGrid size={18} />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              style={{ padding: '0.4rem', border: 'none', background: viewMode === 'list' ? 'white' : 'transparent', borderRadius: '6px', cursor: 'pointer', boxShadow: viewMode === 'list' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none', color: viewMode === 'list' ? 'var(--primary-600)' : 'var(--text-tertiary)' }}
+              title="Vista de Lista"
+            >
+              <List size={18} />
+            </button>
+            <button
+              onClick={() => setViewMode('map')}
+              style={{ padding: '0.4rem', border: 'none', background: viewMode === 'map' ? 'white' : 'transparent', borderRadius: '6px', cursor: 'pointer', boxShadow: viewMode === 'map' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none', color: viewMode === 'map' ? 'var(--primary-600)' : 'var(--text-tertiary)' }}
+              title="Vista de Mapa"
+            >
+              <Map size={18} />
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* ── Card Grid ── */}
-      <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1.5rem', paddingBottom: '2rem' }}>
-        {filteredObras.map(obra => (
-          <div
-            key={obra.id}
-            className="card hover-card"
-            onClick={() => openDetail(obra)}
-            style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', cursor: 'pointer' }}
-          >
-            <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface-hover)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-                <div>
-                  {obra.otNumber && (
-                    <div style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--primary-600)', marginBottom: '0.25rem', letterSpacing: '0.5px' }}>
-                      {obra.otNumber}
-                    </div>
-                  )}
-                  <h3 style={{ fontSize: '1.125rem', fontWeight: '600', margin: 0, paddingRight: '1rem' }}>{obra.name}</h3>
+      {/* ── Dynamic View ── */}
+      {viewMode === 'list' && (
+        <ObrasListView obras={filteredObras} onOpenDetail={openDetail} getStatusBadge={getStatusBadge} />
+      )}
+      {viewMode === 'map' && (
+        <ObrasMapView obras={filteredObras} onOpenDetail={openDetail} getStatusBadge={getStatusBadge} />
+      )}
+      {viewMode === 'grid' && (
+        <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1.5rem', paddingBottom: '2rem' }}>
+          {filteredObras.map(obra => (
+            <div
+              key={obra.id}
+              className="card hover-card"
+              onClick={() => openDetail(obra)}
+              style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', cursor: 'pointer' }}
+            >
+              <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--border-light)', backgroundColor: 'var(--bg-surface-hover)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                  <div>
+                    {obra.otNumber && (
+                      <div style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--primary-600)', marginBottom: '0.25rem', letterSpacing: '0.5px' }}>
+                        {obra.otNumber}
+                      </div>
+                    )}
+                    <h3 style={{ fontSize: '1.125rem', fontWeight: '600', margin: 0, paddingRight: '1rem' }}>{obra.name}</h3>
+                  </div>
+                  {getStatusBadge(obra.estado, obra.phase)}
                 </div>
-                {getStatusBadge(obra.estado, obra.phase)}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+                  <MapPin size={14} /> {obra.location || 'Sin ubicación'}
+                </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-                <MapPin size={14} /> {obra.location || 'Sin ubicación'}
-              </div>
-            </div>
-            <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem', flex: 1 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: '600' }}>Cliente</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.875rem', fontWeight: '500' }}>
-                    <User size={14} color="var(--primary-600)" /> {obra.clientName || 'No asignado'}
+              <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem', flex: 1 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: '600' }}>Cliente</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.875rem', fontWeight: '500' }}>
+                      <User size={14} color="var(--primary-600)" /> {obra.clientName || 'No asignado'}
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
@@ -1038,6 +1116,7 @@ const Obras = () => {
           </div>
         )}
       </div>
+      )}
 
       {/* ── Detail Panel ── */}
       {selectedObra && (
