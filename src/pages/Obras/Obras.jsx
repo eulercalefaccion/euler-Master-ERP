@@ -246,6 +246,8 @@ const Obras = () => {
       ${obra.arquitecto || ''} 
       ${obra.propietario || ''} 
       ${obra.propietarioNombre || ''} 
+      ${obra.presupuestoOrigen || ''} 
+      ${obra.presupuestoNum || ''} 
       ${obra.presupuestoNumber || ''} 
       ${obra.id || ''}
       ${obra.operarios || ''}

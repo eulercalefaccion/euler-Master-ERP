@@ -33,7 +33,7 @@ const ObrasListView = ({ obras, onOpenDetail, getStatusBadge }) => {
                     {obra.fechaInicioObra ? new Date(obra.fechaInicioObra).toLocaleDateString('es-AR') : (obra.createdAt ? new Date(obra.createdAt.toDate ? obra.createdAt.toDate() : obra.createdAt).toLocaleDateString('es-AR') : 'S/D')}
                   </td>
                   <td style={{ padding: '1rem', verticalAlign: 'middle', color: 'var(--text-secondary)', fontSize: '0.875rem', fontWeight: '500' }}>
-                    {obra.presupuestoNumber || 'S/D'}
+                    {obra.presupuestoOrigen || obra.presupuestoNum || obra.presupuestoNumber || 'S/D'}
                   </td>
                   <td style={{ padding: '1rem', verticalAlign: 'middle' }}>
                     {obra.otNumber && <div style={{ fontSize: '0.7rem', color: 'var(--primary-600)', fontWeight: '600' }}>{obra.otNumber}</div>}
