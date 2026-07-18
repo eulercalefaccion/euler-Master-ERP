@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { DragDropContext } from '@hello-pangea/dnd';
 import {
   Plus, X, Save, MessageSquare, DollarSign, MapPin, Calendar, Tag,
-  Trash2, ListPlus, Target, History, FileText, RefreshCw, Receipt, Download, Loader, Search, Settings, AlertCircle, LayoutGrid, List, Map, CheckCircle
+  Trash2, ListPlus, Target, History, FileText, RefreshCw, Receipt, Download, Loader, Search, Settings, AlertCircle, LayoutGrid, List, Map as MapIcon, CheckCircle
 } from 'lucide-react';
 import KanbanColumn from './KanbanColumn';
 import LabelsManagerModal from './LabelsManagerModal';
@@ -1358,7 +1358,7 @@ const KanbanBoard = () => {
               style={{ padding: '0.4rem 0.6rem', border: 'none', borderLeft: '1px solid var(--border-light)', background: viewMode === 'map' ? 'var(--primary-100)' : 'transparent', color: viewMode === 'map' ? 'var(--primary-700)' : 'var(--text-secondary)', cursor: 'pointer' }}
               title="Vista Mapa"
             >
-              <Map size={18} />
+              <MapIcon size={18} />
             </button>
           </div>
 
