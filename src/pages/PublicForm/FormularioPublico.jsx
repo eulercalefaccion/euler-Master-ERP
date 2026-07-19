@@ -139,6 +139,35 @@ const FormularioPublico = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    const requiredFields = [
+      { key: 'nombre', name: 'Nombre' },
+      { key: 'apellido', name: 'Apellido' },
+      { key: 'tipoContacto', name: 'Tipo de contacto' },
+      { key: 'telefono', name: 'Teléfono / WhatsApp' },
+      { key: 'email', name: 'Email' },
+      { key: 'documento', name: 'DNI o CUIT' },
+      { key: 'dirCalle', name: 'Calle' },
+      { key: 'dirAltura', name: 'Altura / Número' },
+      { key: 'dirLocalidad', name: 'Localidad' },
+      { key: 'dirProvincia', name: 'Provincia' },
+      { key: 'sistema', name: 'Sistema a cotizar' }
+    ];
+
+    if (formData.sistema === 'OTRO (COMPLETE ESCRIBIENDO)') {
+      requiredFields.push({ key: 'sistemaOtro', name: 'Especificar otro sistema' });
+    }
+
+    if (isProfesional) {
+      requiredFields.push({ key: 'profesionalPropietarioNombre', name: 'Nombre del propietario / Referencia de obra' });
+    }
+
+    for (const field of requiredFields) {
+      if (!formData[field.key] || formData[field.key].trim() === '') {
+        alert(`Por favor, completá el campo obligatorio:\n\n👉 ${field.name}`);
+        return;
+      }
+    }
+
     const isUploading = archivos.some(a => a.status === 'uploading');
     if (isUploading) {
       alert("Por favor esperá a que terminen de cargarse los archivos antes de enviar.");
@@ -246,7 +275,7 @@ const FormularioPublico = () => {
       </div>
 
       <div className="public-form-content">
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
           
           {/* SECCIÓN 1: Tus Datos */}
           <div className="form-section">
