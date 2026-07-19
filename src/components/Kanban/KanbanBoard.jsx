@@ -24,6 +24,22 @@ import { useAuth } from '../../context/AuthContext';
 // ─── Constantes ───────────────────────────────────────────────────────────────
 const COEF_CANAL2 = 1.105;
 
+const getCanalFactor = (item, canal) => {
+  let factor = 1.0;
+  if (canal === 'canal2') {
+    const isMoOrServ = item.tipo === 'mano_de_obra' || item.tipo === 'servicio';
+    const desc = (item.descripcion || '').toLowerCase();
+    if (desc.includes('pressfitting')) {
+      factor = 1.0525;
+    } else if (isMoOrServ) {
+      factor = 1.0;
+    } else {
+      factor = COEF_CANAL2; // 1.105
+    }
+  }
+  return factor;
+};
+
 const calcPrecioItem = (item, canal, tcValor) => {
   if (!tcValor) return 0;
   
@@ -37,26 +53,8 @@ const calcPrecioItem = (item, canal, tcValor) => {
     basePrice = (item.costoUSD || 0) * markup * tcValor;
   }
   
-  // 2. Determinar el factor según canal y tipo de ítem
-  let factor = 1.0;
-  if (canal === 'canal2') {
-    const desc = (item.descripcion || '').toLowerCase();
-    if (desc.includes('pressfitting')) {
-      // Excepción especial: 50% IVA cero y 50% 1.105 => (1.0 + 1.105) / 2 = 1.0525
-      factor = 1.0525;
-    } else if (isMoOrServ) {
-      // Mano de obra tradicional: IVA cero
-      factor = 1.0;
-    } else {
-      // Materiales: 1.105
-      factor = COEF_CANAL2; // 1.105
-    }
-  } else {
-    // Con IVA: mostramos el precio unitario neto (sin IVA)
-    factor = 1.0;
-  }
-  
-  return Math.round(basePrice * factor);
+  // 2. Aplicar factor
+  return Math.round(basePrice * getCanalFactor(item, canal));
 };
 
 const getAutoFolletoUrl = (item) => {
@@ -485,7 +483,19 @@ const KanbanBoard = () => {
     // Recalculate all items
     if (tc) {
       const recalc = builderItems.map(item => {
-        const newPrice = calcPrecioItem(item, newCanal, tc.valor);
+        const calcOldPrice = calcPrecioItem(item, canal, tc.valor);
+        let newPrice;
+        
+        // Si el precio actual es distinto al calculado, significa que fue editado manualmente o no tiene costoUSD
+        if (item.unitPrice !== calcOldPrice && item.unitPrice > 0) {
+          const oldFactor = getCanalFactor(item, canal);
+          const newFactor = getCanalFactor(item, newCanal);
+          const baseManualPrice = item.unitPrice / oldFactor;
+          newPrice = Math.round(baseManualPrice * newFactor);
+        } else {
+          newPrice = calcPrecioItem(item, newCanal, tc.valor);
+        }
+        
         return { ...item, unitPrice: newPrice, subtotal: Math.round(newPrice * item.quantity) };
       });
       setBuilderItems(recalc);
