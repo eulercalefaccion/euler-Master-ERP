@@ -870,6 +870,21 @@ const KanbanBoard = () => {
   };
 
   // ─── Delete lead ────────────────────────────────────────────────────────────
+  const handleOpenPDFModal = () => {
+    const autoSelectedUrls = [];
+    builderItems.forEach(bi => {
+      const catalogItem = listaItems.find(li => li.id === bi.listaItemId || li.descripcion === bi.descripcion);
+      if (catalogItem) {
+        const url = catalogItem.folletoUrl || getAutoFolletoUrl(catalogItem);
+        if (url) {
+          autoSelectedUrls.push(url);
+        }
+      }
+    });
+    setSelectedFolletos([...new Set(autoSelectedUrls)]);
+    setIsPDFModalOpen(true);
+  };
+
   const handleDownloadHistoricalPDF = async (rev) => {
     setIsGeneratingPDF(true);
     setPdfProgress(0);
@@ -2904,7 +2919,7 @@ const KanbanBoard = () => {
                           $ {calcTotal(builderItems || []).toLocaleString('es-AR')}
                         </span>
                         <button 
-                          onClick={handleDownloadPDF}
+                          onClick={handleOpenPDFModal}
                           title="Descargar PDF de la versión actual"
                           disabled={isGeneratingPDF}
                           style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#0369a1', display: 'flex', alignItems: 'center', opacity: isGeneratingPDF ? 0.5 : 1 }}
@@ -3039,20 +3054,7 @@ const KanbanBoard = () => {
                   <div style={{ display:'flex',gap:'0.5rem',flexWrap:'wrap' }}>
                     {/* Botón Generar PDF */}
                   <button
-                    onClick={() => {
-                      const autoSelectedUrls = [];
-                      builderItems.forEach(bi => {
-                        const catalogItem = listaItems.find(li => li.id === bi.listaItemId || li.descripcion === bi.descripcion);
-                        if (catalogItem) {
-                          const url = catalogItem.folletoUrl || getAutoFolletoUrl(catalogItem);
-                          if (url) {
-                            autoSelectedUrls.push(url);
-                          }
-                        }
-                      });
-                      setSelectedFolletos([...new Set(autoSelectedUrls)]);
-                      setIsPDFModalOpen(true);
-                    }}
+                    onClick={handleOpenPDFModal}
                     style={{ display:'flex',alignItems:'center',gap:'0.35rem',padding:'0.4rem 0.9rem',borderRadius:'8px',border:'1px solid #e2e8f0',background:'#f0f9ff',color:'#0369a1',fontWeight:'600',fontSize:'0.8rem',cursor:'pointer' }}
                   >
                     <FileText size={15}/> Generar PDF
