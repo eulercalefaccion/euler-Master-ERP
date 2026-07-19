@@ -2889,9 +2889,19 @@ const KanbanBoard = () => {
                         <span style={{ marginLeft:'0.75rem',color:'var(--text-secondary)',fontSize:'0.75rem' }}>Rev {selectedLead.revision || 0}</span>
                         {canal === 'canal2' && <span style={{ marginLeft:'0.5rem',fontSize:'0.7rem',backgroundColor:'#fef3c7',color:'#92400e',padding:'0.1rem 0.4rem',borderRadius:'8px' }}>Canal 2</span>}
                       </div>
-                      <span style={{ fontWeight:'700',color:'#0369a1' }}>
-                        $ {calcTotal(builderItems || []).toLocaleString('es-AR')}
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <span style={{ fontWeight:'700',color:'#0369a1' }}>
+                          $ {calcTotal(builderItems || []).toLocaleString('es-AR')}
+                        </span>
+                        <button 
+                          onClick={handleDownloadPDF}
+                          title="Descargar PDF de la versión actual"
+                          disabled={isGeneratingPDF}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#0369a1', display: 'flex', alignItems: 'center', opacity: isGeneratingPDF ? 0.5 : 1 }}
+                        >
+                          {isGeneratingPDF ? <Loader size={16} className="spin" /> : <Download size={16} />}
+                        </button>
+                      </div>
                     </div>
                     <div style={{ fontSize:'0.75rem',color:'var(--text-secondary)' }}>
                       {builderItems.length} ítems
