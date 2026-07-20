@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, Calculator, ClipboardList, Package, MapPin, Receipt, HardHat, Wallet, DollarSign, Trash2, Zap, BarChart2, X, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, Calculator, ClipboardList, Package, MapPin, Receipt, HardHat, Wallet, DollarSign, Trash2, Zap, BarChart2, X, LogOut, Settings } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const Sidebar = ({ className = '', isMobile, onClose }) => {
@@ -46,6 +46,7 @@ const Sidebar = ({ className = '', isMobile, onClose }) => {
     {
       label: 'SISTEMA',
       items: [
+        { name: 'Configuración', icon: <Settings size={20} />, path: '/configuracion' },
         { name: 'Papelera', icon: <Trash2 size={20} />, path: '/papelera' },
       ]
     }

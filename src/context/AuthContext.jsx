@@ -20,10 +20,11 @@ export function AuthProvider({ children }) {
 
           const userDoc = await getDoc(doc(db, 'users', user.uid));
           if (userDoc.exists()) {
-            setCurrentUser({ ...user, ...userDoc.data(), role });
+            const data = userDoc.data();
+            setCurrentUser({ ...user, ...data, role: data.role || 'tecnico', isActive: data.isActive !== false });
           } else {
             // Documento no existe, lo creamos (esto pasa la primera vez que se registra)
-            const newUserProfile = { email: user.email, name: user.email.split('@')[0], role };
+            const newUserProfile = { email: user.email, name: user.email.split('@')[0], role: 'tecnico', isActive: false };
             await setDoc(doc(db, 'users', user.uid), newUserProfile);
             setCurrentUser({ ...user, ...newUserProfile });
           }

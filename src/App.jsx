@@ -19,11 +19,35 @@ import Papelera from './pages/Papelera/Papelera';
 import Estandares from './pages/Estandares/Estandares';
 import FormularioPublico from './pages/PublicForm/FormularioPublico';
 import Reportes from './pages/Reportes/Reportes';
+import Configuracion from './pages/Configuracion/Configuracion';
 
 // Rutas Privadas
-const PrivateRoute = ({ children }) => {
-  const { currentUser } = useAuth();
-  return currentUser ? <MainLayout>{children}</MainLayout> : <Navigate to="/login" />;
+const PrivateRoute = ({ children, requiredRole }) => {
+  const { currentUser, logout } = useAuth();
+  
+  if (!currentUser) return <Navigate to="/login" />;
+  
+  if (currentUser.isActive === false) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg-primary)', padding: '2rem', textAlign: 'center' }}>
+        <h2 style={{ color: 'var(--primary-700)', marginBottom: '1rem' }}>Cuenta Inactiva</h2>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem', maxWidth: '400px' }}>Tu cuenta está inactiva o pendiente de aprobación. Por favor, contacta a un administrador para que habilite tu acceso al sistema.</p>
+        <button onClick={logout} className="btn btn-primary">Cerrar Sesión</button>
+      </div>
+    );
+  }
+
+  if (requiredRole && currentUser.role !== requiredRole) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg-primary)', padding: '2rem', textAlign: 'center' }}>
+        <h2 style={{ color: 'var(--accent-600)', marginBottom: '1rem' }}>Acceso Denegado</h2>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem', maxWidth: '400px' }}>No tienes los permisos necesarios para acceder a esta sección.</p>
+        <a href="/" className="btn btn-primary">Volver al Inicio</a>
+      </div>
+    );
+  }
+
+  return <MainLayout>{children}</MainLayout>;
 };
 
 function App() {
@@ -49,6 +73,7 @@ function App() {
         <Route path="/sueldos" element={<PrivateRoute><Sueldos /></PrivateRoute>} />
         <Route path="/reportes" element={<PrivateRoute><Reportes /></PrivateRoute>} />
         <Route path="/papelera" element={<PrivateRoute><Papelera /></PrivateRoute>} />
+        <Route path="/configuracion" element={<PrivateRoute requiredRole="administrador"><Configuracion /></PrivateRoute>} />
       </Routes>
     </BrowserRouter>
     </JornadasProvider>
