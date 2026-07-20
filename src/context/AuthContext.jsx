@@ -16,15 +16,27 @@ export function AuthProvider({ children }) {
         try {
           // Obtener custom claims para seguridad
           const tokenResult = await user.getIdTokenResult();
-          const role = tokenResult.claims.role || 'user'; // role asignado server-side
-
           const userDoc = await getDoc(doc(db, 'users', user.uid));
           if (userDoc.exists()) {
             const data = userDoc.data();
+            
+            // Asegurar que el dueño siempre sea administrador activo
+            if (user.email === 'nicolas@euler.com.ar' && (data.role !== 'administrador' || data.isActive === false)) {
+              data.role = 'administrador';
+              data.isActive = true;
+              await setDoc(doc(db, 'users', user.uid), data);
+            }
+            
             setCurrentUser({ ...user, ...data, role: data.role || 'tecnico', isActive: data.isActive !== false });
           } else {
             // Documento no existe, lo creamos (esto pasa la primera vez que se registra)
-            const newUserProfile = { email: user.email, name: user.email.split('@')[0], role: 'tecnico', isActive: false };
+            const isOwner = user.email === 'nicolas@euler.com.ar';
+            const newUserProfile = { 
+              email: user.email, 
+              name: user.email.split('@')[0], 
+              role: isOwner ? 'administrador' : 'tecnico', 
+              isActive: isOwner ? true : false 
+            };
             await setDoc(doc(db, 'users', user.uid), newUserProfile);
             setCurrentUser({ ...user, ...newUserProfile });
           }
