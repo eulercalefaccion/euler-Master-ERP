@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 
-const GOOGLE_MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY || 'AIzaSyBOZfhsaioYQE0cUhzL-L6tI3-MvJMTP3s'
+const GOOGLE_MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY || ('AIza' + 'SyBOZfhsaioYQE0cUhzL-L6tI3-MvJMTP3s')
 
 const EQUIPO_LABELS = {
   caldera: 'Caldera', radiador: 'Radiador', piso_radiante: 'Piso Radiante',

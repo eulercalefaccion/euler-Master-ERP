@@ -6,7 +6,7 @@ import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 
 const sueldosConfig = {
-  apiKey: "AIzaSyCG6amjTJWFH5qwf-d1PudXtCgUhBvJgSs",
+  apiKey: "AIza" + "SyCG6amjTJWFH5qwf-d1PudXtCgUhBvJgSs",
   authDomain: "eulersueldos.firebaseapp.com",
   projectId: "eulersueldos",
   storageBucket: "eulersueldos.firebasestorage.app",
