@@ -1911,7 +1911,7 @@ export default function Admin() {
             Exportar Excel
           </button>
           <button className="btn-secondary" onClick={() => {
-            const url = window.location.origin + '/'
+            const url = 'https://eulerservicios.netlify.app/'
             navigator.clipboard.writeText(url)
             alert('✅ Link del formulario copiado')
           }}>
