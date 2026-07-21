@@ -29,6 +29,9 @@
 }
 
 .servicios-app {
+/* ─── EULER CALEFACCIÓN — Design System ──────────── */
+/* Tipografía: Righteous (display) + Inter (body)     */
+/* Paleta: #0c3552 (azul) · #e0a42d (dorado) · #c44121 (rojo) */
 
 
 * {
@@ -774,9 +777,6 @@
   animation: spin 0.7s linear infinite;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
 
 /* ─── FAB ────────────────────────────────────── */
 .fab {
@@ -898,10 +898,6 @@
 }
 
 /* Animación de entrada de cards */
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(14px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
 
 .card {
   animation: fadeInUp 0.3s ease both;
@@ -929,3 +925,14 @@
 }
 
 }
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
