@@ -1,7 +1,3 @@
-/* ─── EULER CALEFACCIÓN — Design System ──────────── */
-/* Tipografía: Righteous (display) + Inter (body)     */
-/* Paleta: #0c3552 (azul) · #e0a42d (dorado) · #c44121 (rojo) */
-
 :root {
   /* Colores de marca */
   --azul:        #0c3552;
@@ -32,13 +28,16 @@
   --naranja:   var(--dorado); /* alias para compatibilidad */
 }
 
+.servicios-app {
+
+
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-body {
+& {
   font-family: var(--font);
   background: var(--fondo);
   color: var(--azul);
@@ -927,4 +926,6 @@ body {
   color: var(--gris-suave);
   margin-top: 5px;
   line-height: 1.4;
+}
+
 }

@@ -25,6 +25,7 @@ import ServiciosTecnicos from './servicios_app/pages/Admin';
 import ServiciosClientes from './servicios_app/pages/Clientes';
 import ClienteDetalle from './servicios_app/pages/ClienteDetalle';
 import NuevoServicio from './servicios_app/pages/NuevoServicio';
+import './servicios_app/index.css';
 
 // Rutas Privadas
 const PrivateRoute = ({ children, requiredRole }) => {
@@ -68,10 +69,10 @@ function App() {
         <Route path="/presupuesto" element={<FormularioPublico />} />
         <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
         <Route path="/clientes" element={<PrivateRoute><Clientes /></PrivateRoute>} />
-        <Route path="/servicios" element={<PrivateRoute><ServiciosTecnicos /></PrivateRoute>} />
-        <Route path="/servicios/clientes" element={<PrivateRoute><ServiciosClientes /></PrivateRoute>} />
-        <Route path="/servicios/clientes/:id" element={<PrivateRoute><ClienteDetalle /></PrivateRoute>} />
-        <Route path="/servicios/nuevo" element={<PrivateRoute><NuevoServicio /></PrivateRoute>} />
+        <Route path="/servicios" element={<PrivateRoute><div className="servicios-app"><ServiciosTecnicos /></div></PrivateRoute>} />
+        <Route path="/servicios/clientes" element={<PrivateRoute><div className="servicios-app"><ServiciosClientes /></div></PrivateRoute>} />
+        <Route path="/servicios/clientes/:id" element={<PrivateRoute><div className="servicios-app"><ClienteDetalle /></div></PrivateRoute>} />
+        <Route path="/servicios/nuevo" element={<PrivateRoute><div className="servicios-app"><NuevoServicio /></div></PrivateRoute>} />
         <Route path="/presupuestos" element={<PrivateRoute><PresupuestosCRM /></PrivateRoute>} />
         <Route path="/obras" element={<PrivateRoute><Obras /></PrivateRoute>} />
         <Route path="/stock" element={<PrivateRoute><Stock /></PrivateRoute>} />
