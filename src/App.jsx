@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { JornadasProvider } from './context/JornadasContext';
 import { useAuth } from './context/AuthContext';
+import { TecnicosProvider } from './servicios_app/components/PinLock';
 import MainLayout from './layouts/MainLayout';
 import PresupuestosCRM from './pages/Presupuestos/PresupuestosCRM';
 import Clientes from './pages/Clientes/Clientes';
@@ -58,6 +59,7 @@ function App() {
   const { currentUser } = useAuth();
 
   return (
+    <TecnicosProvider>
     <JornadasProvider>
     <BrowserRouter>
       <Routes>
@@ -85,6 +87,7 @@ function App() {
       </Routes>
     </BrowserRouter>
     </JornadasProvider>
+    </TecnicosProvider>
   );
 }
 
