@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, Calculator, ClipboardList, Package, MapPin, Receipt, HardHat, Wallet, DollarSign, Trash2, Zap, BarChart2, X, LogOut, Settings } from 'lucide-react';
+import { LayoutDashboard, Users, Calculator, ClipboardList, Package, MapPin, Receipt, HardHat, Wallet, DollarSign, Trash2, Zap, BarChart2, X, LogOut, Settings, Wrench } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const Sidebar = ({ className = '', isMobile, onClose }) => {
@@ -25,6 +25,7 @@ const Sidebar = ({ className = '', isMobile, onClose }) => {
       label: 'OPERACIONES',
       items: [
         { name: 'Obras', icon: <HardHat size={20} />, path: '/obras' },
+        { name: 'Servicios Técnicos', icon: <Wrench size={20} />, path: '/servicios' },
         { name: 'Stock', icon: <Package size={20} />, path: '/stock' },
         { name: 'Jornadas', icon: <MapPin size={20} />, path: '/jornadas' },
       ]

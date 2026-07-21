@@ -20,6 +20,10 @@ import Estandares from './pages/Estandares/Estandares';
 import FormularioPublico from './pages/PublicForm/FormularioPublico';
 import Reportes from './pages/Reportes/Reportes';
 import Configuracion from './pages/Configuracion/Configuracion';
+import ServiciosTecnicos from './servicios_app/pages/Admin';
+import ServiciosClientes from './servicios_app/pages/Clientes';
+import ClienteDetalle from './servicios_app/pages/ClienteDetalle';
+import NuevoServicio from './servicios_app/pages/NuevoServicio';
 
 // Rutas Privadas
 const PrivateRoute = ({ children, requiredRole }) => {
@@ -62,6 +66,10 @@ function App() {
         <Route path="/presupuesto" element={<FormularioPublico />} />
         <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
         <Route path="/clientes" element={<PrivateRoute><Clientes /></PrivateRoute>} />
+        <Route path="/servicios" element={<PrivateRoute><ServiciosTecnicos /></PrivateRoute>} />
+        <Route path="/servicios/clientes" element={<PrivateRoute><ServiciosClientes /></PrivateRoute>} />
+        <Route path="/servicios/clientes/:id" element={<PrivateRoute><ClienteDetalle /></PrivateRoute>} />
+        <Route path="/servicios/nuevo" element={<PrivateRoute><NuevoServicio /></PrivateRoute>} />
         <Route path="/presupuestos" element={<PrivateRoute><PresupuestosCRM /></PrivateRoute>} />
         <Route path="/obras" element={<PrivateRoute><Obras /></PrivateRoute>} />
         <Route path="/stock" element={<PrivateRoute><Stock /></PrivateRoute>} />
