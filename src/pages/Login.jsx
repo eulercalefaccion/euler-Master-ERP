@@ -16,8 +16,8 @@ const Login = () => {
       setLoading(true);
       await loginWithGoogle();
     } catch (err) {
-      console.error(err);
-      setError('Error al iniciar sesión con Google.');
+      console.error("Detalle del error de Google:", err);
+      setError(`Error al iniciar sesión con Google: ${err.code || ''} ${err.message || 'Ver consola'}`);
     } finally {
       setLoading(false);
     }
