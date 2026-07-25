@@ -12,6 +12,13 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /users/{userId} {
+      // Cualquier autenticado puede leer roles para verificar permisos
+      allow read: if request.auth != null;
+      // Los usuarios pueden crear/escribir su propio documento, o admin puede escribir todo
+      allow write: if isAdmin() || request.auth.uid == userId;
+    }
+
     // ─── COLECCIONES PRINCIPALES ─────────────────────────────────────
     
     // Clientes: Solo administradores pueden escribir. Cualquier autenticado lee.
