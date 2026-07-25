@@ -160,7 +160,9 @@ const KanbanBoard = () => {
   const [isApproving, setIsApproving]     = useState(false);
 
   // Follow ups
-  const [hasDismissedFollowUps, setHasDismissedFollowUps] = useState(false);
+  const [hasDismissedFollowUps, setHasDismissedFollowUps] = useState(() => {
+    return localStorage.getItem('euler_dismissed_followups_date') === new Date().toLocaleDateString();
+  });
 
   // New lead form
   const [isNewClient, setIsNewClient] = useState(false);
@@ -472,6 +474,7 @@ const KanbanBoard = () => {
       facturacionDni: item.facturacionDni || '',
       facturacionDireccion: item.facturacionDireccion || '',
       fechaSeguimiento: item.fechaSeguimiento || '',
+      notaSeguimiento: item.notaSeguimiento || '',
     });
   };
 
@@ -667,6 +670,7 @@ const KanbanBoard = () => {
         facturacionDni: editLeadFields.facturacionIgualCliente ? editLeadFields.dni : editLeadFields.facturacionDni,
         facturacionDireccion: editLeadFields.facturacionIgualCliente ? editLeadFields.direccionCliente : editLeadFields.facturacionDireccion,
         fechaSeguimiento: editLeadFields.fechaSeguimiento || '',
+        notaSeguimiento: editLeadFields.notaSeguimiento || '',
       };
 
       await updateDoc(doc(db, 'presupuestos', selectedLead.id), updatedFields);
@@ -766,8 +770,8 @@ const KanbanBoard = () => {
         facturacionDni: editLeadFields.facturacionIgualCliente ? editLeadFields.dni : editLeadFields.facturacionDni,
         facturacionDireccion: editLeadFields.facturacionIgualCliente ? editLeadFields.direccionCliente : editLeadFields.facturacionDireccion,
         fechaSeguimiento: editLeadFields.fechaSeguimiento || '',
+        notaSeguimiento: editLeadFields.notaSeguimiento || '',
       };
-
       await updateDoc(doc(db, 'presupuestos', selectedLead.id), updatedFields);
       setSelectedLead(prev => ({ ...prev, ...updatedFields }));
       setRevChangeNote('');
@@ -1310,6 +1314,7 @@ const KanbanBoard = () => {
                     style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
                     onClick={() => {
                       setHasDismissedFollowUps(true);
+                      localStorage.setItem('euler_dismissed_followups_date', new Date().toLocaleDateString());
                       openDetail(lead);
                     }}
                   >
@@ -1319,7 +1324,10 @@ const KanbanBoard = () => {
               ))}
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-              <button className="btn btn-primary" onClick={() => setHasDismissedFollowUps(true)}>
+              <button className="btn btn-primary" onClick={() => {
+                setHasDismissedFollowUps(true);
+                localStorage.setItem('euler_dismissed_followups_date', new Date().toLocaleDateString());
+              }}>
                 Entendido
               </button>
             </div>
@@ -2860,6 +2868,33 @@ const KanbanBoard = () => {
                           disabled={editLeadFields.facturacionIgualCliente}
                           value={editLeadFields.facturacionDni}
                           onChange={e => setEditLeadFields({ ...editLeadFields, facturacionDni: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* SECCIÓN 6: Seguimiento Comercial */}
+                  <div style={{ borderBottom:'1px solid var(--border-light)',paddingBottom:'1rem' }}>
+                    <h4 style={{ margin:'0 0 0.75rem 0',color:'var(--primary-700)',fontSize:'0.9rem',textTransform:'uppercase',letterSpacing:'0.05em' }}>Seguimiento Comercial</h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label">Fecha del Próximo Seguimiento</label>
+                        <input
+                          type="date"
+                          className="input-field"
+                          value={editLeadFields.fechaSeguimiento || ''}
+                          onChange={e => setEditLeadFields({ ...editLeadFields, fechaSeguimiento: e.target.value })}
+                          style={{ maxWidth: '200px' }}
+                        />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label">Notas del Seguimiento (Acuerdos, Respuestas)</label>
+                        <textarea
+                          className="input-field"
+                          rows="3"
+                          value={editLeadFields.notaSeguimiento || ''}
+                          onChange={e => setEditLeadFields({ ...editLeadFields, notaSeguimiento: e.target.value })}
+                          placeholder="El cliente nos pidió que lo contactemos la semana que viene..."
                         />
                       </div>
                     </div>
