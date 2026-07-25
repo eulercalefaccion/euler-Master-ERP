@@ -21,6 +21,7 @@ import Estandares from './pages/Estandares/Estandares';
 import FormularioPublico from './pages/PublicForm/FormularioPublico';
 import Reportes from './pages/Reportes/Reportes';
 import Configuracion from './pages/Configuracion/Configuracion';
+import BalanceTermico from './pages/BalanceTermico/BalanceTermico';
 import ServiciosTecnicos from './servicios_app/pages/Admin';
 import ServiciosClientes from './servicios_app/pages/Clientes';
 import ClienteDetalle from './servicios_app/pages/ClienteDetalle';
@@ -81,6 +82,7 @@ function App() {
         <Route path="/jornadas" element={<PrivateRoute><Jornadas /></PrivateRoute>} />
         <Route path="/personas" element={<PrivateRoute><Personas /></PrivateRoute>} />
         <Route path="/balance" element={<PrivateRoute><Balance /></PrivateRoute>} />
+        <Route path="/balance-termico" element={<PrivateRoute><BalanceTermico /></PrivateRoute>} />
         <Route path="/sueldos" element={<PrivateRoute><Sueldos /></PrivateRoute>} />
         <Route path="/reportes" element={<PrivateRoute><Reportes /></PrivateRoute>} />
         <Route path="/papelera" element={<PrivateRoute><Papelera /></PrivateRoute>} />

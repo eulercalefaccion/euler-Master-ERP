@@ -1,6 +1,7 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const Anthropic = require('@anthropic-ai/sdk');
 
 admin.initializeApp();
 
@@ -52,6 +53,126 @@ exports.askGemini = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError(
       'internal',
       'Hubo un problema al procesar la solicitud con la IA.'
+    );
+  }
+});
+
+// Endpoint para analizar planos de Balance Térmico usando Claude 3.5 Sonnet
+exports.analyzeFloorPlan = functions.runWith({
+  timeoutSeconds: 300,
+  memory: '1GB'
+}).https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+      'unauthenticated',
+      'El usuario debe estar autenticado.'
+    );
+  }
+
+  const { fileBase64, mediaType } = data;
+  if (!fileBase64) {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      'Se requiere fileBase64.'
+    );
+  }
+
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    console.error('ANTHROPIC_API_KEY no está configurada.');
+    throw new functions.https.HttpsError(
+      'internal',
+      'La API Key de Anthropic no está configurada.'
+    );
+  }
+
+  try {
+    const anthropic = new Anthropic({ apiKey });
+
+    // Determinar si es PDF o imagen
+    let content = [];
+    if (mediaType === 'application/pdf') {
+      content.push({
+        type: 'document',
+        source: {
+          type: 'base64',
+          media_type: 'application/pdf',
+          data: fileBase64,
+        }
+      });
+    } else {
+      content.push({
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: mediaType, // ej: image/jpeg, image/png, image/webp
+          data: fileBase64,
+        }
+      });
+    }
+
+    content.push({
+      type: 'text',
+      text: `Analiza este plano de arquitectura para realizar un balance térmico.
+El objetivo es extraer los ambientes, sus dimensiones (superficie), altura de cielorraso y porcentaje de vidrio estimado para aberturas al exterior.
+
+Reglas importantes:
+1. Extrae todos los locales/ambientes (ej. Cocina, Comedor, Living, Dormitorio, Baño, etc.).
+2. Si un local no tiene el texto escrito, INFIERE qué tipo de local es mirando los muebles sanitarios o de cocina y dale un nombre apropiado.
+3. Si la altura del cielorraso no está anotada en el plano, ASUME SIEMPRE 2.80 metros (esto es muy importante).
+4. El porcentaje de vidrio debe ser estimado de acuerdo a la proporción de ventana sobre muro exterior.
+5. Si encuentras detalles del tipo de vidrio (simple/DVH) o muros (ladrillo hueco, etc), anótalos.
+
+Tu respuesta DEBE ser ÚNICAMENTE un JSON válido sin markdown ni texto extra. La estructura debe ser exactamente así:
+
+{
+  "resumen": "Resumen del caso (tipo de vivienda, etc.)",
+  "observaciones": "Observaciones para el asesor (ej. se requiere validación de medidas)",
+  "datos_no_detectados": [
+    { "dato": "Localidad", "importancia": "Alto", "comentario": "Falta información para zona IRAM." }
+  ],
+  "preguntas": ["¿Pregunta 1?", "¿Pregunta 2?"],
+  "riesgos": ["Riesgo 1", "Riesgo 2"],
+  "ambientes": [
+    {
+      "nombre": "Living",
+      "superficie": 18.0,
+      "altura": 3.25,
+      "porcentaje_vidrio": 25,
+      "tipo_vidrio": "Simple",
+      "calefaccion": true,
+      "orientacion": "No indicada",
+      "confianza": "Media",
+      "motivo": "Superficie estimada por cotas..."
+    }
+  ]
+}`
+    });
+
+    const msg = await anthropic.messages.create({
+      model: "claude-3-5-sonnet-20241022",
+      max_tokens: 4096,
+      temperature: 0.2,
+      messages: [
+        {
+          role: 'user',
+          content: content
+        }
+      ]
+    });
+
+    let textResponse = msg.content[0].text;
+    
+    // Limpiar si vino con markdown (```json ... ```)
+    textResponse = textResponse.replace(/^```json/m, '').replace(/```$/m, '').trim();
+    
+    const parsedData = JSON.parse(textResponse);
+    return { data: parsedData };
+  } catch (error) {
+    console.error('Error al llamar a Anthropic API:', error);
+    throw new functions.https.HttpsError(
+      'internal',
+      error.message || 'Error procesando el plano con IA.'
     );
   }
 });

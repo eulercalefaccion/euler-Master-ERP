@@ -17,6 +17,7 @@ const Sidebar = ({ className = '', isMobile, onClose }) => {
       items: [
         { name: 'Clientes', icon: <Users size={20} />, path: '/clientes' },
         { name: 'Presupuestos', icon: <Calculator size={20} />, path: '/presupuestos' },
+        { name: 'Balance Térmico IA', icon: <Zap size={20} />, path: '/balance-termico' },
         { name: 'Estándares', icon: <Zap size={20} />, path: '/estandares' },
         { name: 'Lista de Precios', icon: <DollarSign size={20} />, path: '/lista-precios' },
       ]
