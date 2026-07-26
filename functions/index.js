@@ -150,7 +150,7 @@ Tu respuesta DEBE ser ÚNICAMENTE un JSON válido sin markdown ni texto extra. L
     });
 
     const msg = await anthropic.messages.create({
-      model: "claude-sonnet-5",
+      model: "claude-haiku-4-5-20251001",
       max_tokens: 4096,
       messages: [
         {
