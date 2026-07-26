@@ -152,7 +152,6 @@ Tu respuesta DEBE ser ÚNICAMENTE un JSON válido sin markdown ni texto extra. L
     const msg = await anthropic.messages.create({
       model: "claude-sonnet-5",
       max_tokens: 4096,
-      temperature: 0.2,
       messages: [
         {
           role: 'user',
