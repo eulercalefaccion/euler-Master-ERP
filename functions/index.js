@@ -160,12 +160,38 @@ Tu respuesta DEBE ser ÚNICAMENTE un JSON válido sin markdown ni texto extra. L
       ]
     });
 
-    let textResponse = msg.content[0].text;
+    // Extraer el texto de la respuesta de forma robusta
+    console.log('Raw Anthropic response:', JSON.stringify(msg.content));
+    
+    let textResponse = null;
+    if (msg.content && Array.isArray(msg.content)) {
+      for (const block of msg.content) {
+        if (block.type === 'text' && block.text) {
+          textResponse = block.text;
+          break;
+        }
+      }
+    }
+    
+    if (!textResponse) {
+      throw new Error('La IA no devolvió texto en la respuesta. Contenido: ' + JSON.stringify(msg.content));
+    }
     
     // Limpiar si vino con markdown (```json ... ```)
-    textResponse = textResponse.replace(/^```json/m, '').replace(/```$/m, '').trim();
+    textResponse = textResponse
+      .replace(/^```json\s*/m, '')
+      .replace(/^```\s*/m, '')
+      .replace(/\s*```$/m, '')
+      .trim();
     
-    const parsedData = JSON.parse(textResponse);
+    let parsedData;
+    try {
+      parsedData = JSON.parse(textResponse);
+    } catch (parseErr) {
+      console.error('Error parseando JSON:', textResponse);
+      throw new Error('La IA devolvió una respuesta que no es JSON válido.');
+    }
+    
     return { data: parsedData };
   } catch (error) {
     console.error('Error al llamar a Anthropic API:', error);
