@@ -20,6 +20,7 @@ const BalanceTermico = () => {
     tipoEnvolvente: 'Media (ladrillo hueco)',
     tipoVidrio: 'Simple',
     margenSeguridad: 15,
+    coefVolumetrico: 42,  // Kcal/h·m³ — Zona I, Media envolvente
   });
 
   const handleFileUpload = async (file) => {
