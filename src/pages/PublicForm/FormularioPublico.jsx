@@ -330,33 +330,6 @@ const FormularioPublico = () => {
               <input type="text" name="apellido" className="form-input" required value={formData.apellido} onChange={handleChange} placeholder="Ej: Pérez" />
             </div>
 
-            {formData.tipoContacto === 'Consumidor Final / Dueño' && (
-              <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem', marginBottom: '1rem' }}>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Nombre del Profesional/Arquitecto</label>
-                  <input 
-                    type="text" 
-                    name="profesionalPropietarioNombre" 
-                    className="form-input" 
-                    value={formData.profesionalPropietarioNombre} 
-                    onChange={handleChange} 
-                    placeholder="Ej: Arq. M. Rodríguez" 
-                  />
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Teléfono del Profesional/Arquitecto</label>
-                  <input 
-                    type="tel" 
-                    name="profesionalPropietarioTelefono" 
-                    className="form-input" 
-                    value={formData.profesionalPropietarioTelefono} 
-                    onChange={handleChange} 
-                    placeholder="Ej: +54 9 341 7654321" 
-                  />
-                </div>
-              </div>
-            )}
-
             <div className="form-group">
               <label className="form-label">Teléfono / WhatsApp <span className="required">*</span></label>
               <input type="tel" name="telefono" className="form-input" required value={formData.telefono} onChange={handleChange} placeholder="Ej: +54 9 341 1234567" />
@@ -371,6 +344,33 @@ const FormularioPublico = () => {
               <label className="form-label">DNI o CUIT <span className="required">*</span></label>
               <input type="text" name="documento" className="form-input" required value={formData.documento} onChange={handleChange} placeholder="Ej: 20-33444555-9" />
             </div>
+
+            {formData.tipoContacto === 'Consumidor Final / Dueño' && (
+              <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1.5rem' }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Nombre del Profesional/Arquitecto <span className="optional">(Opcional)</span></label>
+                  <input 
+                    type="text" 
+                    name="profesionalPropietarioNombre" 
+                    className="form-input" 
+                    value={formData.profesionalPropietarioNombre} 
+                    onChange={handleChange} 
+                    placeholder="Ej: Arq. M. Rodríguez" 
+                  />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Teléfono del Profesional/Arquitecto <span className="optional">(Opcional)</span></label>
+                  <input 
+                    type="tel" 
+                    name="profesionalPropietarioTelefono" 
+                    className="form-input" 
+                    value={formData.profesionalPropietarioTelefono} 
+                    onChange={handleChange} 
+                    placeholder="Ej: +54 9 341 7654321" 
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* SECCIÓN 2: La Obra */}
