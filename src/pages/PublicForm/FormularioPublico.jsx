@@ -18,6 +18,7 @@ const FormularioPublico = () => {
     nombre: '',
     apellido: '',
     tipoContacto: '',
+    tipoContactoOtro: '',
     telefono: '',
     email: '',
     documento: '',
@@ -140,9 +141,9 @@ const FormularioPublico = () => {
     e.preventDefault();
 
     const requiredFields = [
+      { key: 'tipoContacto', name: 'Tipo de contacto' },
       { key: 'nombre', name: 'Nombre' },
       { key: 'apellido', name: 'Apellido' },
-      { key: 'tipoContacto', name: 'Tipo de contacto' },
       { key: 'telefono', name: 'Teléfono / WhatsApp' },
       { key: 'email', name: 'Email' },
       { key: 'documento', name: 'DNI o CUIT' },
@@ -152,6 +153,10 @@ const FormularioPublico = () => {
       { key: 'dirProvincia', name: 'Provincia' },
       { key: 'sistema', name: 'Sistema a cotizar' }
     ];
+
+    if (formData.tipoContacto === 'Otro') {
+      requiredFields.push({ key: 'tipoContactoOtro', name: 'Aclarar tipo de contacto' });
+    }
 
     if (formData.sistema === 'OTRO (COMPLETE ESCRIBIENDO)') {
       requiredFields.push({ key: 'sistemaOtro', name: 'Especificar otro sistema' });
@@ -203,7 +208,7 @@ const FormularioPublico = () => {
         telefono: formData.telefono,
         email: formData.email,
         cuit: formData.documento,
-        tipoCliente: formData.tipoContacto,
+        tipoCliente: formData.tipoContacto === 'Otro' ? formData.tipoContactoOtro : formData.tipoContacto,
         
         direccionObra: getDireccionCompleta(),
         location: getDireccionCompleta(), // Usado por KanbanBoard
@@ -295,16 +300,6 @@ const FormularioPublico = () => {
           {/* SECCIÓN 1: Tus Datos */}
           <div className="form-section">
             <h3 className="form-section-title"><User size={20} /> Tus datos</h3>
-            
-            <div className="form-group">
-              <label className="form-label">Nombre <span className="required">*</span></label>
-              <input type="text" name="nombre" className="form-input" required value={formData.nombre} onChange={handleChange} placeholder="Ej: Juan" />
-            </div>
-            
-            <div className="form-group">
-              <label className="form-label">Apellido <span className="required">*</span></label>
-              <input type="text" name="apellido" className="form-input" required value={formData.apellido} onChange={handleChange} placeholder="Ej: Pérez" />
-            </div>
 
             <div className="form-group">
               <label className="form-label">Tipo de contacto <span className="required">*</span></label>
@@ -316,6 +311,23 @@ const FormularioPublico = () => {
                 <option value="Desarrolladora">Desarrolladora</option>
                 <option value="Otro">Otro</option>
               </select>
+            </div>
+
+            {formData.tipoContacto === 'Otro' && (
+              <div className="form-group">
+                <label className="form-label">Aclarar tipo de contacto <span className="required">*</span></label>
+                <input type="text" name="tipoContactoOtro" className="form-input" required value={formData.tipoContactoOtro} onChange={handleChange} placeholder="Ej: Administrador de consorcios, Instalador..." />
+              </div>
+            )}
+            
+            <div className="form-group">
+              <label className="form-label">Nombre <span className="required">*</span></label>
+              <input type="text" name="nombre" className="form-input" required value={formData.nombre} onChange={handleChange} placeholder="Ej: Juan" />
+            </div>
+            
+            <div className="form-group">
+              <label className="form-label">Apellido <span className="required">*</span></label>
+              <input type="text" name="apellido" className="form-input" required value={formData.apellido} onChange={handleChange} placeholder="Ej: Pérez" />
             </div>
 
             {formData.tipoContacto === 'Consumidor Final / Dueño' && (
