@@ -25,6 +25,11 @@ const FormularioPublico = () => {
     email: '',
     documento: '',
     
+    tipoObra: '',
+    tipoObraOtro: '',
+    estadoObra: '',
+    estadoObraOtro: '',
+    
     dirCalle: '',
     dirAltura: '',
     dirLocalidad: '',
@@ -150,6 +155,8 @@ const FormularioPublico = () => {
       { key: 'telefonoNumero', name: 'Teléfono / WhatsApp (sin el 15)' },
       { key: 'email', name: 'Email' },
       { key: 'documento', name: 'DNI o CUIT' },
+      { key: 'tipoObra', name: 'Tipo de obra' },
+      { key: 'estadoObra', name: 'Estado de la obra' },
       { key: 'dirCalle', name: 'Calle' },
       { key: 'dirAltura', name: 'Altura / Número' },
       { key: 'dirLocalidad', name: 'Localidad' },
@@ -159,6 +166,14 @@ const FormularioPublico = () => {
 
     if (formData.tipoContacto === 'Otro') {
       requiredFields.push({ key: 'tipoContactoOtro', name: 'Aclarar tipo de contacto' });
+    }
+
+    if (formData.tipoObra === 'Otro') {
+      requiredFields.push({ key: 'tipoObraOtro', name: 'Aclarar tipo de obra' });
+    }
+
+    if (formData.estadoObra === 'Otro') {
+      requiredFields.push({ key: 'estadoObraOtro', name: 'Aclarar estado de la obra' });
     }
 
     if (formData.sistema === 'OTRO (COMPLETE ESCRIBIENDO)') {
@@ -214,6 +229,8 @@ const FormularioPublico = () => {
         tipoCliente: formData.tipoContacto === 'Otro' ? formData.tipoContactoOtro : formData.tipoContacto,
         estudioArquitectura: formData.estudioArquitectura || null,
         empresaOEstudio: formData.estudioArquitectura || null,
+        tipoObra: formData.tipoObra === 'Otro' ? formData.tipoObraOtro : formData.tipoObra,
+        estadoObra: formData.estadoObra === 'Otro' ? formData.estadoObraOtro : formData.estadoObra,
         
         direccionObra: getDireccionCompleta(),
         location: getDireccionCompleta(), // Usado por KanbanBoard
@@ -414,6 +431,48 @@ const FormularioPublico = () => {
           {/* SECCIÓN 2: La Obra */}
           <div className="form-section">
             <h3 className="form-section-title"><MapPin size={20} /> La obra</h3>
+            
+            <div className="form-group">
+              <label className="form-label">Tipo de obra <span className="required">*</span></label>
+              <select name="tipoObra" className="form-select" required value={formData.tipoObra} onChange={handleChange}>
+                <option value="" disabled>Seleccionar...</option>
+                <option value="Casa o Vivienda unifamiliar">Casa o Vivienda unifamiliar</option>
+                <option value="Edificio o Vivienda multifamiliar">Edificio o Vivienda multifamiliar</option>
+                <option value="Condominio o Conjunto de viviendas">Condominio o Conjunto de viviendas</option>
+                <option value="Oficina o Comercio">Oficina o Comercio</option>
+                <option value="Fábrica o Industria">Fábrica o Industria</option>
+                <option value="Otro">Otro</option>
+              </select>
+            </div>
+
+            {formData.tipoObra === 'Otro' && (
+              <div className="form-group">
+                <label className="form-label">Aclarar tipo de obra <span className="required">*</span></label>
+                <input type="text" name="tipoObraOtro" className="form-input" required value={formData.tipoObraOtro} onChange={handleChange} placeholder="Ej: Quincho, Galpón, Salón de eventos..." />
+              </div>
+            )}
+
+            <div className="form-group">
+              <label className="form-label">Estado de la obra <span className="required">*</span></label>
+              <select name="estadoObra" className="form-select" required value={formData.estadoObra} onChange={handleChange}>
+                <option value="" disabled>Seleccionar...</option>
+                <option value="Obra nueva">Obra nueva</option>
+                <option value="Obra en refacción o remodelación">Obra en refacción o remodelación</option>
+                <option value="Vivienda habitada (sólo instalación de calefacción)">Vivienda habitada (sólo instalación de calefacción)</option>
+                <option value="Otro">Otro</option>
+              </select>
+            </div>
+
+            {formData.estadoObra === 'Otro' && (
+              <div className="form-group">
+                <label className="form-label">Aclarar estado de la obra <span className="required">*</span></label>
+                <input type="text" name="estadoObraOtro" className="form-input" required value={formData.estadoObraOtro} onChange={handleChange} placeholder="Ej: Ampliación en planta alta, construcción detenida..." />
+              </div>
+            )}
+
+            <hr style={{ border: 'none', borderTop: '1px solid #e2e8f0', margin: '1.5rem 0' }} />
+            
+            <h4 style={{ fontSize: '1rem', color: '#0d2a4e', fontWeight: 600, marginBottom: '0.5rem' }}>Ubicación y Dirección</h4>
             <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1.25rem', lineHeight: '1.4' }}>
               Podés completar manualmente la dirección abajo para que el mapa te busque, o directamente <b>tocar tu ubicación en el mapa</b> para que se autocompleten las calles automáticamente.
             </p>
