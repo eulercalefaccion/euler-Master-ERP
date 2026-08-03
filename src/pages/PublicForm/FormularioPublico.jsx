@@ -218,7 +218,7 @@ const FormularioPublico = () => {
         contactoTelefono: formData.profesionalPropietarioTelefono,
         
         // Datos internos
-        status: 'presupuesto', // Columna: Presupuesto Pendiente
+        status: 'pendiente', // Columna: Presupuesto Pendiente
         canal: 'iva',
         canalLlegada: 'Formulario Web',
         presupuestoNumber: presupuestoNumber,
@@ -226,7 +226,22 @@ const FormularioPublico = () => {
         date: new Date().toLocaleDateString('es-AR'),
         amount: 0,
         quoteItems: [],
-        
+        // KPI: Bitácora de eventos con timestamp exacto del envío
+        statusHistory: [{
+          status: 'pendiente',
+          date: new Date().toISOString(),
+          user: 'sistema',
+          displayName: 'Formulario Web',
+          descripcion: 'Solicitud recibida por formulario web del cliente'
+        }],
+        bitacora: [{
+          tipo: 'solicitud_web',
+          icono: '📋',
+          descripcion: 'Cliente completó el formulario de solicitud de presupuesto vía web',
+          fecha: new Date().toISOString(),
+          usuario: 'Formulario Web',
+          email: 'sistema'
+        }],
         archivos: urlsAdjuntos
       };
 

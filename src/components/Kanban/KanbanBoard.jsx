@@ -123,13 +123,15 @@ const KanbanBoard = () => {
   const [data, setData] = useState({
     items: {},
     columns: {
-      'pendiente':   { id: 'pendiente',   title: 'Presupuesto Pendiente',  itemsIds: [] },
-      'enviado':     { id: 'enviado',     title: 'Enviado al Cliente',      itemsIds: [] },
-      'seguimiento': { id: 'seguimiento', title: 'Seguimiento Activo',     itemsIds: [] },
-      'aprobado':    { id: 'aprobado',    title: 'Aprobado',               itemsIds: [] },
-      'rechazado':   { id: 'rechazado',   title: 'Rechazado / En Espera', itemsIds: [] },
+      'pendiente':         { id: 'pendiente',         title: 'Presupuesto Pendiente',  itemsIds: [] },
+      'en_calculo':        { id: 'en_calculo',         title: 'En Cálculo',            itemsIds: [] },
+      'listo_para_enviar': { id: 'listo_para_enviar',  title: 'Listo para Enviar',     itemsIds: [] },
+      'enviado':           { id: 'enviado',            title: 'Enviado al Cliente',     itemsIds: [] },
+      'seguimiento':       { id: 'seguimiento',        title: 'Seguimiento Activo',    itemsIds: [] },
+      'aprobado':          { id: 'aprobado',           title: 'Aprobado',              itemsIds: [] },
+      'rechazado':         { id: 'rechazado',          title: 'Rechazado / En Espera', itemsIds: [] },
     },
-    columnOrder: ['pendiente', 'enviado', 'seguimiento', 'aprobado', 'rechazado'],
+    columnOrder: ['pendiente', 'en_calculo', 'listo_para_enviar', 'enviado', 'seguimiento', 'aprobado', 'rechazado'],
   });
 
   const [clientesList, setClientesList]   = useState([]);
@@ -393,11 +395,13 @@ const KanbanBoard = () => {
     const unsubPresupuestos = onSnapshot(query(collection(db, 'presupuestos')), snap => {
       const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       const newCols = {
-        'pendiente':   { id: 'pendiente',   title: 'Presupuesto Pendiente',  itemsIds: [] },
-        'enviado':     { id: 'enviado',     title: 'Enviado al Cliente',      itemsIds: [] },
-        'seguimiento': { id: 'seguimiento', title: 'Seguimiento Activo',     itemsIds: [] },
-        'aprobado':    { id: 'aprobado',    title: 'Aprobado',               itemsIds: [] },
-        'rechazado':   { id: 'rechazado',   title: 'Rechazado / En Espera', itemsIds: [] },
+        'pendiente':         { id: 'pendiente',         title: 'Presupuesto Pendiente',  itemsIds: [] },
+        'en_calculo':        { id: 'en_calculo',         title: 'En Cálculo',            itemsIds: [] },
+        'listo_para_enviar': { id: 'listo_para_enviar',  title: 'Listo para Enviar',     itemsIds: [] },
+        'enviado':           { id: 'enviado',            title: 'Enviado al Cliente',     itemsIds: [] },
+        'seguimiento':       { id: 'seguimiento',        title: 'Seguimiento Activo',    itemsIds: [] },
+        'aprobado':          { id: 'aprobado',           title: 'Aprobado',              itemsIds: [] },
+        'rechazado':         { id: 'rechazado',          title: 'Rechazado / En Espera', itemsIds: [] },
       };
       const newItems = {};
       docs.forEach(d => {
@@ -965,15 +969,77 @@ const KanbanBoard = () => {
       setIsApprovalOpen(true);
       return;
     }
+
     try {
+      const now   = new Date().toISOString();
+      const email = currentUser?.email || 'Desconocido';
+      const nombre = currentUser?.name || currentUser?.email || 'Desconocido';
+      const newStatus = finishCol.id;
+
+      // ── Evento para statusHistory (retrocompatibilidad) ──
       const moveEvent = {
-        status: finishCol.id,
-        date: new Date().toISOString(),
-        user: currentUser?.email || 'Desconocido'
+        status: newStatus,
+        date: now,
+        user: email,
+        displayName: nombre,
       };
+
+      // ── Evento enriquecido para bitácora ──
+      const ICONO_MAP = {
+        pendiente:         '📋',
+        en_calculo:        '🔧',
+        listo_para_enviar: '✅',
+        enviado:           '📧',
+        seguimiento:       '🔄',
+        aprobado:          '🏆',
+        rechazado:         '❌',
+      };
+      const DESC_MAP = {
+        pendiente:         'Presupuesto vuelto a Pendiente',
+        en_calculo:        `${nombre} inició el cálculo del presupuesto`,
+        listo_para_enviar: `${nombre} finalizó el presupuesto — listo para enviar al cliente`,
+        enviado:           `Presupuesto enviado al cliente por ${nombre}`,
+        seguimiento:       `${nombre} inició seguimiento activo`,
+        aprobado:          `Presupuesto aprobado por ${nombre}`,
+        rechazado:         `Presupuesto rechazado / puesto en espera por ${nombre}`,
+      };
+
+      const bitacoraEvent = {
+        tipo: newStatus,
+        icono: ICONO_MAP[newStatus] || '📌',
+        descripcion: DESC_MAP[newStatus] || `Movido a ${finishCol.title} por ${nombre}`,
+        fecha: now,
+        usuario: nombre,
+        email: email,
+      };
+
+      // ── Campos adicionales según destino (timestamps KPI) ──
+      const extraFields = {};
+
+      if (newStatus === 'en_calculo') {
+        // TAP termina aquí: calculoInicio marca el inicio del KPI TCE
+        const item = data.items[draggableId];
+        // Solo grabamos calculoInicio la PRIMERA vez que entra en cálculo
+        if (!item?.calculoInicio) {
+          extraFields.calculoInicio = now;
+        }
+      }
+
+      if (newStatus === 'listo_para_enviar' && source.droppableId === 'en_calculo') {
+        // TCE termina aquí
+        extraFields.calculoFin = now;
+      }
+
+      if (newStatus === 'enviado') {
+        // TDE termina aquí
+        extraFields.enviadoAt = now;
+      }
+
       await updateDoc(doc(db, 'presupuestos', draggableId), {
-        status: finishCol.id,
-        statusHistory: arrayUnion(moveEvent)
+        status: newStatus,
+        statusHistory: arrayUnion(moveEvent),
+        bitacora: arrayUnion(bitacoraEvent),
+        ...extraFields,
       });
     } catch (err) { console.error(err); }
   };
@@ -988,16 +1054,28 @@ const KanbanBoard = () => {
 
     try {
       // 1. Actualizar presupuesto a "aprobado"
+      const now = new Date().toISOString();
+      const nombre = currentUser?.name || currentUser?.email || 'Desconocido';
       const moveEvent = {
         status: 'aprobado',
-        date: new Date().toISOString(),
-        user: currentUser?.email || 'Desconocido'
+        date: now,
+        user: currentUser?.email || 'Desconocido',
+        displayName: nombre,
+      };
+      const bitacoraAprobado = {
+        tipo: 'aprobado',
+        icono: '🏆',
+        descripcion: `Presupuesto aprobado y convertido en Obra por ${nombre}`,
+        fecha: now,
+        usuario: nombre,
+        email: currentUser?.email || 'Desconocido',
       };
       await updateDoc(doc(db, 'presupuestos', draggableId), {
         status: 'aprobado',
         paymentStatus: paymentStatus,
         amount: paymentAmount ? parseInt(paymentAmount) : (item.amount || 0),
-        statusHistory: arrayUnion(moveEvent)
+        statusHistory: arrayUnion(moveEvent),
+        bitacora: arrayUnion(bitacoraAprobado),
       });
 
       // 2. Reservar stock en lista_precios
@@ -1236,6 +1314,21 @@ const KanbanBoard = () => {
         facturacionDni: newLead.facturacionIgualCliente ? (newLead.dni || '') : (newLead.facturacionDni || ''),
         facturacionDireccion: newLead.facturacionIgualCliente ? (newLead.direccionCliente || '') : (newLead.facturacionDireccion || ''),
         notasLead: newLead.notasLead || '',
+        // KPI: Bitácora inicial
+        statusHistory: [{
+          status: 'pendiente',
+          date: new Date().toISOString(),
+          user: currentUser?.email || 'Desconocido',
+          displayName: currentUser?.name || currentUser?.email || 'Desconocido',
+        }],
+        bitacora: [{
+          tipo: 'solicitud_manual',
+          icono: '📋',
+          descripcion: `Presupuesto creado manualmente por ${currentUser?.name || currentUser?.email || 'Desconocido'}`,
+          fecha: new Date().toISOString(),
+          usuario: currentUser?.name || currentUser?.email || 'Desconocido',
+          email: currentUser?.email || '',
+        }],
       });
       
       setIsLeadModalOpen(false);
@@ -2936,92 +3029,135 @@ const KanbanBoard = () => {
               )}
 
               {detailTab === 'historial' && (
-                <div style={{ border:'1px solid var(--border-light)',borderRadius:'8px',overflow:'hidden' }}>
-                  <div style={{ padding:'0.75rem 1rem',background:'var(--bg-surface-hover)',fontWeight:'700',fontSize:'0.875rem',color:'var(--text-primary)' }}>
-                    📋 Historial de Versiones
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+
+                  {/* ── BITÁCORA DE EVENTOS ── */}
+                  <div style={{ border:'1px solid var(--border-light)',borderRadius:'8px',overflow:'hidden' }}>
+                    <div style={{ padding:'0.75rem 1rem',background:'linear-gradient(135deg,#1e3a5f,#2563eb)',fontWeight:'700',fontSize:'0.875rem',color:'#fff',display:'flex',alignItems:'center',gap:'0.5rem' }}>
+                      📒 Bitácora de Eventos
+                      <span style={{ marginLeft:'auto',fontSize:'0.7rem',fontWeight:'400',opacity:0.8 }}>Horario: ³AR (UTC−3)</span>
+                    </div>
+                    <div style={{ padding:'0.5rem 0' }}>
+                      {(selectedLead.bitacora?.length || 0) === 0 ? (
+                        <div style={{ padding:'1rem',textAlign:'center',color:'#94a3b8',fontSize:'0.85rem',fontStyle:'italic' }}>
+                          No hay eventos registrados en la bitácora.
+                        </div>
+                      ) : (
+                        [...(selectedLead.bitacora || [])]
+                          .sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
+                          .map((ev, idx) => (
+                            <div key={idx} style={{
+                              display:'flex',alignItems:'flex-start',gap:'0.75rem',
+                              padding:'0.6rem 1rem',
+                              borderBottom:'1px solid var(--border-light)',
+                              background: idx % 2 === 0 ? 'transparent' : 'var(--bg-surface-hover)'
+                            }}>
+                              <span style={{ fontSize:'1.1rem',minWidth:'1.3rem',textAlign:'center',lineHeight:1.4 }}>{ev.icono || '📋'}</span>
+                              <div style={{ flex:1,minWidth:0 }}>
+                                <div style={{ fontSize:'0.825rem',fontWeight:'600',color:'var(--text-primary)',lineHeight:1.3 }}>
+                                  {ev.descripcion}
+                                </div>
+                                <div style={{ fontSize:'0.72rem',color:'var(--text-tertiary)',marginTop:'0.15rem',display:'flex',gap:'0.5rem',flexWrap:'wrap' }}>
+                                  <span style={{ fontWeight:'600',color:'var(--primary-600)' }}>👤 {ev.usuario || ev.email || 'Sistema'}</span>
+                                  <span>•</span>
+                                  <span>{new Date(ev.fecha).toLocaleDateString('es-AR', { day:'2-digit',month:'2-digit',year:'numeric' })} a las {new Date(ev.fecha).toLocaleTimeString('es-AR', { hour:'2-digit',minute:'2-digit' })}</span>
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                      )}
+                    </div>
                   </div>
 
-                  {/* Versión actual (siempre al tope) */}
-                  <div style={{ padding:'1rem',borderTop:'1px solid var(--border-light)',fontSize:'0.875rem',background:'#f0f9ff' }}>
-                    <div style={{ display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'0.5rem' }}>
-                      <div>
-                        <span style={{ fontWeight:'700',color:'#0369a1' }}>✏️ Versión actual (en edición)</span>
-                        <span style={{ marginLeft:'0.75rem',color:'var(--text-secondary)',fontSize:'0.75rem' }}>Rev {selectedLead.revision || 0}</span>
-                        {canal === 'canal2' && <span style={{ marginLeft:'0.5rem',fontSize:'0.7rem',backgroundColor:'#fef3c7',color:'#92400e',padding:'0.1rem 0.4rem',borderRadius:'8px' }}>Canal 2</span>}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <span style={{ fontWeight:'700',color:'#0369a1' }}>
-                          $ {calcTotal(builderItems || []).toLocaleString('es-AR')}
-                        </span>
-                        <button 
-                          onClick={handleOpenPDFModal}
-                          title="Descargar PDF de la versión actual"
-                          disabled={isGeneratingPDF}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#0369a1', display: 'flex', alignItems: 'center', opacity: isGeneratingPDF ? 0.5 : 1 }}
-                        >
-                          {isGeneratingPDF ? <Loader size={16} className="spin" /> : <Download size={16} />}
-                        </button>
-                      </div>
+                  {/* ── HISTORIAL DE VERSIONES (cotizador) ── */}
+                  <div style={{ border:'1px solid var(--border-light)',borderRadius:'8px',overflow:'hidden' }}>
+                    <div style={{ padding:'0.75rem 1rem',background:'var(--bg-surface-hover)',fontWeight:'700',fontSize:'0.875rem',color:'var(--text-primary)' }}>
+                      📋 Historial de Versiones del Cotizador
                     </div>
-                    <div style={{ fontSize:'0.75rem',color:'var(--text-secondary)' }}>
-                      {builderItems.length} ítems
-                      {builderItems.length > 0 && ': ' + builderItems.slice(0,3).map(i => `${i.descripcion} (×${i.quantity})`).join(' · ')}
-                      {builderItems.length > 3 && ` ... +${builderItems.length - 3} más`}
-                    </div>
-                    {selectedLead.cambiosRealizados && selectedLead.revision > 0 && (
-                      <div style={{ background:'#fefce8',border:'1px solid #fde68a',borderRadius:'6px',padding:'0.5rem 0.75rem',fontSize:'0.8rem',color:'#92400e',marginBottom:'0.5rem', marginTop: '0.5rem' }}>
-                        <strong>Cambios desde la revisión anterior:</strong> {selectedLead.cambiosRealizados}
+
+                    {/* Versión actual (siempre al tope) */}
+                    <div style={{ padding:'1rem',borderTop:'1px solid var(--border-light)',fontSize:'0.875rem',background:'#f0f9ff' }}>
+                      <div style={{ display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'0.5rem' }}>
+                        <div>
+                          <span style={{ fontWeight:'700',color:'#0369a1' }}>✏️ Versión actual (en edición)</span>
+                          <span style={{ marginLeft:'0.75rem',color:'var(--text-secondary)',fontSize:'0.75rem' }}>Rev {selectedLead.revision || 0}</span>
+                          {canal === 'canal2' && <span style={{ marginLeft:'0.5rem',fontSize:'0.7rem',backgroundColor:'#fef3c7',color:'#92400e',padding:'0.1rem 0.4rem',borderRadius:'8px' }}>Canal 2</span>}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <span style={{ fontWeight:'700',color:'#0369a1' }}>
+                            $ {calcTotal(builderItems || []).toLocaleString('es-AR')}
+                          </span>
+                          <button 
+                            onClick={handleOpenPDFModal}
+                            title="Descargar PDF de la versión actual"
+                            disabled={isGeneratingPDF}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#0369a1', display: 'flex', alignItems: 'center', opacity: isGeneratingPDF ? 0.5 : 1 }}
+                          >
+                            {isGeneratingPDF ? <Loader size={16} className="spin" /> : <Download size={16} />}
+                          </button>
+                        </div>
                       </div>
-                    )}
-                    {detailNotes && (
-                      <div style={{ marginTop:'0.4rem',fontSize:'0.75rem',color:'#64748b',fontStyle:'italic' }}>📝 {detailNotes.substring(0, 120)}{detailNotes.length > 120 ? '...' : ''}</div>
+                      <div style={{ fontSize:'0.75rem',color:'var(--text-secondary)' }}>
+                        {builderItems.length} ítems
+                        {builderItems.length > 0 && ': ' + builderItems.slice(0,3).map(i => `${i.descripcion} (×${i.quantity})`).join(' · ')}
+                        {builderItems.length > 3 && ` ... +${builderItems.length - 3} más`}
+                      </div>
+                      {selectedLead.cambiosRealizados && selectedLead.revision > 0 && (
+                        <div style={{ background:'#fefce8',border:'1px solid #fde68a',borderRadius:'6px',padding:'0.5rem 0.75rem',fontSize:'0.8rem',color:'#92400e',marginBottom:'0.5rem', marginTop: '0.5rem' }}>
+                          <strong>Cambios desde la revisión anterior:</strong> {selectedLead.cambiosRealizados}
+                        </div>
+                      )}
+                      {detailNotes && (
+                        <div style={{ marginTop:'0.4rem',fontSize:'0.75rem',color:'#64748b',fontStyle:'italic' }}>📝 {detailNotes.substring(0, 120)}{detailNotes.length > 120 ? '...' : ''}</div>
+                      )}
+                    </div>
+
+                    {/* Versiones anteriores */}
+                    {(selectedLead.revisionsHistory?.length || 0) === 0 ? (
+                      <div style={{ padding:'1rem',textAlign:'center',color:'#94a3b8',fontSize:'0.875rem',fontStyle:'italic' }}>
+                        Aún no hay revisiones anteriores guardadas.
+                        <br/><span style={{ fontSize:'0.75rem' }}>Usá "Guardar Nueva Revisión" para crear una nueva versión.</span>
+                      </div>
+                    ) : (
+                      selectedLead.revisionsHistory.slice().reverse().map((rev, idx) => (
+                        <div key={idx} style={{ padding:'1rem',borderTop:'1px solid var(--border-light)',fontSize:'0.875rem' }}>
+                          <div style={{ display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'0.5rem' }}>
+                            <div>
+                              <span style={{ fontWeight:'700',color:'var(--primary-700)' }}>{rev.revisionTitle}</span>
+                              <span style={{ marginLeft:'0.75rem',color:'var(--text-secondary)',fontSize:'0.75rem' }}>
+                                {new Date(rev.savedAt).toLocaleString('es-AR')}
+                              </span>
+                              {rev.canal === 'canal2' && <span style={{ marginLeft:'0.5rem',fontSize:'0.7rem',backgroundColor:'#fef3c7',color:'#92400e',padding:'0.1rem 0.4rem',borderRadius:'8px' }}>Canal 2</span>}
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                              <span style={{ fontWeight:'700',color:'var(--primary-600)' }}>
+                                $ {(rev.amount || 0).toLocaleString('es-AR')}
+                              </span>
+                              <button 
+                                onClick={() => handleDownloadHistoricalPDF(rev)}
+                                title="Descargar PDF de esta versión"
+                                disabled={isGeneratingPDF}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary-600)', display: 'flex', alignItems: 'center', opacity: isGeneratingPDF ? 0.5 : 1 }}
+                              >
+                                {isGeneratingPDF ? <Loader size={16} className="spin" /> : <Download size={16} />}
+                              </button>
+                            </div>
+                          </div>
+                          {rev.cambiosRealizados && (
+                            <div style={{ background:'#fefce8',border:'1px solid #fde68a',borderRadius:'6px',padding:'0.5rem 0.75rem',fontSize:'0.8rem',color:'#92400e',marginBottom:'0.5rem' }}>
+                              <strong>Cambios:</strong> {rev.cambiosRealizados}
+                            </div>
+                          )}
+                          <div style={{ fontSize:'0.75rem',color:'var(--text-secondary)' }}>
+                            {(rev.quoteItems || []).length} ítems cotizados
+                            {rev.quoteItems?.length > 0 && ': ' + rev.quoteItems.slice(0,3).map(i => `${i.descripcion} (×${i.quantity})`).join(' · ')}
+                            {rev.quoteItems?.length > 3 && ` ... +${rev.quoteItems.length - 3} más`}
+                          </div>
+                        </div>
+                      ))
                     )}
                   </div>
 
-                  {/* Versiones anteriores */}
-                  {(selectedLead.revisionsHistory?.length || 0) === 0 ? (
-                    <div style={{ padding:'1rem',textAlign:'center',color:'#94a3b8',fontSize:'0.875rem',fontStyle:'italic' }}>
-                      Aún no hay revisiones anteriores guardadas.
-                      <br/><span style={{ fontSize:'0.75rem' }}>Usá "Guardar Nueva Revisión" para crear una nueva versión.</span>
-                    </div>
-                  ) : (
-                    selectedLead.revisionsHistory.slice().reverse().map((rev, idx) => (
-                      <div key={idx} style={{ padding:'1rem',borderTop:'1px solid var(--border-light)',fontSize:'0.875rem' }}>
-                        <div style={{ display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'0.5rem' }}>
-                          <div>
-                            <span style={{ fontWeight:'700',color:'var(--primary-700)' }}>{rev.revisionTitle}</span>
-                            <span style={{ marginLeft:'0.75rem',color:'var(--text-secondary)',fontSize:'0.75rem' }}>
-                              {new Date(rev.savedAt).toLocaleString('es-AR')}
-                            </span>
-                            {rev.canal === 'canal2' && <span style={{ marginLeft:'0.5rem',fontSize:'0.7rem',backgroundColor:'#fef3c7',color:'#92400e',padding:'0.1rem 0.4rem',borderRadius:'8px' }}>Canal 2</span>}
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <span style={{ fontWeight:'700',color:'var(--primary-600)' }}>
-                              $ {(rev.amount || 0).toLocaleString('es-AR')}
-                            </span>
-                            <button 
-                              onClick={() => handleDownloadHistoricalPDF(rev)}
-                              title="Descargar PDF de esta versión"
-                              disabled={isGeneratingPDF}
-                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary-600)', display: 'flex', alignItems: 'center', opacity: isGeneratingPDF ? 0.5 : 1 }}
-                            >
-                              {isGeneratingPDF ? <Loader size={16} className="spin" /> : <Download size={16} />}
-                            </button>
-                          </div>
-                        </div>
-                        {rev.cambiosRealizados && (
-                          <div style={{ background:'#fefce8',border:'1px solid #fde68a',borderRadius:'6px',padding:'0.5rem 0.75rem',fontSize:'0.8rem',color:'#92400e',marginBottom:'0.5rem' }}>
-                            <strong>Cambios:</strong> {rev.cambiosRealizados}
-                          </div>
-                        )}
-                        <div style={{ fontSize:'0.75rem',color:'var(--text-secondary)' }}>
-                          {(rev.quoteItems || []).length} ítems cotizados
-                          {rev.quoteItems?.length > 0 && ': ' + rev.quoteItems.slice(0,3).map(i => `${i.descripcion} (×${i.quantity})`).join(' · ')}
-                          {rev.quoteItems?.length > 3 && ` ... +${rev.quoteItems.length - 3} más`}
-                        </div>
-                      </div>
-                    ))
-                  )}
                 </div>
               )}
               </div>
