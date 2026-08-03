@@ -163,7 +163,7 @@ const KanbanBoard = () => {
 
   // Follow ups
   const [hasDismissedFollowUps, setHasDismissedFollowUps] = useState(() => {
-    return localStorage.getItem('euler_dismissed_followups_date') === new Date().toLocaleDateString();
+    return localStorage.getItem('euler_dismissed_followups_date') === new Date().toISOString().split('T')[0];
   });
 
   // New lead form
@@ -1407,7 +1407,7 @@ const KanbanBoard = () => {
                     style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
                     onClick={() => {
                       setHasDismissedFollowUps(true);
-                      localStorage.setItem('euler_dismissed_followups_date', new Date().toLocaleDateString());
+                localStorage.setItem('euler_dismissed_followups_date', new Date().toISOString().split('T')[0]);
                       openDetail(lead);
                     }}
                   >
