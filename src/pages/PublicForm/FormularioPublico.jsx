@@ -20,7 +20,8 @@ const FormularioPublico = () => {
     tipoContacto: '',
     tipoContactoOtro: '',
     estudioArquitectura: '',
-    telefono: '',
+    codArea: '',
+    telefonoNumero: '',
     email: '',
     documento: '',
     
@@ -145,7 +146,8 @@ const FormularioPublico = () => {
       { key: 'tipoContacto', name: 'Tipo de contacto' },
       { key: 'nombre', name: 'Nombre' },
       { key: 'apellido', name: 'Apellido' },
-      { key: 'telefono', name: 'Teléfono / WhatsApp' },
+      { key: 'codArea', name: 'Código de área (sin el 0)' },
+      { key: 'telefonoNumero', name: 'Teléfono / WhatsApp (sin el 15)' },
       { key: 'email', name: 'Email' },
       { key: 'documento', name: 'DNI o CUIT' },
       { key: 'dirCalle', name: 'Calle' },
@@ -206,7 +208,7 @@ const FormularioPublico = () => {
       // 3. Preparar datos para el CRM
       const leadData = {
         name: `${formData.nombre} ${formData.apellido}`.trim(),
-        telefono: formData.telefono,
+        telefono: `${formData.codArea.trim()}-${formData.telefonoNumero.trim()}`,
         email: formData.email,
         cuit: formData.documento,
         tipoCliente: formData.tipoContacto === 'Otro' ? formData.tipoContactoOtro : formData.tipoContacto,
@@ -343,9 +345,15 @@ const FormularioPublico = () => {
               <input type="text" name="apellido" className="form-input" required value={formData.apellido} onChange={handleChange} placeholder="Ej: Pérez" />
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Teléfono / WhatsApp <span className="required">*</span></label>
-              <input type="tel" name="telefono" className="form-input" required value={formData.telefono} onChange={handleChange} placeholder="Ej: +54 9 341 1234567" />
+            <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '0.75rem' }}>
+              <div className="form-group">
+                <label className="form-label">Cód. de área (sin el 0) <span className="required">*</span></label>
+                <input type="tel" name="codArea" className="form-input" required value={formData.codArea} onChange={handleChange} placeholder="Ej: 341" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Teléfono / WhatsApp (sin el 15) <span className="required">*</span></label>
+                <input type="tel" name="telefonoNumero" className="form-input" required value={formData.telefonoNumero} onChange={handleChange} placeholder="Ej: 6543210" />
+              </div>
             </div>
 
             <div className="form-group">
