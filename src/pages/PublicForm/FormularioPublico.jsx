@@ -308,7 +308,7 @@ const FormularioPublico = () => {
               <select name="tipoContacto" className="form-select" required value={formData.tipoContacto} onChange={handleChange}>
                 <option value="" disabled>Seleccionar...</option>
                 <option value="Consumidor Final / Dueño">Consumidor Final / Dueño</option>
-                <option value="Arquitecto/Estudio de Arquitectura">Arquitecto / Estudio de Arquitectura</option>
+                <option value="Arquitecto/Estudio de Arquitectura">Arquitecto/a / Estudio de Arquitectura</option>
                 <option value="Constructora">Constructora</option>
                 <option value="Desarrolladora">Desarrolladora</option>
                 <option value="Otro">Otro</option>
@@ -332,7 +332,7 @@ const FormularioPublico = () => {
             <div className="form-group">
               <label className="form-label">
                 {formData.tipoContacto === 'Arquitecto/Estudio de Arquitectura' 
-                  ? 'Nombre del arquitecto o contacto con el cual vamos a interactuar' 
+                  ? 'Nombre del arquitecto/a o contacto con quien vamos a interactuar' 
                   : 'Nombre'} <span className="required">*</span>
               </label>
               <input type="text" name="nombre" className="form-input" required value={formData.nombre} onChange={handleChange} placeholder="Ej: Juan" />
@@ -361,7 +361,7 @@ const FormularioPublico = () => {
             {formData.tipoContacto === 'Consumidor Final / Dueño' && (
               <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1.5rem' }}>
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Nombre del Profesional/Arquitecto <span className="optional">(Opcional)</span></label>
+                  <label className="form-label">Nombre del Profesional / Arquitecto/a <span className="optional">(Opcional)</span></label>
                   <input 
                     type="text" 
                     name="profesionalPropietarioNombre" 
@@ -372,7 +372,7 @@ const FormularioPublico = () => {
                   />
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Teléfono del Profesional/Arquitecto <span className="optional">(Opcional)</span></label>
+                  <label className="form-label">Teléfono del Profesional / Arquitecto/a <span className="optional">(Opcional)</span></label>
                   <input 
                     type="tel" 
                     name="profesionalPropietarioTelefono" 
