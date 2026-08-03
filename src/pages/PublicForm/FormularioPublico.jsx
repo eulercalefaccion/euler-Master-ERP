@@ -19,6 +19,7 @@ const FormularioPublico = () => {
     apellido: '',
     tipoContacto: '',
     tipoContactoOtro: '',
+    estudioArquitectura: '',
     telefono: '',
     email: '',
     documento: '',
@@ -209,6 +210,7 @@ const FormularioPublico = () => {
         email: formData.email,
         cuit: formData.documento,
         tipoCliente: formData.tipoContacto === 'Otro' ? formData.tipoContactoOtro : formData.tipoContacto,
+        estudioArquitectura: formData.estudioArquitectura || null,
         
         direccionObra: getDireccionCompleta(),
         location: getDireccionCompleta(), // Usado por KanbanBoard
@@ -319,9 +321,20 @@ const FormularioPublico = () => {
                 <input type="text" name="tipoContactoOtro" className="form-input" required value={formData.tipoContactoOtro} onChange={handleChange} placeholder="Ej: Administrador de consorcios, Instalador..." />
               </div>
             )}
+
+            {formData.tipoContacto === 'Arquitecto/Estudio de Arquitectura' && (
+              <div className="form-group">
+                <label className="form-label">Nombre del Estudio de Arquitectura <span className="optional">(Opcional)</span></label>
+                <input type="text" name="estudioArquitectura" className="form-input" value={formData.estudioArquitectura} onChange={handleChange} placeholder="Ej: Estudio Gómez & Asoc." />
+              </div>
+            )}
             
             <div className="form-group">
-              <label className="form-label">Nombre <span className="required">*</span></label>
+              <label className="form-label">
+                {formData.tipoContacto === 'Arquitecto/Estudio de Arquitectura' 
+                  ? 'Nombre del arquitecto o contacto con el cual vamos a interactuar' 
+                  : 'Nombre'} <span className="required">*</span>
+              </label>
               <input type="text" name="nombre" className="form-input" required value={formData.nombre} onChange={handleChange} placeholder="Ej: Juan" />
             </div>
             
