@@ -213,6 +213,7 @@ const FormularioPublico = () => {
         cuit: formData.documento,
         tipoCliente: formData.tipoContacto === 'Otro' ? formData.tipoContactoOtro : formData.tipoContacto,
         estudioArquitectura: formData.estudioArquitectura || null,
+        empresaOEstudio: formData.estudioArquitectura || null,
         
         direccionObra: getDireccionCompleta(),
         location: getDireccionCompleta(), // Usado por KanbanBoard
@@ -324,17 +325,33 @@ const FormularioPublico = () => {
               </div>
             )}
 
-            {formData.tipoContacto === 'Arquitecto/Estudio de Arquitectura' && (
+            {isProfesional && (
               <div className="form-group">
-                <label className="form-label">Nombre del Estudio de Arquitectura <span className="optional">(Opcional)</span></label>
-                <input type="text" name="estudioArquitectura" className="form-input" value={formData.estudioArquitectura} onChange={handleChange} placeholder="Ej: Estudio Gómez & Asoc." />
+                <label className="form-label">
+                  {formData.tipoContacto === 'Arquitecto/Estudio de Arquitectura' && 'Nombre del Estudio de Arquitectura'}
+                  {formData.tipoContacto === 'Constructora' && 'Nombre de la Constructora'}
+                  {formData.tipoContacto === 'Desarrolladora' && 'Nombre de la Desarrolladora'}
+                  {' '}<span className="optional">(Opcional)</span>
+                </label>
+                <input 
+                  type="text" 
+                  name="estudioArquitectura" 
+                  className="form-input" 
+                  value={formData.estudioArquitectura} 
+                  onChange={handleChange} 
+                  placeholder={
+                    formData.tipoContacto === 'Constructora' ? 'Ej: Constructora del Litoral S.A.' :
+                    formData.tipoContacto === 'Desarrolladora' ? 'Ej: Desarrollos Urbanos S.R.L.' :
+                    'Ej: Estudio Gómez & Asoc.'
+                  } 
+                />
               </div>
             )}
             
             <div className="form-group">
               <label className="form-label">
-                {formData.tipoContacto === 'Arquitecto/Estudio de Arquitectura' 
-                  ? 'Nombre del arquitecto/a o contacto con quien vamos a interactuar' 
+                {isProfesional 
+                  ? 'Nombre del arquitecto/a o persona de contacto' 
                   : 'Nombre'} <span className="required">*</span>
               </label>
               <input type="text" name="nombre" className="form-input" required value={formData.nombre} onChange={handleChange} placeholder="Ej: Juan" />
