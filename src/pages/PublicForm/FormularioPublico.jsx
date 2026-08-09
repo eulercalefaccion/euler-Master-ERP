@@ -32,6 +32,7 @@ const FormularioPublico = () => {
     
     dirCalle: '',
     dirAltura: '',
+    dirBarrio: '',
     dirLocalidad: '',
     dirProvincia: 'Santa Fe',
     ubicacionLat: null,
@@ -69,8 +70,11 @@ const FormularioPublico = () => {
   };
 
   const getDireccionCompleta = () => {
-    const { dirCalle, dirAltura, dirLocalidad, dirProvincia } = formData;
-    return [dirCalle, dirAltura, dirLocalidad, dirProvincia].filter(Boolean).join(', ');
+    const { dirCalle, dirAltura, dirBarrio, dirLocalidad, dirProvincia } = formData;
+    const parts = [dirCalle, dirAltura];
+    if (dirBarrio) parts.push(`(${dirBarrio})`);
+    parts.push(dirLocalidad, dirProvincia);
+    return parts.filter(Boolean).join(', ');
   };
 
   const handleFileChange = async (e) => {
@@ -485,6 +489,11 @@ const FormularioPublico = () => {
             <div className="form-group">
               <label className="form-label">Altura / Número <span className="required">*</span></label>
               <input type="text" name="dirAltura" className="form-input" required value={formData.dirAltura} onChange={handleChange} placeholder="Ej: 1234" />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Barrio Privado / Lote <span className="optional">(Opcional)</span></label>
+              <input type="text" name="dirBarrio" className="form-input" value={formData.dirBarrio} onChange={handleChange} placeholder="Ej: Kentucky Club de Campo, Lote 123" />
             </div>
 
             <div className="form-group">
