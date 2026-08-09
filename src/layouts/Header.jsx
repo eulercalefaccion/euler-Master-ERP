@@ -1,7 +1,7 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, User, Bell, CheckCircle, X, Menu } from 'lucide-react';
+import { LogOut, User, Bell, CheckCircle, X, Menu, Copy } from 'lucide-react';
 import { db } from '../services/firebaseConfig';
 import { collection, query, onSnapshot, where, orderBy, updateDoc, doc } from 'firebase/firestore';
 
@@ -26,6 +26,7 @@ const Header = ({ onOpenMenu }) => {
   const [notifications, setNotifications] = React.useState([]);
   const [showNotifications, setShowNotifications] = React.useState(false);
   const [showPopup, setShowPopup] = React.useState(null);
+  const [copySuccess, setCopySuccess] = React.useState(false);
   const notificationsRef = React.useRef(null);
 
   React.useEffect(() => {
@@ -103,6 +104,50 @@ const Header = ({ onOpenMenu }) => {
       
       <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
         
+        {/* Botón copiar link del formulario */}
+        <button
+          onClick={() => {
+            navigator.clipboard.writeText(`${window.location.origin}/presupuesto`);
+            setCopySuccess(true);
+            setTimeout(() => setCopySuccess(false), 2000);
+          }}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            background: 'white',
+            color: 'var(--text-secondary)',
+            border: '1px solid var(--border-light)',
+            padding: '0.5rem 0.75rem',
+            borderRadius: '6px',
+            fontSize: '0.85rem',
+            fontWeight: '500',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = '#f8fafc';
+            e.currentTarget.style.color = 'var(--text-primary)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'white';
+            e.currentTarget.style.color = 'var(--text-secondary)';
+          }}
+          title="Copiar link para enviar al cliente"
+        >
+          {copySuccess ? (
+            <>
+              <CheckCircle size={16} color="var(--success-500)" />
+              <span style={{ color: 'var(--success-600)' }}>¡Copiado!</span>
+            </>
+          ) : (
+            <>
+              <Copy size={16} />
+              <span className="mobile-hidden">Copiar link del formulario</span>
+            </>
+          )}
+        </button>
+
         {/* Notificaciones */}
         <div style={{ position: 'relative' }} ref={notificationsRef}>
           <button 
