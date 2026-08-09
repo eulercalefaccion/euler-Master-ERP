@@ -3158,6 +3158,48 @@ const KanbanBoard = () => {
                     )}
                   </div>
 
+                  {/* ── OTRAS OBRAS DEL CLIENTE ── */}
+                  {(() => {
+                    const otherWorks = Object.values(data.items || {}).filter(l => 
+                      l.id !== selectedLead.id && 
+                      (
+                        (l.cuit && selectedLead.cuit && l.cuit.trim() !== '' && l.cuit.trim() === selectedLead.cuit.trim()) || 
+                        (l.email && selectedLead.email && l.email.trim() !== '' && l.email.trim().toLowerCase() === selectedLead.email.trim().toLowerCase())
+                      )
+                    );
+
+                    if (otherWorks.length === 0) return null;
+
+                    return (
+                      <div style={{ border:'1px solid var(--border-light)',borderRadius:'8px',overflow:'hidden', marginTop: '1rem' }}>
+                        <div style={{ padding:'0.75rem 1rem',background:'var(--bg-surface-hover)',fontWeight:'700',fontSize:'0.875rem',color:'var(--text-primary)' }}>
+                          🏢 Otras Obras de este Cliente ({otherWorks.length})
+                        </div>
+                        {otherWorks.map(ow => (
+                          <div key={ow.id} style={{ padding:'1rem',borderTop:'1px solid var(--border-light)',fontSize:'0.875rem', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                            <div>
+                              <div style={{ fontWeight:'600', color:'var(--primary-700)' }}>{ow.presupuestoNumber || 'S/N'} - {ow.direccionObra || ow.location || 'Sin dirección'}</div>
+                              <div style={{ fontSize:'0.75rem', color:'var(--text-secondary)', marginTop:'0.2rem' }}>
+                                Estado: {ow.status} | Fecha: {ow.date} | Sistema: {ow.paramSistema || 'S/D'}
+                              </div>
+                            </div>
+                            <button 
+                              onClick={() => {
+                                // Guardar cambios pendientes si es necesario o simplemente abrir el nuevo
+                                openDetail(ow);
+                                setDetailTab('historial'); // Mantener en la pestaña historial
+                              }} 
+                              className="btn btn-secondary" 
+                              style={{ padding:'0.35rem 0.6rem', fontSize:'0.75rem' }}
+                            >
+                              Ver Obra
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+
                 </div>
               )}
               </div>
