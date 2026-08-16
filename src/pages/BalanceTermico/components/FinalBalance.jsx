@@ -21,12 +21,9 @@ const FinalBalance = ({ environments, params, onBack }) => {
     const initialChoices = {};
     environments.filter(e => e.calefaccion).forEach(env => {
       const isBathroom = env.nombre.toLowerCase().includes('baño') || env.nombre.toLowerCase().includes('toilette');
-      const totalKcal = (parseFloat(env.superficie) || 0) * (parseFloat(env.altura) || 2.8) * coef * margenMultiplier;
-      const calcElements = Math.ceil(totalKcal / rendimientoElemento);
-      
       initialChoices[env.id] = {
         type: isBathroom ? 'Toallero 80cm' : 'Radiador',
-        splitMode: calcElements > 12 ? 2 : 1
+        customText: null
       };
     });
     setEmitterChoices(initialChoices);
@@ -81,22 +78,51 @@ const FinalBalance = ({ environments, params, onBack }) => {
       };
 
       if (!esPisoRadiante) {
-        const elementsNeeded = Math.ceil(totalKcalMargin / rendimientoElemento);
-        const choice = emitterChoices[env.id] || { type: 'Radiador', splitMode: 1 };
+        const baseElementsNeeded = Math.ceil(totalKcalMargin / rendimientoElemento);
+        const choice = emitterChoices[env.id] || { type: 'Radiador', customText: null };
         let emitterSummary = '';
+        let finalElements = 0;
+        let radsArray = [];
+
         if (choice.type === 'Radiador') {
-          if (choice.splitMode > 1) {
-            const elementsPerRadiator = Math.ceil(elementsNeeded / choice.splitMode);
-            emitterSummary = `${choice.splitMode} Radiadores de ${elementsPerRadiator} elem.`;
+          if (choice.customText !== null) {
+            // Usuario escribió algo personalizado, ej "14, 7, 7"
+            radsArray = choice.customText.split(',')
+              .map(s => parseInt(s.trim()))
+              .filter(n => !isNaN(n) && n > 0);
           } else {
-            emitterSummary = `1 Radiador de ${elementsNeeded} elem.`;
+            // Auto cálculo
+            let splits = 1;
+            if (baseElementsNeeded > 12) splits = 2;
+            if (baseElementsNeeded > 24) splits = 3;
+            if (baseElementsNeeded > 36) splits = 4;
+            const perRad = Math.ceil(baseElementsNeeded / splits);
+            radsArray = Array(splits).fill(perRad);
           }
+
+          finalElements = radsArray.reduce((a, b) => a + b, 0);
+
+          if (radsArray.length === 0) {
+            emitterSummary = '0 elementos';
+          } else {
+            const counts = {};
+            radsArray.forEach(p => { counts[p] = (counts[p] || 0) + 1; });
+            emitterSummary = Object.entries(counts).map(([size, count]) => {
+               return count === 1 ? `1 Radiador de ${size} elem.` : `${count} Radiadores de ${size} elem.`;
+            }).join(' + ');
+          }
+          envResult.displayRadsStr = choice.customText !== null ? choice.customText : radsArray.join(', ');
         } else {
-          emitterSummary = `1 ${choice.type} (${choice.type.includes('80') ? '3' : '5'} elem. eq.)`;
+          // Toalleros
+          finalElements = choice.type.includes('80') ? 3 : 5;
+          emitterSummary = `1 ${choice.type} (${finalElements} elem. eq.)`;
+          envResult.displayRadsStr = '';
         }
-        envResult.elementsNeeded = elementsNeeded;
+        
+        envResult.elementsNeeded = finalElements;
         envResult.choice = choice;
         envResult.emitterSummary = emitterSummary;
+        envResult.baseElementsNeeded = baseElementsNeeded; // para mostrar advertencias si difiere mucho
       } else {
         // Lógica Piso Radiante
         const paso = params.pasoTubo || 20;
@@ -321,21 +347,27 @@ const FinalBalance = ({ environments, params, onBack }) => {
                         </select>
                       </td>
                       <td style={{ padding: '1rem 1.5rem' }}>
-                        {env.choice.type === 'Radiador' && env.elementsNeeded > 12 ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <select 
+                        {env.choice.type === 'Radiador' ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                            <input 
+                              type="text"
                               className="input-field"
-                              style={{ padding: '0.4rem', fontSize: '0.875rem', width: 'auto' }}
-                              value={env.choice.splitMode}
-                              onChange={(e) => handleChoiceChange(env.id, 'splitMode', parseInt(e.target.value))}
-                            >
-                              <option value={1}>1 Radiador grande</option>
-                              <option value={2}>Dividir en 2</option>
-                              <option value={3}>Dividir en 3</option>
-                            </select>
+                              style={{ padding: '0.4rem', fontSize: '0.875rem', width: '120px' }}
+                              placeholder="Ej: 14, 7, 7"
+                              value={env.displayRadsStr}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                if (val.trim() === '') {
+                                  handleChoiceChange(env.id, 'customText', null);
+                                } else {
+                                  handleChoiceChange(env.id, 'customText', val);
+                                }
+                              }}
+                            />
+                            {env.elementsNeeded !== env.baseElementsNeeded && (
+                              <span style={{ fontSize: '0.7rem', color: '#d97706', fontWeight: '500' }}>Req: {env.baseElementsNeeded} elem.</span>
+                            )}
                           </div>
-                        ) : env.choice.type === 'Radiador' ? (
-                          <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Único radiador</span>
                         ) : (
                           <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Pared</span>
                         )}
