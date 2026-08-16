@@ -171,27 +171,110 @@ const CalculationParameters = ({ params, setParams }) => {
           </div>
         </div>
 
-        {/* RENDIMIENTO DEL RADIADOR */}
-        <div style={{ gridColumn: '1 / -1', padding: '1rem', backgroundColor: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0', marginTop: '-0.5rem' }}>
-          <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.25rem', color: '#166534' }}>
-            Rendimiento en Kcal/h de cada elemento
+        {/* SISTEMA DE EMISIÓN */}
+        <div style={{ gridColumn: '1 / -1', padding: '1.25rem', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #cbd5e1', marginTop: '0.5rem' }}>
+          <label style={{ display: 'block', fontSize: '1rem', fontWeight: '700', marginBottom: '0.5rem', color: '#0f172a' }}>
+            Sistema de Emisión
           </label>
-          <p style={{ fontSize: '0.8rem', color: '#14532d', marginBottom: '0.75rem', margin: '0 0 0.75rem 0' }}>
-            Ingrese las Kcal/h entregadas por cada elemento de radiador. Este valor se utilizará para calcular la cantidad de elementos necesarios por ambiente.
-          </p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <input 
-              type="number" 
-              className="input-field" 
-              value={params.rendimientoElemento ?? 145} 
-              onChange={e => updateParam('rendimientoElemento', parseFloat(e.target.value) || 145)}
-              style={{ width: '100px', backgroundColor: 'white', fontWeight: '700', fontSize: '1.1rem' }}
-              step="1"
-              min="50"
-              max="300"
-            />
-            <span style={{ fontSize: '0.9rem', color: '#166534', fontWeight: '500' }}>Kcal/h</span>
+          <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+              <input 
+                type="radio" 
+                name="sistemaEmision" 
+                value="Radiadores" 
+                checked={params.sistemaEmision === 'Radiadores'}
+                onChange={() => updateParam('sistemaEmision', 'Radiadores')}
+                style={{ width: '1rem', height: '1rem' }}
+              />
+              <span style={{ fontWeight: '500' }}>Radiadores</span>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+              <input 
+                type="radio" 
+                name="sistemaEmision" 
+                value="Piso Radiante" 
+                checked={params.sistemaEmision === 'Piso Radiante'}
+                onChange={() => updateParam('sistemaEmision', 'Piso Radiante')}
+                style={{ width: '1rem', height: '1rem' }}
+              />
+              <span style={{ fontWeight: '500' }}>Piso Radiante</span>
+            </label>
           </div>
+
+          {/* RENDIMIENTO DEL RADIADOR */}
+          {params.sistemaEmision === 'Radiadores' && (
+            <div style={{ padding: '1rem', backgroundColor: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
+              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.25rem', color: '#166534' }}>
+                Rendimiento en Kcal/h de cada elemento
+              </label>
+              <p style={{ fontSize: '0.8rem', color: '#14532d', marginBottom: '0.75rem' }}>
+                Ingrese las Kcal/h entregadas por cada elemento de radiador. Se utilizará para dividir la carga térmica.
+              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <input 
+                  type="number" 
+                  className="input-field" 
+                  value={params.rendimientoElemento ?? 145} 
+                  onChange={e => updateParam('rendimientoElemento', parseFloat(e.target.value) || 145)}
+                  style={{ width: '100px', backgroundColor: 'white', fontWeight: '700', fontSize: '1.1rem' }}
+                  step="1" min="50" max="300"
+                />
+                <span style={{ fontSize: '0.9rem', color: '#166534', fontWeight: '500' }}>Kcal/h</span>
+              </div>
+            </div>
+          )}
+
+          {/* PARÁMETROS PISO RADIANTE */}
+          {params.sistemaEmision === 'Piso Radiante' && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', padding: '1rem', backgroundColor: '#fff7ed', borderRadius: '8px', border: '1px solid #fed7aa' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.25rem', color: '#9a3412' }}>Separación de tubo (Paso)</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <input 
+                    type="number" 
+                    className="input-field" 
+                    value={params.pasoTubo ?? 20} 
+                    onChange={e => updateParam('pasoTubo', parseFloat(e.target.value) || 20)}
+                    style={{ width: '80px', backgroundColor: 'white' }}
+                  />
+                  <span style={{ fontSize: '0.875rem', color: '#9a3412' }}>cm</span>
+                </div>
+              </div>
+              
+              <div>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.25rem', color: '#9a3412' }}>Diámetro de tubo</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <select 
+                    className="input-field" 
+                    style={{ width: 'auto', backgroundColor: 'white' }}
+                    value={params.diametroTubo ?? 20}
+                    onChange={(e) => {
+                      const d = parseInt(e.target.value);
+                      updateParam('diametroTubo', d);
+                      updateParam('longitudMaxTubo', d === 16 ? 80 : 100);
+                    }}
+                  >
+                    <option value={16}>16 mm</option>
+                    <option value={20}>20 mm</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.25rem', color: '#9a3412' }}>Longitud general circuito</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <input 
+                    type="number" 
+                    className="input-field" 
+                    value={params.longitudMaxTubo ?? 100} 
+                    onChange={e => updateParam('longitudMaxTubo', parseFloat(e.target.value) || 100)}
+                    style={{ width: '80px', backgroundColor: 'white' }}
+                  />
+                  <span style={{ fontSize: '0.875rem', color: '#9a3412' }}>mts</span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

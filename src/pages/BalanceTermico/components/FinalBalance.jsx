@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { ArrowLeft, AlertTriangle, Info, Download, Send } from 'lucide-react';
-import { collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, serverTimestamp, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../../../services/firebaseConfig';
 import generarPDFBalanceTermico from '../../../services/pdfBalanceTermico';
 
@@ -8,19 +8,19 @@ const FinalBalance = ({ environments, params, onBack }) => {
   const coef = params.coefVolumetrico ?? 45; // Kcal/h·m³
   const rendimientoElemento = params.rendimientoElemento ?? 145;
   const margenMultiplier = 1 + (params.margenSeguridad / 100);
+  const esPisoRadiante = params.sistemaEmision === 'Piso Radiante';
 
-  // Estado para la configuración de emisores por ambiente
+  // Estado para la configuración de emisores por ambiente (Solo Radiadores)
   const [emitterChoices, setEmitterChoices] = useState({});
   const [budgets, setBudgets] = useState([]);
   const [selectedBudgetId, setSelectedBudgetId] = useState('');
   const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
-    // Inicializar emitterChoices con valores por defecto
+    // Inicializar emitterChoices con valores por defecto (solo relevante si es radiadores)
     const initialChoices = {};
     environments.filter(e => e.calefaccion).forEach(env => {
       const isBathroom = env.nombre.toLowerCase().includes('baño') || env.nombre.toLowerCase().includes('toilette');
-      
       const totalKcal = (parseFloat(env.superficie) || 0) * (parseFloat(env.altura) || 2.8) * coef * margenMultiplier;
       const calcElements = Math.ceil(totalKcal / rendimientoElemento);
       
@@ -55,79 +55,140 @@ const FinalBalance = ({ environments, params, onBack }) => {
     }));
   };
 
-  // Cálculo correcto por coeficiente volumétrico (método estándar Argentina)
-  const computedEnvs = environments.filter(e => e.calefaccion).map(env => {
-    const superficie = parseFloat(env.superficie) || 0;
-    const altura = parseFloat(env.altura) || 2.8;
-    const volumen = superficie * altura;
+  // Cálculo de entornos
+  const computedEnvs = useMemo(() => {
+    return environments.filter(e => e.calefaccion).map(env => {
+      const superficie = parseFloat(env.superficie) || 0;
+      const altura = parseFloat(env.altura) || 2.8;
+      const volumen = superficie * altura;
 
-    // Distribución típica: 65% transmisión, 35% infiltración
-    const totalKcal = volumen * coef;
-    const transmisionKcal = totalKcal * 0.65;
-    const infiltracionKcal = totalKcal * 0.35;
+      const totalKcal = volumen * coef;
+      const transmisionKcal = totalKcal * 0.65;
+      const infiltracionKcal = totalKcal * 0.35;
+      const totalKcalMargin = totalKcal * margenMultiplier;
+      const totalW = totalKcal * 1.163;
+      const wattsPorM2 = superficie > 0 ? totalW / superficie : 0;
 
-    const totalKcalMargin = totalKcal * margenMultiplier;
+      let envResult = {
+        ...env,
+        volumen,
+        transmisionW: transmisionKcal * 1.163,
+        infiltracionW: infiltracionKcal * 1.163,
+        totalW,
+        totalKcal,
+        totalKcalMargin,
+        wattsPorM2
+      };
 
-    // Emisores calculation
-    const choice = emitterChoices[env.id] || { type: 'Radiador', splitMode: 1 };
-    const elementsNeeded = Math.ceil(totalKcalMargin / rendimientoElemento);
-    
-    let emitterSummary = '';
-    
-    if (choice.type === 'Radiador') {
-      if (choice.splitMode > 1) {
-        const elementsPerRadiator = Math.ceil(elementsNeeded / choice.splitMode);
-        emitterSummary = `${choice.splitMode} Radiadores de ${elementsPerRadiator} elem.`;
+      if (!esPisoRadiante) {
+        const elementsNeeded = Math.ceil(totalKcalMargin / rendimientoElemento);
+        const choice = emitterChoices[env.id] || { type: 'Radiador', splitMode: 1 };
+        let emitterSummary = '';
+        if (choice.type === 'Radiador') {
+          if (choice.splitMode > 1) {
+            const elementsPerRadiator = Math.ceil(elementsNeeded / choice.splitMode);
+            emitterSummary = `${choice.splitMode} Radiadores de ${elementsPerRadiator} elem.`;
+          } else {
+            emitterSummary = `1 Radiador de ${elementsNeeded} elem.`;
+          }
+        } else {
+          emitterSummary = `1 ${choice.type} (${choice.type.includes('80') ? '3' : '5'} elem. eq.)`;
+        }
+        envResult.elementsNeeded = elementsNeeded;
+        envResult.choice = choice;
+        envResult.emitterSummary = emitterSummary;
       } else {
-        emitterSummary = `1 Radiador de ${elementsNeeded} elem.`;
+        // Lógica Piso Radiante
+        const paso = params.pasoTubo || 20;
+        const densidad = 100 / paso; // ej: 100/20 = 5 m/m2
+        const tuboTotal = superficie * densidad;
+        const maxCircuito = params.longitudMaxTubo || 100;
+        // La longitud mínima razonable que dijiste es 50m. Si es un local muy chico (ej un baño de 4m2 -> 20m), igual contará como 1 circuito, pero podría unirse a otro. Simplificamos a 1 circuito min.
+        const circuitos = Math.max(1, Math.ceil(tuboTotal / maxCircuito));
+        const isBathroom = env.nombre.toLowerCase().includes('baño') || env.nombre.toLowerCase().includes('toilette');
+        
+        // Temp superficial aproximada: T_ambiente (20 o 22) + (W/m2 / 11)
+        const tAmb = isBathroom ? 22 : 20;
+        const tempSup = Math.min(29, Math.round(tAmb + (wattsPorM2 / 10.5)));
+
+        envResult.tuboTotal = Math.round(tuboTotal);
+        envResult.circuitos = circuitos;
+        envResult.tempSup = tempSup;
       }
-    } else {
-      emitterSummary = `1 ${choice.type} (${choice.type.includes('80') ? '3' : '5'} elem. eq.)`;
-    }
 
-    return {
-      ...env,
-      volumen,
-      transmisionW: transmisionKcal * 1.163,
-      infiltracionW: infiltracionKcal * 1.163,
-      totalW: totalKcal * 1.163,
-      totalKcal,
-      totalKcalMargin,
-      elementsNeeded,
-      choice,
-      emitterSummary
-    };
-  });
+      return envResult;
+    });
+  }, [environments, coef, margenMultiplier, esPisoRadiante, emitterChoices, rendimientoElemento, params.pasoTubo, params.longitudMaxTubo]);
 
+  // Cálculos totales
   const totalKcal = computedEnvs.reduce((acc, e) => acc + e.totalKcal, 0);
   const totalWatts = totalKcal * 1.163;
   const totalKcalMargin = totalKcal * margenMultiplier;
   const totalWattsMargin = totalWatts * margenMultiplier;
   const totalVolumen = computedEnvs.reduce((acc, e) => acc + e.volumen, 0);
-  const totalElementos = computedEnvs.reduce((acc, e) => acc + e.elementsNeeded, 0);
+  const totalSup = computedEnvs.reduce((acc, e) => acc + e.superficie, 0);
+  
+  // Totales específicos
+  const totalElementos = !esPisoRadiante ? computedEnvs.reduce((acc, e) => acc + e.elementsNeeded, 0) : 0;
+  const totalTubos = esPisoRadiante ? computedEnvs.reduce((acc, e) => acc + e.tuboTotal, 0) : 0;
+  
+  // Colectores para Piso Radiante (Agrupados por Planta)
+  const colectores = useMemo(() => {
+    if (!esPisoRadiante) return [];
+    const grupos = {};
+    computedEnvs.forEach(env => {
+      const p = env.planta || 'Baja';
+      if (!grupos[p]) grupos[p] = { planta: p, circuitos: 0, longitudMax: 0 };
+      grupos[p].circuitos += env.circuitos;
+      const longPorCircuito = env.tuboTotal / env.circuitos;
+      if (longPorCircuito > grupos[p].longitudMax) grupos[p].longitudMax = longPorCircuito;
+    });
+    return Object.values(grupos);
+  }, [computedEnvs, esPisoRadiante]);
 
   const handleExportPDF = () => {
-    generarPDFBalanceTermico({ environments: computedEnvs, params, totalKcal, totalKcalMargin, totalWattsMargin, totalVolumen, totalElementos });
+    generarPDFBalanceTermico({ 
+      environments: computedEnvs, 
+      params, 
+      totalKcal, 
+      totalKcalMargin, 
+      totalWattsMargin, 
+      totalVolumen, 
+      totalElementos, 
+      totalSup,
+      colectores,
+      totalTubos
+    });
   };
 
   const handleExportToBudget = async () => {
     if (!selectedBudgetId) return;
     setIsExporting(true);
     try {
-      // Formatear el informe térmico como texto para las notas
-      let notasAdicionales = `\n\n--- BALANCE TÉRMICO IA ---\nFecha: ${new Date().toLocaleDateString('es-AR')}\n\n`;
-      notasAdicionales += `Parámetros de Cálculo:\n- Coeficiente volumétrico: ${coef} Kcal/h·m³\n- Margen de seguridad: ${params.margenSeguridad}%\n- Rendimiento por elemento: ${rendimientoElemento} Kcal/h\n\n`;
-      notasAdicionales += `Resultados Totales:\n- Volumen Total: ${totalVolumen.toFixed(1)} m³\n- Potencia Efectiva: ${Math.round(totalKcal).toLocaleString('es-AR')} Kcal/h\n- Potencia con Margen: ${Math.round(totalKcalMargin).toLocaleString('es-AR')} Kcal/h\n- Total Elementos Eq.: ${totalElementos}\n\n`;
+      let notasAdicionales = `\n\n--- BALANCE TÉRMICO IA ---\nFecha: ${new Date().toLocaleDateString('es-AR')}\n`;
+      notasAdicionales += `Sistema: ${params.sistemaEmision}\n\n`;
+      notasAdicionales += `Parámetros:\n- Coeficiente volumétrico: ${coef} Kcal/h·m³\n- Margen de seguridad: ${params.margenSeguridad}%\n`;
+      
+      if (!esPisoRadiante) {
+        notasAdicionales += `- Rendimiento por elemento: ${rendimientoElemento} Kcal/h\n\n`;
+        notasAdicionales += `Resultados Totales:\n- Volumen Total: ${totalVolumen.toFixed(1)} m³\n- Potencia Efectiva: ${Math.round(totalKcal).toLocaleString('es-AR')} Kcal/h\n- Total Elementos Eq.: ${totalElementos}\n\n`;
+      } else {
+        notasAdicionales += `- Separación de tubo: ${params.pasoTubo} cm\n- Diámetro: ${params.diametroTubo} mm\n\n`;
+        notasAdicionales += `Resultados Totales:\n- Superficie Total: ${totalSup.toFixed(1)} m²\n- Potencia con Margen: ${Math.round(totalKcalMargin).toLocaleString('es-AR')} Kcal/h\n- Metros de Tubo: ${totalTubos} m\n\n`;
+      }
+
       notasAdicionales += `Detalle por Ambiente:\n`;
       
       computedEnvs.forEach(env => {
         notasAdicionales += `• ${env.nombre}:\n`;
-        notasAdicionales += `  Sup: ${env.superficie.toFixed(1)} m² | Vol: ${env.volumen.toFixed(1)} m³ | Kcal/h (C/Margen): ${Math.round(env.totalKcalMargin)}\n`;
-        notasAdicionales += `  Emisor Sugerido: ${env.emitterSummary}\n`;
+        if (!esPisoRadiante) {
+          notasAdicionales += `  Sup: ${env.superficie.toFixed(1)} m² | Kcal/h: ${Math.round(env.totalKcalMargin)}\n`;
+          notasAdicionales += `  Emisor: ${env.emitterSummary}\n`;
+        } else {
+          notasAdicionales += `  Sup: ${env.superficie.toFixed(1)} m² | W/m²: ${Math.round(env.wattsPorM2)} | Tubo: ${env.tuboTotal} m | Circuitos: ${env.circuitos}\n`;
+        }
       });
 
-      // Actualizar el documento del presupuesto
-      const { doc, getDoc, updateDoc } = await import('firebase/firestore');
       const budgetRef = doc(db, 'presupuestos', selectedBudgetId);
       const budgetSnap = await getDoc(budgetRef);
       
@@ -152,7 +213,7 @@ const FinalBalance = ({ environments, params, onBack }) => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3 style={{ fontSize: '1.25rem', margin: 0 }}>Balance Térmico — Resultado Preliminar</h3>
+        <h3 style={{ fontSize: '1.25rem', margin: 0 }}>Balance Térmico — {params.sistemaEmision}</h3>
         <div style={{ display: 'flex', gap: '1rem' }}>
           <button onClick={handleExportPDF} className="btn" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'var(--primary-600)', color: 'white', border: 'none' }}>
             <Download size={16} /> Descargar Informe PDF
@@ -183,25 +244,27 @@ const FinalBalance = ({ environments, params, onBack }) => {
           <span style={{ fontSize: '1rem', color: 'var(--text-tertiary)' }}>Kcal/h totales calculadas</span>
         </div>
 
-        <div className="card" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-light)', backgroundColor: '#f0fdf4' }}>
-          <span style={{ fontSize: '0.875rem', textTransform: 'uppercase', color: '#166534' }}>Elementos Necesarios</span>
-          <h2 style={{ fontSize: '2.5rem', margin: '0.5rem 0', fontWeight: '700', color: '#15803d' }}>{totalElementos}</h2>
-          <span style={{ fontSize: '1rem', color: '#166534' }}>A {rendimientoElemento} Kcal/h c/u</span>
-        </div>
-      </div>
-
-      {/* Dato de verificación */}
-      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', padding: '0.75rem 1.25rem', backgroundColor: '#eff6ff', borderRadius: '8px', border: '1px solid #bfdbfe' }}>
-        <Info size={18} color="#2563eb" style={{ flexShrink: 0 }} />
-        <span style={{ fontSize: '0.875rem', color: '#1e40af' }}>
-          <strong>{totalVolumen.toFixed(1)} m³</strong> con calefacción × <strong>{coef} Kcal/h·m³</strong> = <strong>{Math.round(totalKcal).toLocaleString('es-AR')} Kcal/h efectivas</strong> &nbsp;|&nbsp; Margen: {params.margenSeguridad}%
-        </span>
+        {!esPisoRadiante ? (
+          <div className="card" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-light)', backgroundColor: '#f0fdf4' }}>
+            <span style={{ fontSize: '0.875rem', textTransform: 'uppercase', color: '#166534' }}>Elementos Necesarios</span>
+            <h2 style={{ fontSize: '2.5rem', margin: '0.5rem 0', fontWeight: '700', color: '#15803d' }}>{totalElementos}</h2>
+            <span style={{ fontSize: '1rem', color: '#166534' }}>A {rendimientoElemento} Kcal/h c/u</span>
+          </div>
+        ) : (
+          <div className="card" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-light)', backgroundColor: '#fff7ed' }}>
+            <span style={{ fontSize: '0.875rem', textTransform: 'uppercase', color: '#9a3412' }}>Metros de Tubo</span>
+            <h2 style={{ fontSize: '2.5rem', margin: '0.5rem 0', fontWeight: '700', color: '#c2410c' }}>{totalTubos}</h2>
+            <span style={{ fontSize: '1rem', color: '#9a3412' }}>Ø {params.diametroTubo}mm | Paso {params.pasoTubo}cm</span>
+          </div>
+        )}
       </div>
 
       {/* Tabla de detalle */}
       <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
         <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border-light)' }}>
-          <h3 style={{ fontSize: '1.125rem', margin: 0 }}>Detalle por Ambiente y Selección de Emisores</h3>
+          <h3 style={{ fontSize: '1.125rem', margin: 0 }}>
+            {esPisoRadiante ? 'Cargas por zona y densidad de emisión' : 'Detalle por Ambiente y Selección de Emisores'}
+          </h3>
         </div>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
@@ -209,64 +272,127 @@ const FinalBalance = ({ environments, params, onBack }) => {
               <tr style={{ backgroundColor: 'var(--bg-surface-hover)', borderBottom: '1px solid var(--border-light)' }}>
                 <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>AMBIENTE</th>
                 <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', color: 'var(--text-secondary)', textAlign: 'right' }}>SUP. (M²)</th>
-                <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', color: '#2563eb', textAlign: 'right', fontWeight: '600' }}>KCAL/H<br/>(Con Margen)</th>
-                <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>TIPO DE EMISOR</th>
-                <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>CONFIGURACIÓN</th>
-                <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', color: '#15803d', fontWeight: '600' }}>RESUMEN</th>
+                
+                {esPisoRadiante ? (
+                  <>
+                    <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', color: '#2563eb', textAlign: 'right', fontWeight: '600' }}>Q TOTAL [W]</th>
+                    <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', color: 'var(--text-secondary)', textAlign: 'right' }}>W/M²</th>
+                    <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', color: 'var(--text-secondary)', textAlign: 'right' }}>TEMP. LOSA</th>
+                    <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', color: '#c2410c', textAlign: 'right', fontWeight: '600' }}>CIRCUITOS</th>
+                  </>
+                ) : (
+                  <>
+                    <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', color: '#2563eb', textAlign: 'right', fontWeight: '600' }}>KCAL/H (C/M)</th>
+                    <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>TIPO DE EMISOR</th>
+                    <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>CONFIGURACIÓN</th>
+                    <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', color: '#15803d', fontWeight: '600' }}>RESUMEN</th>
+                  </>
+                )}
               </tr>
             </thead>
             <tbody>
               {computedEnvs.map(env => (
                 <tr key={env.id} style={{ borderBottom: '1px solid var(--border-light)' }}>
                   <td style={{ padding: '1rem 1.5rem', fontSize: '0.875rem', fontWeight: '500' }}>
-                    {env.nombre}
+                    {env.planta ? `${env.planta.substring(0, 2).toUpperCase()} · ` : ''}{env.nombre}
                   </td>
                   <td style={{ padding: '1rem 1.5rem', fontSize: '0.875rem', textAlign: 'right' }}>{env.superficie.toFixed(1)}</td>
-                  <td style={{ padding: '1rem 1.5rem', fontSize: '0.875rem', textAlign: 'right', color: '#2563eb', fontWeight: '600' }}>{Math.round(env.totalKcalMargin).toLocaleString('es-AR')}</td>
                   
-                  <td style={{ padding: '1rem 1.5rem' }}>
-                    <select 
-                      className="input-field" 
-                      style={{ padding: '0.4rem', fontSize: '0.875rem' }}
-                      value={env.choice.type}
-                      onChange={(e) => handleChoiceChange(env.id, 'type', e.target.value)}
-                    >
-                      <option value="Radiador">Radiador</option>
-                      <option value="Toallero 80cm">Toallero 80cm</option>
-                      <option value="Toallero 120cm">Toallero 120cm</option>
-                    </select>
-                  </td>
-                  
-                  <td style={{ padding: '1rem 1.5rem' }}>
-                    {env.choice.type === 'Radiador' && env.elementsNeeded > 12 ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  {esPisoRadiante ? (
+                    <>
+                      <td style={{ padding: '1rem 1.5rem', fontSize: '0.875rem', textAlign: 'right', color: '#2563eb', fontWeight: '600' }}>{Math.round(env.totalW).toLocaleString('es-AR')}</td>
+                      <td style={{ padding: '1rem 1.5rem', fontSize: '0.875rem', textAlign: 'right' }}>{Math.round(env.wattsPorM2)}</td>
+                      <td style={{ padding: '1rem 1.5rem', fontSize: '0.875rem', textAlign: 'right' }}>{env.tempSup} °C</td>
+                      <td style={{ padding: '1rem 1.5rem', fontSize: '0.875rem', textAlign: 'right', color: '#c2410c', fontWeight: '600' }}>{env.circuitos} ({env.tuboTotal}m)</td>
+                    </>
+                  ) : (
+                    <>
+                      <td style={{ padding: '1rem 1.5rem', fontSize: '0.875rem', textAlign: 'right', color: '#2563eb', fontWeight: '600' }}>{Math.round(env.totalKcalMargin).toLocaleString('es-AR')}</td>
+                      <td style={{ padding: '1rem 1.5rem' }}>
                         <select 
-                          className="input-field"
-                          style={{ padding: '0.4rem', fontSize: '0.875rem', width: 'auto' }}
-                          value={env.choice.splitMode}
-                          onChange={(e) => handleChoiceChange(env.id, 'splitMode', parseInt(e.target.value))}
+                          className="input-field" 
+                          style={{ padding: '0.4rem', fontSize: '0.875rem' }}
+                          value={env.choice.type}
+                          onChange={(e) => handleChoiceChange(env.id, 'type', e.target.value)}
                         >
-                          <option value={1}>1 Radiador grande</option>
-                          <option value={2}>Dividir en 2</option>
-                          <option value={3}>Dividir en 3</option>
+                          <option value="Radiador">Radiador</option>
+                          <option value="Toallero 80cm">Toallero 80cm</option>
+                          <option value="Toallero 120cm">Toallero 120cm</option>
                         </select>
-                      </div>
-                    ) : env.choice.type === 'Radiador' ? (
-                      <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Único radiador</span>
-                    ) : (
-                      <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Pared</span>
-                    )}
-                  </td>
-                  
-                  <td style={{ padding: '1rem 1.5rem', fontSize: '0.875rem', color: '#15803d', fontWeight: '600' }}>
-                    {env.emitterSummary}
-                  </td>
+                      </td>
+                      <td style={{ padding: '1rem 1.5rem' }}>
+                        {env.choice.type === 'Radiador' && env.elementsNeeded > 12 ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <select 
+                              className="input-field"
+                              style={{ padding: '0.4rem', fontSize: '0.875rem', width: 'auto' }}
+                              value={env.choice.splitMode}
+                              onChange={(e) => handleChoiceChange(env.id, 'splitMode', parseInt(e.target.value))}
+                            >
+                              <option value={1}>1 Radiador grande</option>
+                              <option value={2}>Dividir en 2</option>
+                              <option value={3}>Dividir en 3</option>
+                            </select>
+                          </div>
+                        ) : env.choice.type === 'Radiador' ? (
+                          <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Único radiador</span>
+                        ) : (
+                          <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Pared</span>
+                        )}
+                      </td>
+                      <td style={{ padding: '1rem 1.5rem', fontSize: '0.875rem', color: '#15803d', fontWeight: '600' }}>
+                        {env.emitterSummary}
+                      </td>
+                    </>
+                  )}
                 </tr>
               ))}
+              
+              {/* FILA DE TOTALES PISO RADIANTE */}
+              {esPisoRadiante && (
+                <tr style={{ backgroundColor: '#f8fafc', fontWeight: '600', borderTop: '2px solid var(--border-light)' }}>
+                  <td style={{ padding: '1rem 1.5rem', fontSize: '0.875rem' }}>TOTAL</td>
+                  <td style={{ padding: '1rem 1.5rem', fontSize: '0.875rem', textAlign: 'right' }}>{totalSup.toFixed(1)}</td>
+                  <td style={{ padding: '1rem 1.5rem', fontSize: '0.875rem', textAlign: 'right', color: '#2563eb' }}>{Math.round(totalWatts).toLocaleString('es-AR')}</td>
+                  <td style={{ padding: '1rem 1.5rem', fontSize: '0.875rem', textAlign: 'right' }}>{Math.round(totalWatts / (totalSup || 1))}</td>
+                  <td style={{ padding: '1rem 1.5rem', fontSize: '0.875rem', textAlign: 'right' }}>—</td>
+                  <td style={{ padding: '1rem 1.5rem', fontSize: '0.875rem', textAlign: 'right', color: '#c2410c' }}>{colectores.reduce((a,c)=>a+c.circuitos,0)} Vías</td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
       </div>
+
+      {esPisoRadiante && (
+        <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border-light)' }}>
+            <h3 style={{ fontSize: '1.125rem', margin: 0 }}>Diseño de circuitos y balance hidráulico</h3>
+          </div>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ backgroundColor: 'var(--bg-surface-hover)', borderBottom: '1px solid var(--border-light)' }}>
+                  <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>COLECTOR</th>
+                  <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>CIRCUITOS</th>
+                  <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>LONGITUD MÁX.</th>
+                  <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>PASO</th>
+                </tr>
+              </thead>
+              <tbody>
+                {colectores.map(col => (
+                  <tr key={col.planta} style={{ borderBottom: '1px solid var(--border-light)' }}>
+                    <td style={{ padding: '1rem 1.5rem', fontSize: '0.875rem', fontWeight: '500' }}>Colector {col.planta} ({col.circuitos} vías)</td>
+                    <td style={{ padding: '1rem 1.5rem', fontSize: '0.875rem' }}>{col.circuitos}</td>
+                    <td style={{ padding: '1rem 1.5rem', fontSize: '0.875rem' }}>{Math.round(col.longitudMax)} m</td>
+                    <td style={{ padding: '1rem 1.5rem', fontSize: '0.875rem' }}>{params.pasoTubo} cm</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
       
       {/* Export to Budget */}
       <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -299,16 +425,6 @@ const FinalBalance = ({ environments, params, onBack }) => {
         </div>
       </div>
       
-      <div className="card" style={{ padding: '1.5rem', backgroundColor: '#fffbeb', border: '1px solid #fde68a', display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-        <AlertTriangle color="#d97706" style={{ flexShrink: 0 }} />
-        <div>
-          <h4 style={{ margin: '0 0 0.5rem 0', color: '#b45309', fontSize: '1rem' }}>Metodología de cálculo</h4>
-          <p style={{ margin: 0, color: '#92400e', fontSize: '0.875rem', lineHeight: '1.5' }}>
-            Se utiliza el <strong>método del coeficiente volumétrico</strong> (estándar en la industria Argentina): <em>Q = Volumen × {coef} Kcal/h·m³</em>. 
-            La distribución 65% transmisión / 35% infiltración es estimativa. Para un balance definitivo, debe validarse el coeficiente con datos del proyecto.
-          </p>
-        </div>
-      </div>
     </div>
   );
 };
