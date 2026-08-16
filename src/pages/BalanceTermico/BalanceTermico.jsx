@@ -21,6 +21,7 @@ const BalanceTermico = () => {
     tipoVidrio: 'Simple',
     margenSeguridad: 15,
     coefVolumetrico: 42,  // Kcal/h·m³ — Zona I, Media envolvente
+    rendimientoElemento: 145, // Kcal/h por elemento de radiador
   });
 
   const handleFileUpload = async (files) => {

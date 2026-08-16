@@ -170,6 +170,29 @@ const CalculationParameters = ({ params, setParams }) => {
             </button>
           </div>
         </div>
+
+        {/* RENDIMIENTO DEL RADIADOR */}
+        <div style={{ gridColumn: '1 / -1', padding: '1rem', backgroundColor: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0', marginTop: '-0.5rem' }}>
+          <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.25rem', color: '#166534' }}>
+            Rendimiento en Kcal/h de cada elemento
+          </label>
+          <p style={{ fontSize: '0.8rem', color: '#14532d', marginBottom: '0.75rem', margin: '0 0 0.75rem 0' }}>
+            Ingrese las Kcal/h entregadas por cada elemento de radiador. Este valor se utilizará para calcular la cantidad de elementos necesarios por ambiente.
+          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <input 
+              type="number" 
+              className="input-field" 
+              value={params.rendimientoElemento ?? 145} 
+              onChange={e => updateParam('rendimientoElemento', parseFloat(e.target.value) || 145)}
+              style={{ width: '100px', backgroundColor: 'white', fontWeight: '700', fontSize: '1.1rem' }}
+              step="1"
+              min="50"
+              max="300"
+            />
+            <span style={{ fontSize: '0.9rem', color: '#166534', fontWeight: '500' }}>Kcal/h</span>
+          </div>
+        </div>
       </div>
     </div>
   );
