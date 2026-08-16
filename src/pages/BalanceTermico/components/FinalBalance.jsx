@@ -35,7 +35,10 @@ const FinalBalance = ({ environments, params, onBack }) => {
         const querySnapshot = await getDocs(q);
         const activeBudgets = querySnapshot.docs
           .map(d => ({ id: d.id, ...d.data() }))
-          .filter(b => b.deleted !== true && (b.status === 'pendiente' || b.status === 'en_calculo'))
+          .filter(b => {
+            const st = b.status || 'pendiente';
+            return b.deleted !== true && (st === 'pendiente' || st === 'en_calculo' || st === 'en calculo');
+          })
           .sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
         setBudgets(activeBudgets);
       } catch (err) {
