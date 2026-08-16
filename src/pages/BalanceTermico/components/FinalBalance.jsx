@@ -79,17 +79,15 @@ const FinalBalance = ({ environments, params, onBack }) => {
 
       if (!esPisoRadiante) {
         const baseElementsNeeded = Math.ceil(totalKcalMargin / rendimientoElemento);
-        const choice = emitterChoices[env.id] || { type: 'Radiador', customText: null };
+        const choice = emitterChoices[env.id] || { type: 'Radiador', customRads: null };
         let emitterSummary = '';
         let finalElements = 0;
         let radsArray = [];
 
         if (choice.type === 'Radiador') {
-          if (choice.customText !== null) {
-            // Usuario escribió algo personalizado, ej "14, 7, 7"
-            radsArray = choice.customText.split(',')
-              .map(s => parseInt(s.trim()))
-              .filter(n => !isNaN(n) && n > 0);
+          if (choice.customRads !== null && Array.isArray(choice.customRads)) {
+            // Usuario tiene configuración personalizada
+            radsArray = choice.customRads; // Mantenemos ceros o vacíos para que no desaparezca el input mientras tipea
           } else {
             // Auto cálculo
             let splits = 1;
@@ -100,23 +98,24 @@ const FinalBalance = ({ environments, params, onBack }) => {
             radsArray = Array(splits).fill(perRad);
           }
 
-          finalElements = radsArray.reduce((a, b) => a + b, 0);
+          const validRads = radsArray.filter(n => !isNaN(n) && n > 0);
+          finalElements = validRads.reduce((a, b) => a + b, 0);
 
-          if (radsArray.length === 0) {
+          if (validRads.length === 0) {
             emitterSummary = '0 elementos';
           } else {
             const counts = {};
-            radsArray.forEach(p => { counts[p] = (counts[p] || 0) + 1; });
+            validRads.forEach(p => { counts[p] = (counts[p] || 0) + 1; });
             emitterSummary = Object.entries(counts).map(([size, count]) => {
                return count === 1 ? `1 Radiador de ${size} elem.` : `${count} Radiadores de ${size} elem.`;
             }).join(' + ');
           }
-          envResult.displayRadsStr = choice.customText !== null ? choice.customText : radsArray.join(', ');
+          envResult.radsArray = radsArray; // array para renderizar los inputs
         } else {
           // Toalleros
           finalElements = choice.type.includes('80') ? 3 : 5;
           emitterSummary = `1 ${choice.type} (${finalElements} elem. eq.)`;
-          envResult.displayRadsStr = '';
+          envResult.radsArray = [];
         }
         
         envResult.elementsNeeded = finalElements;
@@ -348,22 +347,54 @@ const FinalBalance = ({ environments, params, onBack }) => {
                       </td>
                       <td style={{ padding: '1rem 1.5rem' }}>
                         {env.choice.type === 'Radiador' ? (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                            <input 
-                              type="text"
-                              className="input-field"
-                              style={{ padding: '0.4rem', fontSize: '0.875rem', width: '120px' }}
-                              placeholder="Ej: 14, 7, 7"
-                              value={env.displayRadsStr}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                if (val.trim() === '') {
-                                  handleChoiceChange(env.id, 'customText', null);
-                                } else {
-                                  handleChoiceChange(env.id, 'customText', val);
-                                }
-                              }}
-                            />
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem', alignItems: 'center' }}>
+                              {env.radsArray.map((rad, idx) => (
+                                <div key={idx} style={{ display: 'flex', alignItems: 'center', backgroundColor: 'white', border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden' }}>
+                                  <input 
+                                    type="number"
+                                    value={rad === 0 ? '' : rad}
+                                    style={{ width: '40px', padding: '0.25rem', border: 'none', textAlign: 'center', fontSize: '0.875rem', outline: 'none' }}
+                                    onChange={(e) => {
+                                      let newRads = [...env.radsArray];
+                                      newRads[idx] = parseInt(e.target.value) || 0;
+                                      handleChoiceChange(env.id, 'customRads', newRads);
+                                    }}
+                                  />
+                                  <button 
+                                    onClick={() => {
+                                      let newRads = [...env.radsArray];
+                                      newRads.splice(idx, 1);
+                                      handleChoiceChange(env.id, 'customRads', newRads);
+                                    }}
+                                    style={{ background: '#f1f5f9', borderLeft: '1px solid #cbd5e1', borderRight: 'none', borderTop: 'none', borderBottom: 'none', padding: '0.25rem 0.4rem', color: '#64748b', cursor: 'pointer', fontSize: '0.75rem' }}
+                                    title="Quitar radiador"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              ))}
+                              
+                              <button 
+                                onClick={() => {
+                                  let newRads = [...env.radsArray, 7]; // Agregar un radiador genérico de 7 elementos
+                                  handleChoiceChange(env.id, 'customRads', newRads);
+                                }}
+                                style={{ background: '#e0f2fe', color: '#0284c7', border: '1px solid #bae6fd', borderRadius: '4px', padding: '0.2rem 0.5rem', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                title="Agregar otro radiador"
+                              >
+                                +
+                              </button>
+                              
+                              <button
+                                onClick={() => handleChoiceChange(env.id, 'customRads', null)}
+                                style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '1rem', cursor: 'pointer', marginLeft: '0.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                title="Restablecer auto-cálculo"
+                              >
+                                ⟲
+                              </button>
+                            </div>
+                            
                             {env.elementsNeeded !== env.baseElementsNeeded && (
                               <span style={{ fontSize: '0.7rem', color: '#d97706', fontWeight: '500' }}>Req: {env.baseElementsNeeded} elem.</span>
                             )}
