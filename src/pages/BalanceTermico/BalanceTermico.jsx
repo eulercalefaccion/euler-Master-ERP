@@ -23,28 +23,56 @@ const BalanceTermico = () => {
     coefVolumetrico: 42,  // Kcal/h·m³ — Zona I, Media envolvente
   });
 
-  const handleFileUpload = async (file) => {
+  const handleFileUpload = async (files) => {
     setIsAnalyzing(true);
     try {
-      const base64 = await convertToBase64(file);
-      // Remove prefix data:image/...;base64,
-      const base64Data = base64.split(',')[1];
-      
-      const analyzeFloorPlan = httpsCallable(functions, 'analyzeFloorPlan');
-      const response = await analyzeFloorPlan({
-        fileBase64: base64Data,
-        mediaType: file.type
-      });
+      let allEnvs = [];
+      let finalAiData = null;
+      let combinedObservaciones = [];
+      let combinedRiesgos = [];
 
-      const parsedData = response.data.data;
-      setAiData(parsedData);
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const base64 = await convertToBase64(file);
+        // Remove prefix data:image/...;base64,
+        const base64Data = base64.split(',')[1];
+        
+        const analyzeFloorPlan = httpsCallable(functions, 'analyzeFloorPlan');
+        const response = await analyzeFloorPlan({
+          fileBase64: base64Data,
+          mediaType: file.type
+        });
+
+        const parsedData = response.data.data;
+        if (i === 0) {
+          finalAiData = parsedData; // Base the final review on the first plan
+        } else {
+          // Combine some useful texts if needed
+          if (parsedData.observaciones) combinedObservaciones.push(parsedData.observaciones);
+          if (parsedData.riesgos) combinedRiesgos.push(...parsedData.riesgos);
+        }
+        
+        if (parsedData.ambientes) {
+          allEnvs = [...allEnvs, ...parsedData.ambientes];
+        }
+      }
+
+      if (finalAiData) {
+        if (combinedObservaciones.length > 0) {
+           finalAiData.observaciones = finalAiData.observaciones + '\n\nOtras observaciones: ' + combinedObservaciones.join(' | ');
+        }
+        if (combinedRiesgos.length > 0) {
+           finalAiData.riesgos = [...(finalAiData.riesgos || []), ...combinedRiesgos];
+        }
+        setAiData(finalAiData);
+      }
       
       // Initialize environments from AI
-      if (parsedData.ambientes) {
-        const envs = parsedData.ambientes.map((env, i) => ({
+      if (allEnvs.length > 0) {
+        const envs = allEnvs.map((env, i) => ({
           id: i.toString(),
           nombre: env.nombre || 'Local Sin Nombre',
-          planta: 'Baja',
+          planta: env.planta || 'Baja', // Allow AI to return planta if possible
           superficie: env.superficie || 0,
           altura: env.altura || 2.8,
           orientacion: env.orientacion || 'No indicada',
@@ -59,8 +87,8 @@ const BalanceTermico = () => {
 
       setStep(2);
     } catch (error) {
-      console.error("Error analizano plano:", error);
-      alert("Hubo un error al analizar el plano: " + error.message);
+      console.error("Error analizando plano:", error);
+      alert("Hubo un error al analizar los planos: " + error.message);
     } finally {
       setIsAnalyzing(false);
     }
