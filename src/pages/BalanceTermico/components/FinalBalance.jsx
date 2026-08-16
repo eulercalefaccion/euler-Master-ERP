@@ -34,11 +34,11 @@ const FinalBalance = ({ environments, params, onBack }) => {
     // Cargar presupuestos pendientes y en calculo
     const fetchBudgets = async () => {
       try {
-        const q = query(collection(db, 'presupuestos'), where('deleted', '!=', true));
+        const q = query(collection(db, 'presupuestos'));
         const querySnapshot = await getDocs(q);
         const activeBudgets = querySnapshot.docs
           .map(d => ({ id: d.id, ...d.data() }))
-          .filter(b => b.status === 'pendiente' || b.status === 'en_calculo')
+          .filter(b => b.deleted !== true && (b.status === 'pendiente' || b.status === 'en_calculo'))
           .sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
         setBudgets(activeBudgets);
       } catch (err) {
