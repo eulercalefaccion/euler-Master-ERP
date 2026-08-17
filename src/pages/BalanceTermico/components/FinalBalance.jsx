@@ -4,7 +4,7 @@ import { collection, query, where, getDocs, addDoc, serverTimestamp, doc, getDoc
 import { db } from '../../../services/firebaseConfig';
 import generarPDFBalanceTermico from '../../../services/pdfBalanceTermico';
 
-const FinalBalance = ({ environments, params, onBack }) => {
+const FinalBalance = ({ environments, params, onBack, isEmbedded = false, onSave = null }) => {
   const coef = params.coefVolumetrico ?? 45; // Kcal/h·m³
   const rendimientoElemento = params.rendimientoElemento ?? 145;
   const margenMultiplier = 1 + (params.margenSeguridad / 100);
@@ -17,36 +17,48 @@ const FinalBalance = ({ environments, params, onBack }) => {
   const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
-    // Inicializar emitterChoices con valores por defecto (solo relevante si es radiadores)
+    // Si estamos incrustados, es posible que queramos cargar emitterChoices de un prop inicial si lo pasaran.
+    // Por simplicidad, si esEmbedded es true, confiaremos en que ambientes ya vienen filtrados o usaremos los por defecto.
     const initialChoices = {};
     environments.filter(e => e.calefaccion).forEach(env => {
       const isBathroom = env.nombre.toLowerCase().includes('baño') || env.nombre.toLowerCase().includes('toilette');
-      initialChoices[env.id] = {
+      initialChoices[env.id] = env.choice || {
         type: isBathroom ? 'Toallero 80cm' : 'Radiador',
-        customText: null
+        customRads: null
       };
     });
     setEmitterChoices(initialChoices);
 
-    // Cargar presupuestos pendientes y en calculo
-    const fetchBudgets = async () => {
-      try {
-        const q = query(collection(db, 'presupuestos'));
-        const querySnapshot = await getDocs(q);
-        const activeBudgets = querySnapshot.docs
-          .map(d => ({ id: d.id, ...d.data() }))
-          .filter(b => {
-            const st = b.status || 'pendiente';
-            return b.deleted !== true && (st === 'pendiente' || st === 'en_calculo' || st === 'en calculo');
-          })
-          .sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
-        setBudgets(activeBudgets);
-      } catch (err) {
-        console.error("Error fetching budgets:", err);
-      }
-    };
-    fetchBudgets();
-  }, [environments, coef, rendimientoElemento, margenMultiplier]);
+    if (!isEmbedded) {
+      // Cargar presupuestos pendientes y en calculo
+      const fetchBudgets = async () => {
+        try {
+          const q = query(collection(db, 'presupuestos'));
+          const querySnapshot = await getDocs(q);
+          const activeBudgets = querySnapshot.docs
+            .map(d => ({ id: d.id, ...d.data() }))
+            .filter(b => {
+              const st = b.status || 'pendiente';
+              return b.deleted !== true && (st === 'pendiente' || st === 'en_calculo' || st === 'en calculo');
+            })
+            .sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+          setBudgets(activeBudgets);
+        } catch (err) {
+          console.error("Error fetching budgets:", err);
+        }
+      };
+      fetchBudgets();
+    }
+  }, [environments, isEmbedded]);
+
+  // Si estamos incrustados, reportamos cambios de choices hacia arriba para que el guardado pueda tomar el último estado
+  useEffect(() => {
+    if (isEmbedded && onSave) {
+      // Pasamos un callback para que el padre pueda disparar el guardado si lo requiere, 
+      // o simplemente avisamos el estado actual.
+      onSave(emitterChoices);
+    }
+  }, [emitterChoices, isEmbedded]);
 
   const handleChoiceChange = (envId, field, value) => {
     setEmitterChoices(prev => ({
@@ -193,40 +205,34 @@ const FinalBalance = ({ environments, params, onBack }) => {
     if (!selectedBudgetId) return;
     setIsExporting(true);
     try {
-      let notasAdicionales = `\n\n--- BALANCE TÉRMICO IA ---\nFecha: ${new Date().toLocaleDateString('es-AR')}\n`;
-      notasAdicionales += `Sistema: ${params.sistemaEmision}\n\n`;
-      notasAdicionales += `Parámetros:\n- Coeficiente volumétrico: ${coef} Kcal/h·m³\n- Margen de seguridad: ${params.margenSeguridad}%\n`;
-      
-      if (!esPisoRadiante) {
-        notasAdicionales += `- Rendimiento por elemento: ${rendimientoElemento} Kcal/h\n\n`;
-        notasAdicionales += `Resultados Totales:\n- Volumen Total: ${totalVolumen.toFixed(1)} m³\n- Potencia Efectiva: ${Math.round(totalKcal).toLocaleString('es-AR')} Kcal/h\n- Total Elementos Eq.: ${totalElementos}\n\n`;
-      } else {
-        notasAdicionales += `- Separación de tubo: ${params.pasoTubo} cm\n- Diámetro: ${params.diametroTubo} mm\n\n`;
-        notasAdicionales += `Resultados Totales:\n- Superficie Total: ${totalSup.toFixed(1)} m²\n- Potencia con Margen: ${Math.round(totalKcalMargin).toLocaleString('es-AR')} Kcal/h\n- Metros de Tubo: ${totalTubos} m\n\n`;
-      }
-
-      notasAdicionales += `Detalle por Ambiente:\n`;
-      
-      computedEnvs.forEach(env => {
-        notasAdicionales += `• ${env.nombre}:\n`;
-        if (!esPisoRadiante) {
-          notasAdicionales += `  Sup: ${env.superficie.toFixed(1)} m² | Kcal/h: ${Math.round(env.totalKcalMargin)}\n`;
-          notasAdicionales += `  Emisor: ${env.emitterSummary}\n`;
-        } else {
-          notasAdicionales += `  Sup: ${env.superficie.toFixed(1)} m² | W/m²: ${Math.round(env.wattsPorM2)} | Tubo: ${env.tuboTotal} m | Circuitos: ${env.circuitos}\n`;
-        }
-      });
-
       const budgetRef = doc(db, 'presupuestos', selectedBudgetId);
       const budgetSnap = await getDoc(budgetRef);
       
       if (budgetSnap.exists()) {
         const currentData = budgetSnap.data();
         const currentNotas = currentData.notas || '';
+        const notasAdicionales = `\n\n[SISTEMA] Balance Térmico IA actualizado el ${new Date().toLocaleDateString('es-AR')}.\nIngresá a la pestaña de "Balance Térmico" para verlo.`;
+        
+        // Exportamos la estructura completa en balanceIA
+        const balanceData = {
+          environments: environments.map(e => ({
+            id: e.id,
+            nombre: e.nombre,
+            superficie: e.superficie,
+            altura: e.altura,
+            planta: e.planta,
+            calefaccion: e.calefaccion,
+            choice: emitterChoices[e.id] || null
+          })),
+          params,
+          exportedAt: new Date().toISOString()
+        };
+
         await updateDoc(budgetRef, {
+          balanceIA: balanceData,
           notas: currentNotas + notasAdicionales
         });
-        alert('Balance térmico exportado con éxito a las notas del presupuesto.');
+        alert('Balance térmico exportado con éxito al presupuesto. Podés abrirlo desde el panel de presupuestos.');
       } else {
         alert('No se encontró el presupuesto especificado.');
       }
@@ -246,9 +252,11 @@ const FinalBalance = ({ environments, params, onBack }) => {
           <button onClick={handleExportPDF} className="btn" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'var(--primary-600)', color: 'white', border: 'none' }}>
             <Download size={16} /> Descargar Informe PDF
           </button>
-          <button onClick={onBack} className="btn" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1px solid var(--border-light)', backgroundColor: 'white' }}>
-            <ArrowLeft size={16} /> Volver a edición
-          </button>
+          {!isEmbedded && onBack && (
+            <button onClick={onBack} className="btn" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1px solid var(--border-light)', backgroundColor: 'white' }}>
+              <ArrowLeft size={16} /> Volver a edición
+            </button>
+          )}
         </div>
       </div>
 
@@ -461,35 +469,37 @@ const FinalBalance = ({ environments, params, onBack }) => {
       )}
       
       {/* Export to Budget */}
-      <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        <h4 style={{ margin: 0, fontSize: '1.125rem' }}>Exportar a Presupuesto CRM</h4>
-        <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-          Podés adjuntar este balance térmico a un presupuesto existente en estado "Pendiente" o "En Cálculo". El informe se adjuntará en las notas del presupuesto automáticamente.
-        </p>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <select 
-            className="input-field" 
-            style={{ maxWidth: '400px' }}
-            value={selectedBudgetId}
-            onChange={(e) => setSelectedBudgetId(e.target.value)}
-          >
-            <option value="">-- Seleccionar presupuesto --</option>
-            {budgets.map(b => (
-              <option key={b.id} value={b.id}>
-                {b.presupuestoNumber || 'S/N'} - {b.name || b.clientName || 'Cliente sin nombre'} ({b.status})
-              </option>
-            ))}
-          </select>
-          <button 
-            className="btn" 
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: '#10b981', color: 'white', border: 'none' }}
-            disabled={!selectedBudgetId || isExporting}
-            onClick={handleExportToBudget}
-          >
-            <Send size={16} /> {isExporting ? 'Exportando...' : 'Asignar a Presupuesto'}
-          </button>
+      {!isEmbedded && (
+        <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <h4 style={{ margin: 0, fontSize: '1.125rem' }}>Exportar a Presupuesto CRM</h4>
+          <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+            Podés adjuntar este balance térmico a un presupuesto existente en estado "Pendiente" o "En Cálculo". El informe se adjuntará en las notas del presupuesto automáticamente.
+          </p>
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <select 
+              className="input-field" 
+              style={{ maxWidth: '400px' }}
+              value={selectedBudgetId}
+              onChange={(e) => setSelectedBudgetId(e.target.value)}
+            >
+              <option value="">-- Seleccionar presupuesto --</option>
+              {budgets.map(b => (
+                <option key={b.id} value={b.id}>
+                  {b.presupuestoNumber || 'S/N'} - {b.name || b.clientName || 'Cliente sin nombre'} ({b.status})
+                </option>
+              ))}
+            </select>
+            <button 
+              className="btn" 
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: '#10b981', color: 'white', border: 'none' }}
+              disabled={!selectedBudgetId || isExporting}
+              onClick={handleExportToBudget}
+            >
+              <Send size={16} /> {isExporting ? 'Exportando...' : 'Asignar a Presupuesto'}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
       
     </div>
   );
