@@ -15,6 +15,7 @@ const KanbanColumn = ({ column, items, onCardClick, globalLabels = {} }) => {
       borderRadius: 'var(--radius-lg)',
       padding: '0.75rem',
       height: '100%',
+      maxHeight: '100%',
     }}>
       <div style={{ padding: '0.5rem 0.5rem 1rem 0.5rem', display: 'flex', flexDirection: 'column' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -43,6 +44,8 @@ const KanbanColumn = ({ column, items, onCardClick, globalLabels = {} }) => {
               transition: 'background-color 0.2s',
               backgroundColor: snapshot.isDraggingOver ? 'var(--primary-50)' : 'transparent',
               borderRadius: 'var(--radius-md)',
+              overflowY: 'auto',
+              overflowX: 'hidden'
             }}
           >
             {items.map((item, index) => (

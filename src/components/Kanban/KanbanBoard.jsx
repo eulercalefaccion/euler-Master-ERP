@@ -1503,7 +1503,7 @@ const KanbanBoard = () => {
       <LabelsManagerModal isOpen={isLabelsModalOpen} onClose={() => setIsLabelsModalOpen(false)} />
 
       {/* ── Kanban Board / Vistas ── */}
-      <div className={viewMode === 'kanban' ? "mobile-kanban-container" : ""} style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '1rem', flex: 1, minHeight: '500px', flexDirection: viewMode === 'kanban' ? 'row' : 'column' }}>
+      <div className={viewMode === 'kanban' ? "mobile-kanban-container" : ""} style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '1rem', flex: 1, minHeight: 0, height: viewMode === 'kanban' ? 'calc(100vh - 200px)' : 'auto', flexDirection: viewMode === 'kanban' ? 'row' : 'column' }}>
         
         {(() => {
           const filterAndSortItems = (itemsArray) => {
