@@ -1,16 +1,18 @@
-import { useState, useEffect, useMemo, Component } from 'react'
+import { useState, useEffect, useMemo, Component, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  collection, onSnapshot, doc, updateDoc, deleteDoc, query, orderBy, getDocs, addDoc, serverTimestamp, setDoc, writeBatch
+  collection, onSnapshot, doc, updateDoc, deleteDoc, query, orderBy, getDocs, addDoc, serverTimestamp, setDoc, writeBatch, arrayUnion
 } from 'firebase/firestore'
-import { db } from '../../services/firebaseConfig'
-import { Plus, Clipboard, AlertCircle, ChevronDown, ChevronUp, FileText, Trash2, PlusCircle, XCircle, Link, Clock, Map, List, Download, Settings, Users, Edit3, Eye, EyeOff, Check, X, Shield, Wrench, MessageCircle, MapPin, Calendar, BookOpen } from 'lucide-react'
-import PinLock, { useTecnicos } from '../components/PinLock'
+import { db, app } from '../../services/firebaseConfig'
+import { Plus, Clipboard, AlertCircle, ChevronDown, ChevronUp, FileText, Trash2, PlusCircle, XCircle, Link, Clock, Map, List, Download, Settings, Users, Edit3, Eye, EyeOff, Check, X, Shield, Wrench, MessageCircle, MapPin, Calendar, BookOpen, DollarSign, TrendingUp, Package, Banknote, CreditCard } from 'lucide-react'
+import { useTecnicos } from '../components/PinLock'
 import MapaServicios from '../components/MapaServicios'
 import MediaLightbox from '../components/MediaLightbox'
 import ManualesSoluciones from '../components/ManualesSoluciones'
 import AutocompleteLocalidad from '../components/AutocompleteLocalidad'
 import * as XLSX from 'xlsx'
+// useAuth provided by ERP auth shim
+const useAuth = () => ({ user: { uid: 'erp-admin', nombre: 'Administrador', role: 'admin' }, logout: () => {} })
 import TranscriberWorker from '../worker?worker'
 
 // ── Error Boundary ─────────────────────────────────────────────────────────────
@@ -284,7 +286,22 @@ function generarPDF(s, esRecibo = false) {
 }
 
 // ── Servicio Card ──────────────────────────────────────────────────────────────
+const SyncInput = ({ value, onChange, ...props }) => {
+  const ref = useRef(null);
+  const [focused, setFocused] = useState(false);
+  useEffect(() => { if (!focused && ref.current && ref.current.value !== (value || '')) ref.current.value = value || ''; }, [value, focused]);
+  return <input {...props} ref={ref} defaultValue={value || ''} onFocus={() => setFocused(true)} onBlur={e => { setFocused(false); if (e.target.value !== (value || '')) onChange(e.target.value); }} />
+}
+
+const SyncTextarea = ({ value, onChange, ...props }) => {
+  const ref = useRef(null);
+  const [focused, setFocused] = useState(false);
+  useEffect(() => { if (!focused && ref.current && ref.current.value !== (value || '')) ref.current.value = value || ''; }, [value, focused]);
+  return <textarea {...props} ref={ref} defaultValue={value || ''} onFocus={() => setFocused(true)} onBlur={e => { setFocused(false); if (e.target.value !== (value || '')) onChange(e.target.value); }} />
+}
+
 function ServicioCard({ s, onUpdate, onEliminar, onFoto, clientes, navigate }) {
+  const { nombre: nombreUsuario } = useAuth()
   const [expandido, setExpandido] = useState(false)
   const [materiales, setMateriales] = useState(s.materiales || [])
   const [manoObra, setManoObra] = useState(s.manoObra || [])
@@ -292,6 +309,22 @@ function ServicioCard({ s, onUpdate, onEliminar, onFoto, clientes, navigate }) {
   const [mostrarModalFecha, setMostrarModalFecha] = useState(false)
   const [fechaResolucion, setFechaResolucion] = useState(() => new Date().toISOString().slice(0, 10))
   const [nuevaNotaTexto, setNuevaNotaTexto] = useState('')
+  const [subiendoFotoAdmin, setSubiendoFotoAdmin] = useState(false)
+
+  const subirFotoAdmin = async (file, tipo) => {
+    setSubiendoFotoAdmin(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      fd.append('upload_preset', 'euler_servicios')
+      const resourceType = file.type.startsWith('video/') ? 'video' : 'image'
+      const res = await fetch(`https://api.cloudinary.com/v1_1/djehdlthw/${resourceType}/upload`, { method: 'POST', body: fd })
+      const data = await res.json()
+      const foto = { url: data.secure_url, fecha: new Date().toISOString(), tipo, subidoPor: nombreUsuario || 'Admin' }
+      await updateDoc(doc(db, 'servicios', s.id), { fotosAdmin: arrayUnion(foto) })
+    } catch (e) { console.error(e) }
+    setSubiendoFotoAdmin(false)
+  }
 
   const handleGuardarNota = async () => {
     const texto = nuevaNotaTexto.trim()
@@ -328,6 +361,13 @@ function ServicioCard({ s, onUpdate, onEliminar, onFoto, clientes, navigate }) {
       s.fotosHecnico.forEach((f) => {
         if (f && f.url) {
           lista.push({ url: f.url, tipo: detectarTipo(f.url), info: `Técnico - ${f.tipo || 'Galería'}` })
+        }
+      })
+    }
+    if (s.fotosAdmin && Array.isArray(s.fotosAdmin)) {
+      s.fotosAdmin.forEach((f) => {
+        if (f && f.url) {
+          lista.push({ url: f.url, tipo: detectarTipo(f.url), info: `Admin - ${f.tipo || 'Galería'}` })
         }
       })
     }
@@ -432,6 +472,8 @@ function ServicioCard({ s, onUpdate, onEliminar, onFoto, clientes, navigate }) {
           {s.estadoPago === 'no-corresponde' && <span className="tag" style={{ background: '#ECEFF1', color: '#455A64', border: '1px solid #CFD8DC' }}>NO CORRESPONDE</span>}
           {(!s.estadoPago || s.estadoPago === 'a-cobrar') && s.estadoPago !== 'no-corresponde' && (s.estado === 'resuelto' || conIVA > 0) && <span className="tag" style={{ background: '#FFEBEE', color: '#C62828', border: '1px solid #EF9A9A' }}>A COBRAR</span>}
 
+          {s.tieneActualizacionCliente && <span className="tag" style={{ background: '#FFF3E0', color: '#E65100', border: '1.5px solid #FF9800', fontWeight: 700, animation: 'pulse 2s infinite' }}>🔔 ACTUALIZACIÓN</span>}
+
           <span className={`tag tag-estado tag-${s.estado === 'visitado-incompleto' ? 'en-curso' : s.estado}`}>{getEstadoLabel(s.estado)}</span>
           <button onClick={() => setExpandido(!expandido)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--azul)', display: 'flex', padding: 4 }}>
             {expandido ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
@@ -476,14 +518,46 @@ function ServicioCard({ s, onUpdate, onEliminar, onFoto, clientes, navigate }) {
       {expandido && (
         <div style={{ marginTop: 16, borderTop: '2px solid var(--gris-claro)', paddingTop: 16 }}>
 
+          {/* Alerta de actualización del cliente */}
+          {s.tieneActualizacionCliente && (
+            <div style={{
+              background: '#FFF3E0', border: '1.5px solid #FF9800', borderRadius: 10,
+              padding: '12px 16px', marginBottom: 16, display: 'flex', alignItems: 'center',
+              justifyContent: 'space-between', gap: 12, flexWrap: 'wrap'
+            }}>
+              <div style={{ fontSize: '0.85rem', color: '#E65100' }}>
+                <strong>🔔 El cliente envió una actualización</strong>
+                {s.ultimaActualizacionCliente && (
+                  <span style={{ marginLeft: 8, fontSize: '0.78rem', color: '#BF360C' }}>
+                    — {formatFecha(s.ultimaActualizacionCliente)}
+                  </span>
+                )}
+                <div style={{ fontSize: '0.78rem', color: '#795548', marginTop: 4 }}>
+                  Revisá la descripción y fotos del servicio. Puede haber información nueva.
+                </div>
+              </div>
+              <button
+                onClick={() => upd({ tieneActualizacionCliente: false })}
+                style={{
+                  padding: '6px 14px', background: '#FF9800', color: 'white', border: 'none',
+                  borderRadius: 6, cursor: 'pointer', fontFamily: 'var(--font)', fontWeight: 600,
+                  fontSize: '0.78rem', whiteSpace: 'nowrap'
+                }}
+              >
+                <Check size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />
+                Marcar como vista
+              </button>
+            </div>
+          )}
+
           {/* Datos del cliente */}
           <div style={{ marginBottom: 16 }}>
             {sectionLabel('Datos del cliente')}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              <input style={inputStyle} placeholder="Nombre" value={s.nombre || ''} onChange={e => upd({ nombre: e.target.value })} />
-              <input style={inputStyle} placeholder="Teléfono" value={s.telefono || ''} onChange={e => upd({ telefono: e.target.value })} />
-              <input style={{ ...inputStyle, gridColumn: '1/-1' }} placeholder="Email" type="email" value={s.email || ''} onChange={e => upd({ email: e.target.value })} />
-              <input style={inputStyle} placeholder="Dirección" value={s.direccion || ''} onChange={e => upd({ direccion: e.target.value })} />
+              <SyncInput style={inputStyle} placeholder="Nombre" value={s.nombre || ''} onChange={val => upd({ nombre: val })} />
+              <SyncInput style={inputStyle} placeholder="Teléfono" value={s.telefono || ''} onChange={val => upd({ telefono: val })} />
+              <SyncInput style={{ ...inputStyle, gridColumn: '1/-1' }} placeholder="Email" type="email" value={s.email || ''} onChange={val => upd({ email: val })} />
+              <SyncInput style={inputStyle} placeholder="Dirección" value={s.direccion || ''} onChange={val => upd({ direccion: val })} />
               <AutocompleteLocalidad
                 value={s.localidad || ''}
                 onChange={val => upd({ localidad: val })}
@@ -504,7 +578,7 @@ function ServicioCard({ s, onUpdate, onEliminar, onFoto, clientes, navigate }) {
                   {MARCAS_CALDERA.map(m => <option key={m} value={m}>{m}</option>)}
                 </select>
               ) : (
-                <input style={inputStyle} placeholder="Marca" value={s.marca || ''} onChange={e => upd({ marca: e.target.value })} />
+                <SyncInput style={inputStyle} placeholder="Marca" value={s.marca || ''} onChange={val => upd({ marca: val })} />
               )}
               {(s.equipos || []).includes('caldera') && s.marca && s.marca !== 'OTRA' && s.marca !== 'FLOWING' ? (
                 <select style={inputStyle} value={s.modelo || ''} onChange={e => upd({ modelo: e.target.value })}>
@@ -512,10 +586,10 @@ function ServicioCard({ s, onUpdate, onEliminar, onFoto, clientes, navigate }) {
                   {(MODELOS_CALDERA[s.marca] || []).map(m => <option key={m} value={m}>{m}</option>)}
                 </select>
               ) : (
-                <input style={inputStyle} placeholder="Modelo" value={s.modelo || ''} onChange={e => upd({ modelo: e.target.value })} />
+                <SyncInput style={inputStyle} placeholder="Modelo" value={s.modelo || ''} onChange={val => upd({ modelo: val })} />
               )}
             </div>
-            <textarea style={{ ...inputStyle, marginTop: 8, resize: 'vertical', minHeight: 70 }} placeholder="Descripción del problema" value={s.descripcion || ''} onChange={e => upd({ descripcion: e.target.value })} />
+            <SyncTextarea style={{ ...inputStyle, marginTop: 8, resize: 'vertical', minHeight: 70 }} placeholder="Descripción del problema" value={s.descripcion || ''} onChange={val => upd({ descripcion: val })} />
           </div>
 
           {/* Gestión */}
@@ -533,7 +607,7 @@ function ServicioCard({ s, onUpdate, onEliminar, onFoto, clientes, navigate }) {
               }}>
                 {ESTADOS.map(e => <option key={e} value={e}>{getEstadoLabel(e)}</option>)}
               </select>
-              <input style={{ ...inputStyle, gridColumn: '1/-1' }} type="date" value={s.fechaAsignada || ''} onChange={e => upd({ fechaAsignada: e.target.value })} />
+              <SyncInput style={{ ...inputStyle, gridColumn: '1/-1' }} type="date" value={s.fechaAsignada || ''} onChange={val => upd({ fechaAsignada: val })} />
             </div>
             {/* HISTORIAL DE NOTAS INTERNAS */}
             <div style={{ marginTop: 12 }}>
@@ -604,7 +678,7 @@ function ServicioCard({ s, onUpdate, onEliminar, onFoto, clientes, navigate }) {
                   {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre} {c.localidad ? `— ${c.localidad}` : ''}</option>)}
                 </select>
                 <div style={{ fontSize: '0.75rem', color: 'var(--gris-texto)', marginTop: 6 }}>
-                  ¿Cliente nuevo? Crealo en la sección <span style={{ color: 'var(--azul-medio)', cursor: 'pointer', fontWeight: 600 }} onClick={() => navigate('/servicios/clientes')}>Clientes</span> y volvé a vincularlo.
+                  ¿Cliente nuevo? Crealo en la sección <span style={{ color: 'var(--azul-medio)', cursor: 'pointer', fontWeight: 600 }} onClick={() => navigate('/admin/clientes')}>Clientes</span> y volvé a vincularlo.
                 </div>
               </div>
             )}
@@ -627,7 +701,7 @@ function ServicioCard({ s, onUpdate, onEliminar, onFoto, clientes, navigate }) {
               </div>
             </div>
             <div style={{ fontSize: '0.75rem', color: 'var(--gris-texto)', marginBottom: 6 }}>Diagnostico tecnico/Solucion/recomendacion/notas</div>
-            <textarea style={{ ...inputStyle, resize: 'vertical', minHeight: 120, marginBottom: 8 }} placeholder="¿Qué tenía el equipo? ¿Qué se hizo? Recomendaciones..." value={s.diagnostico || ''} onChange={e => upd({ diagnostico: e.target.value })} />
+            <SyncTextarea style={{ ...inputStyle, resize: 'vertical', minHeight: 120, marginBottom: 8 }} placeholder="¿Qué tenía el equipo? ¿Qué se hizo? Recomendaciones..." value={s.diagnostico || ''} onChange={val => upd({ diagnostico: val })} />
             {/* Fallback for legacy data */}
             {s.recomendaciones && (
               <>
@@ -880,6 +954,88 @@ function ServicioCard({ s, onUpdate, onEliminar, onFoto, clientes, navigate }) {
               </div>
             </div>
           ) : null}
+
+          {/* Fotos/Videos del Admin */}
+          <div style={{ marginBottom: 16 }}>
+            {sectionLabel('Fotos / Videos — Admin')}
+            
+            {/* Galería de fotos ya subidas por admin */}
+            {(s.fotosAdmin || []).length > 0 && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 10 }}>
+                {(s.fotosAdmin || []).map((f, i) => {
+                  const esVideo = f.url.toLowerCase().includes('/video/upload/') || f.url.match(/\.(mp4|webm|ogg|mov|avi)($|\?)/i)
+                  return (
+                    <div key={i} style={{ position: 'relative' }}>
+                      {esVideo ? (
+                        <div className="video-thumbnail-container" onClick={() => abrirVisor(f.url)}>
+                          <video src={f.url} style={{ width: '100%', height: 80, objectFit: 'cover', borderRadius: 8 }} muted />
+                          <div className="video-play-overlay" style={{ borderRadius: 8 }}>
+                            <div className="play-icon-circle" style={{ width: 24, height: 24, fontSize: '0.65rem' }}>▶</div>
+                          </div>
+                        </div>
+                      ) : (
+                        <img src={f.url} alt={`Admin ${i+1}`} onClick={() => abrirVisor(f.url)}
+                          style={{ width: '100%', height: 80, objectFit: 'cover', borderRadius: 8, border: '1px solid #D8E2EE', cursor: 'pointer' }} />
+                      )}
+                      <div style={{ fontSize: '0.65rem', color: '#888', marginTop: 2, textAlign: 'center' }}>
+                        {f.tipo || ''} · {f.fecha ? new Date(f.fecha).toLocaleDateString('es-AR') : ''}
+                      </div>
+                      <button
+                        onClick={() => {
+                          if (confirm('¿Eliminar esta foto/video?')) {
+                            const nuevas = [...(s.fotosAdmin || [])];
+                            nuevas.splice(i, 1);
+                            upd({ fotosAdmin: nuevas });
+                          }
+                        }}
+                        style={{ position: 'absolute', top: -6, right: -6, background: 'var(--rojo)', color: 'white', border: 'none', borderRadius: '50%', width: 20, height: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', zIndex: 10 }}
+                      >✕</button>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* Botones de subir */}
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <label style={{
+                display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px',
+                background: '#E3F2FD', color: '#1565C0', borderRadius: 8,
+                fontSize: '0.8rem', fontWeight: 600, cursor: subiendoFotoAdmin ? 'not-allowed' : 'pointer',
+                border: '1.5px solid #90CAF9', opacity: subiendoFotoAdmin ? 0.6 : 1
+              }}>
+                <input type="file" accept="image/*" multiple style={{ display: 'none' }} disabled={subiendoFotoAdmin}
+                  onChange={e => { Array.from(e.target.files).forEach(f => subirFotoAdmin(f, 'Foto')); e.target.value = '' }} />
+                📷 Foto
+              </label>
+              <label style={{
+                display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px',
+                background: '#E3F2FD', color: '#1565C0', borderRadius: 8,
+                fontSize: '0.8rem', fontWeight: 600, cursor: subiendoFotoAdmin ? 'not-allowed' : 'pointer',
+                border: '1.5px solid #90CAF9', opacity: subiendoFotoAdmin ? 0.6 : 1
+              }}>
+                <input type="file" accept="video/*" multiple style={{ display: 'none' }} disabled={subiendoFotoAdmin}
+                  onChange={e => { Array.from(e.target.files).forEach(f => subirFotoAdmin(f, 'Video')); e.target.value = '' }} />
+                🎥 Video
+              </label>
+              <label style={{
+                display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px',
+                background: '#E3F2FD', color: '#1565C0', borderRadius: 8,
+                fontSize: '0.8rem', fontWeight: 600, cursor: subiendoFotoAdmin ? 'not-allowed' : 'pointer',
+                border: '1.5px solid #90CAF9', opacity: subiendoFotoAdmin ? 0.6 : 1
+              }}>
+                <input type="file" accept="image/*,video/*" multiple style={{ display: 'none' }} disabled={subiendoFotoAdmin}
+                  onChange={e => { Array.from(e.target.files).forEach(f => subirFotoAdmin(f, f.type.startsWith('video/') ? 'Video' : 'Foto')); e.target.value = '' }} />
+                🖼️ Galería
+              </label>
+              {subiendoFotoAdmin && (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8rem', color: '#1565C0', fontWeight: 600 }}>
+                  <div style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid #90CAF9', borderTopColor: '#1565C0', animation: 'spin 0.7s linear infinite' }} />
+                  Subiendo...
+                </span>
+              )}
+            </div>
+          </div>
 
           {/* Botones */}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', paddingTop: 12, borderTop: '1px solid var(--gris-claro)' }}>
@@ -1425,9 +1581,10 @@ function GestionTecnicos() {
   const { tecnicos, loading } = useTecnicos()
   const [editandoId, setEditandoId] = useState(null)
   const [editData, setEditData] = useState({})
-  const [mostrarPin, setMostrarPin] = useState({})
+  const [mostrarPass, setMostrarPass] = useState({})
   const [nuevoTecnico, setNuevoTecnico] = useState(null)
   const [guardando, setGuardando] = useState(false)
+  const apiKey = app.options.apiKey
 
   const inputStyle = {
     width: '100%',
@@ -1441,31 +1598,64 @@ function GestionTecnicos() {
     outline: 'none',
   }
 
-  const validarPin = (pin, idExcluir) => {
-    if (!pin || pin.length !== 4 || !/^\d{4}$/.test(pin)) return 'El PIN debe ser exactamente 4 dígitos numéricos'
-    const duplicado = tecnicos.find(t => t.pin === pin && t.id !== idExcluir)
-    if (duplicado) return `El PIN ya está en uso por ${duplicado.nombre}`
-    return null
+  const validarEmail = (email) => {
+    return email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
   }
 
   const handleEditar = (t) => {
     setEditandoId(t.id)
-    setEditData({ nombre: t.nombre, pin: t.pin, rol: t.rol || 'tecnico', activo: t.activo !== false })
+    setEditData({ nombre: t.nombre, email: t.email || '', password: t.password || '', oldPassword: t.password || '', rol: t.rol || t.role || 'tecnico', activo: t.activo !== false })
     setNuevoTecnico(null)
   }
 
+  const getAuthToken = async (email, password) => {
+    try {
+      const res = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, returnSecureToken: true })
+      })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error.message)
+      return data.idToken
+    } catch (e) {
+      throw new Error('No se pudo autenticar para realizar la acción. Verifica que la contraseña anterior sea correcta.')
+    }
+  }
+
   const handleGuardarEdit = async () => {
-    const errorPin = validarPin(editData.pin, editandoId)
-    if (errorPin) return alert(errorPin)
     if (!editData.nombre.trim()) return alert('El nombre no puede estar vacío')
+    if (!validarEmail(editData.email)) return alert('El email no es válido')
+    if (!editData.password.trim() || editData.password.length < 6) return alert('La contraseña debe tener al menos 6 caracteres')
+    
     setGuardando(true)
     try {
-      await updateDoc(doc(db, 'tecnicos', editandoId), {
+      const t = tecnicos.find(x => x.id === editandoId)
+      const needsAuthUpdate = (editData.email !== t.email) || (editData.password !== t.password)
+
+      if (needsAuthUpdate && t.email && t.password) {
+        // Obtenemos token con las credenciales viejas para poder actualizar
+        const idToken = await getAuthToken(t.email, t.password)
+        
+        // Actualizamos en Firebase Auth
+        const resUpdate = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:update?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idToken, email: editData.email, password: editData.password, returnSecureToken: true })
+        })
+        const dataUpdate = await resUpdate.json()
+        if (dataUpdate.error) throw new Error('Error al actualizar en Auth: ' + dataUpdate.error.message)
+      }
+
+      // Actualizar Firestore
+      await updateDoc(doc(db, 'usuarios', editandoId), {
         nombre: editData.nombre.trim(),
-        pin: editData.pin,
-        rol: editData.rol,
+        email: editData.email.trim(),
+        password: editData.password,
+        role: editData.rol,
         activo: editData.activo,
       })
+      
       setEditandoId(null)
     } catch (e) {
       alert('Error al guardar: ' + e.message)
@@ -1475,31 +1665,68 @@ function GestionTecnicos() {
 
   const handleEliminar = async (t) => {
     if (!confirm(`¿Eliminar al técnico "${t.nombre}"? Esta acción no se puede deshacer.`)) return
+    setGuardando(true)
     try {
-      await deleteDoc(doc(db, 'tecnicos', t.id))
+      // Intentar eliminar de Auth
+      if (t.email && t.password) {
+        try {
+          const idToken = await getAuthToken(t.email, t.password)
+          const res = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:delete?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ idToken })
+          })
+          const data = await res.json()
+          if (data.error) console.error('No se pudo borrar de Auth', data.error)
+        } catch (e) {
+          console.error('Bypass borrar de Auth', e)
+        }
+      }
+
+      // Borrar de Firestore
+      await deleteDoc(doc(db, 'usuarios', t.id))
     } catch (e) {
       alert('Error al eliminar: ' + e.message)
     }
+    setGuardando(false)
   }
 
   const handleNuevo = () => {
-    setNuevoTecnico({ nombre: '', pin: '', rol: 'tecnico', activo: true })
+    setNuevoTecnico({ nombre: '', email: '', password: '', rol: 'tecnico', activo: true })
     setEditandoId(null)
   }
 
   const handleGuardarNuevo = async () => {
-    const errorPin = validarPin(nuevoTecnico.pin)
-    if (errorPin) return alert(errorPin)
     if (!nuevoTecnico.nombre.trim()) return alert('El nombre no puede estar vacío')
+    if (!validarEmail(nuevoTecnico.email)) return alert('El email no es válido')
+    if (!nuevoTecnico.password.trim() || nuevoTecnico.password.length < 6) return alert('La contraseña debe tener al menos 6 caracteres')
+    
     setGuardando(true)
     try {
-      await addDoc(collection(db, 'tecnicos'), {
+      // Crear en Firebase Auth
+      const res = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: nuevoTecnico.email, password: nuevoTecnico.password, returnSecureToken: true })
+      })
+      const data = await res.json()
+      
+      if (data.error) {
+        throw new Error(data.error.message)
+      }
+
+      const uid = data.localId
+
+      // Crear en Firestore
+      await setDoc(doc(db, 'usuarios', uid), {
         nombre: nuevoTecnico.nombre.trim(),
-        pin: nuevoTecnico.pin,
-        rol: nuevoTecnico.rol,
+        email: nuevoTecnico.email.trim(),
+        password: nuevoTecnico.password,
+        role: nuevoTecnico.rol,
         activo: true,
         creadoEn: serverTimestamp(),
       })
+      
       setNuevoTecnico(null)
     } catch (e) {
       alert('Error al agregar: ' + e.message)
@@ -1507,16 +1734,16 @@ function GestionTecnicos() {
     setGuardando(false)
   }
 
-  const togglePin = (id) => setMostrarPin(prev => ({ ...prev, [id]: !prev[id] }))
+  const togglePass = (id) => setMostrarPass(prev => ({ ...prev, [id]: !prev[id] }))
 
   if (loading) return <div className="loading"><div className="spinner" /></div>
 
-  const admins = tecnicos.filter(t => t.rol === 'admin')
-  const tecnicosList = tecnicos.filter(t => t.rol !== 'admin')
+  const admins = tecnicos.filter(t => t.rol === 'admin' || t.role === 'admin')
+  const tecnicosList = tecnicos.filter(t => t.rol !== 'admin' && t.role !== 'admin')
 
   const renderFila = (t) => {
     const isEditing = editandoId === t.id
-    const pinVisible = mostrarPin[t.id]
+    const passVisible = mostrarPass[t.id]
 
     if (isEditing) {
       return (
@@ -1532,11 +1759,18 @@ function GestionTecnicos() {
             autoFocus
           />
           <input
-            style={{ ...inputStyle, textAlign: 'center', letterSpacing: 4, fontWeight: 700 }}
-            value={editData.pin}
-            onChange={e => setEditData({ ...editData, pin: e.target.value.replace(/\D/g, '').slice(0, 4) })}
-            placeholder="PIN"
-            maxLength={4}
+            style={inputStyle}
+            value={editData.email}
+            onChange={e => setEditData({ ...editData, email: e.target.value })}
+            placeholder="Email"
+            type="email"
+          />
+          <input
+            style={inputStyle}
+            value={editData.password}
+            onChange={e => setEditData({ ...editData, password: e.target.value })}
+            placeholder="Contraseña"
+            type="text"
           />
           <select
             style={inputStyle}
@@ -1586,40 +1820,43 @@ function GestionTecnicos() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{
             width: 32, height: 32, borderRadius: '50%',
-            background: t.rol === 'admin'
+            background: (t.rol === 'admin' || t.role === 'admin')
               ? 'linear-gradient(135deg, var(--naranja), var(--rojo))'
               : 'linear-gradient(135deg, var(--azul), var(--azul-medio))',
             display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
           }}>
-            {t.rol === 'admin' ? <Shield size={14} color="white" /> : <Wrench size={14} color="white" />}
+            {(t.rol === 'admin' || t.role === 'admin') ? <Shield size={14} color="white" /> : <Wrench size={14} color="white" />}
           </div>
           <div>
             <div style={{ fontWeight: 700, color: 'var(--azul)', fontSize: '0.9rem' }}>{t.nombre}</div>
             {t.activo === false && <span style={{ fontSize: '0.7rem', color: 'var(--rojo)' }}>Inactivo</span>}
           </div>
         </div>
+        <div style={{ fontSize: '0.85rem', color: 'var(--gris-texto)', wordBreak: 'break-all' }}>
+          {t.email || '—'}
+        </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <span style={{
             fontFamily: 'monospace', fontSize: '0.9rem', fontWeight: 600,
-            color: 'var(--azul)', letterSpacing: pinVisible ? 4 : 2,
+            color: 'var(--azul)', letterSpacing: passVisible ? 1 : 2,
           }}>
-            {pinVisible ? t.pin : '••••'}
+            {passVisible ? (t.password || '—') : '••••••'}
           </span>
           <button
-            onClick={() => togglePin(t.id)}
+            onClick={() => togglePass(t.id)}
             style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--gris-texto)', display: 'flex', padding: 2 }}
-            title={pinVisible ? 'Ocultar PIN' : 'Mostrar PIN'}
+            title={passVisible ? 'Ocultar Contraseña' : 'Mostrar Contraseña'}
           >
-            {pinVisible ? <EyeOff size={14} /> : <Eye size={14} />}
+            {passVisible ? <EyeOff size={14} /> : <Eye size={14} />}
           </button>
         </div>
         <div>
           <span style={{
             padding: '3px 8px', borderRadius: 12, fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase',
-            background: t.rol === 'admin' ? '#FFF3E0' : '#E3F2FD',
-            color: t.rol === 'admin' ? '#E65100' : '#1565C0',
+            background: (t.rol === 'admin' || t.role === 'admin') ? '#FFF3E0' : '#E3F2FD',
+            color: (t.rol === 'admin' || t.role === 'admin') ? '#E65100' : '#1565C0',
           }}>
-            {t.rol === 'admin' ? 'Admin' : 'Técnico'}
+            {(t.rol === 'admin' || t.role === 'admin') ? 'Admin' : 'Técnico'}
           </span>
         </div>
         <div className="tecnico-estado-col" style={{ textAlign: 'center' }}>
@@ -1672,7 +1909,8 @@ function GestionTecnicos() {
       {/* Cabecera de tabla */}
       <div className="tecnico-header">
         <div>Nombre</div>
-        <div>PIN</div>
+        <div>Email</div>
+        <div>Contraseña</div>
         <div>Rol</div>
         <div className="tecnico-estado-col" style={{ textAlign: 'center' }}>Estado</div>
         <div>Acciones</div>
@@ -1692,11 +1930,18 @@ function GestionTecnicos() {
             autoFocus
           />
           <input
-            style={{ ...inputStyle, textAlign: 'center', letterSpacing: 4, fontWeight: 700 }}
-            value={nuevoTecnico.pin}
-            onChange={e => setNuevoTecnico({ ...nuevoTecnico, pin: e.target.value.replace(/\D/g, '').slice(0, 4) })}
-            placeholder="PIN"
-            maxLength={4}
+            style={inputStyle}
+            value={nuevoTecnico.email}
+            onChange={e => setNuevoTecnico({ ...nuevoTecnico, email: e.target.value })}
+            placeholder="ejemplo@euler.com.ar"
+            type="email"
+          />
+          <input
+            style={inputStyle}
+            value={nuevoTecnico.password}
+            onChange={e => setNuevoTecnico({ ...nuevoTecnico, password: e.target.value })}
+            placeholder="Contraseña"
+            type="text"
           />
           <select
             style={inputStyle}
@@ -1756,7 +2001,7 @@ function GestionTecnicos() {
 
       {/* Info helper */}
       <div style={{ marginTop: 20, padding: 14, background: '#FFF8E1', borderRadius: 8, border: '1px solid #FFE082', fontSize: '0.8rem', color: '#795548', lineHeight: 1.6 }}>
-        <strong>💡 Nota:</strong> Los PINs son de 4 dígitos y se usan para acceder tanto al panel de administración como a la vista de técnico. Los técnicos con rol "Admin" pueden acceder al panel de administración. Los cambios se aplican inmediatamente.
+        <strong>💡 Nota:</strong> Los técnicos y administradores pueden iniciar sesión en <strong>/login</strong>. Los cambios de correo o contraseña se aplican inmediatamente.
       </div>
     </div>
   )
@@ -1765,7 +2010,7 @@ function GestionTecnicos() {
 // ── Main Admin ─────────────────────────────────────────────────────────────────
 export default function Admin() {
   const navigate = useNavigate()
-  const [desbloqueado, setDesbloqueado] = useState(true)
+
   const [servicios, setServicios] = useState([])
   const [clientes, setClientes] = useState([])
   const [loading, setLoading] = useState(true)
@@ -1781,6 +2026,22 @@ export default function Admin() {
   const { tecnicosLista: TECNICOS } = useTecnicos()
   const [vistaActual, setVistaActual] = useState('lista') // 'lista' | 'mapa' | 'papelera' | 'tecnicos'
   const [mediaActivo, setMediaActivo] = useState(null) // { lista: [...], index: 0 }
+  const [filtroPeriodoModo, setFiltroPeriodoModo] = useState('mes')
+  const [filtroSemana, setFiltroSemana] = useState(() => {
+    const d = new Date()
+    const startDate = new Date(d.getFullYear(), 0, 1)
+    const days = Math.floor((d - startDate) / (24 * 60 * 60 * 1000))
+    const weekNumber = Math.ceil((d.getDay() + 1 + days) / 7)
+    return `${d.getFullYear()}-W${String(weekNumber).padStart(2, '0')}`
+  })
+  const [filtroMes, setFiltroMes] = useState(() => {
+    const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  })
+  const [filtroAnio, setFiltroAnio] = useState(() => new Date().getFullYear())
+  const [filtroPersonalizadoDesde, setFiltroPersonalizadoDesde] = useState('')
+  const [filtroPersonalizadoHasta, setFiltroPersonalizadoHasta] = useState('')
+  const [filtroFinanzaCard, setFiltroFinanzaCard] = useState(null)
+  const [graficoIngresoModo, setGraficoIngresoModo] = useState('anio')
 
   const abrirMedia = (lista, index = 0) => {
     if (typeof lista === 'string') {
@@ -1795,7 +2056,6 @@ export default function Admin() {
   }
 
   useEffect(() => {
-    if (!desbloqueado) return
     const q = query(collection(db, 'servicios'), orderBy('creadoEn', 'desc'))
     const unsub = onSnapshot(q, snap => {
       setServicios(snap.docs.map(d => ({ id: d.id, ...d.data() })))
@@ -1812,9 +2072,7 @@ export default function Admin() {
     }, err => console.error(err))
     
     return () => { unsub(); unsubC() }
-  }, [desbloqueado])
-
-
+  }, [])
 
   const update = async (id, data) => {
     await updateDoc(doc(db, 'servicios', id), data)
@@ -1883,6 +2141,257 @@ export default function Admin() {
     resueltos: servicios.filter(s => s.estado === 'resuelto').length,
   }
 
+  // ── Filtro de período temporal ──
+  const getFechaServicio = (s) => {
+    if (s.fechaCierre) return new Date(s.fechaCierre)
+    if (s.creadoEn?.toDate) return s.creadoEn.toDate()
+    if (s.creadoEn) return new Date(s.creadoEn)
+    return null
+  }
+
+  const filtrarPorPeriodo = (lista) => {
+    if (filtroPeriodoModo === 'todos') return lista
+    let desde, hasta
+    if (filtroPeriodoModo === 'semana') {
+      if (!filtroSemana) return lista
+      const [yearStr, weekStr] = filtroSemana.split('-W')
+      const year = parseInt(yearStr, 10)
+      const week = parseInt(weekStr, 10)
+      desde = new Date(year, 0, 1 + (week - 1) * 7)
+      const dayOffset = desde.getDay() <= 4 ? desde.getDay() - 1 : desde.getDay() - 8
+      desde.setDate(desde.getDate() - dayOffset)
+      desde.setHours(0,0,0,0)
+      hasta = new Date(desde)
+      hasta.setDate(hasta.getDate() + 7)
+    } else if (filtroPeriodoModo === 'mes') {
+      const [y, m] = filtroMes.split('-').map(Number)
+      desde = new Date(y, m - 1, 1)
+      hasta = new Date(y, m, 1)
+    } else if (filtroPeriodoModo === 'anio') {
+      desde = new Date(filtroAnio, 0, 1)
+      hasta = new Date(filtroAnio + 1, 0, 1)
+    } else if (filtroPeriodoModo === 'personalizado') {
+      desde = filtroPersonalizadoDesde ? new Date(`${filtroPersonalizadoDesde}T00:00:00`) : new Date(0)
+      hasta = filtroPersonalizadoHasta ? new Date(`${filtroPersonalizadoHasta}T23:59:59`) : new Date(8640000000000000)
+    }
+    return lista.filter(s => {
+      const fecha = getFechaServicio(s)
+      return fecha && fecha >= desde && fecha < hasta
+    })
+  }
+
+  const calcMontoReal = (srv) => {
+    const { sinIVA, conIVA } = calcTotalesItems(srv.materiales || [], srv.manoObra || [])
+    return srv.cobroSinIva ? sinIVA : conIVA
+  }
+
+  const calcMontoTipo = (srv, usarIva) => {
+    const { sinIVA, conIVA } = calcTotalesItems(srv.materiales || [], srv.manoObra || [])
+    return usarIva ? conIVA : sinIVA
+  }
+
+  // ── Stats financieros calculados sobre filtrados + periodo ──
+  const statsFinancieros = useMemo(() => {
+    const base = filtrarPorPeriodo(filtrados)
+    const pagados = base.filter(s => s.estadoPago === 'pagado')
+    const pagadosSinIva = pagados.filter(s => s.cobroSinIva === true)
+    const pagadosConIva = pagados.filter(s => s.cobroSinIva !== true)
+    const enGarantia = base.filter(s => s.estadoPago === 'en-garantia')
+    const noCorresponde = base.filter(s => s.estadoPago === 'no-corresponde')
+    const aCobrar = base.filter(s => !s.estadoPago || s.estadoPago === 'a-cobrar')
+    const solucionadoCliente = base.filter(s => s.estado === 'solucionado-cliente')
+
+    let totalCobrado = 0, totalSinIvaMonto = 0, totalConIvaMonto = 0
+    let totalACobrarMonto = 0, totalMateriales = 0, totalManoObra = 0
+
+    // Helper: sumar materiales y mano de obra de una lista de servicios
+    const calcMatMOLista = (lista) => {
+      let mat = 0, mo = 0
+      lista.forEach(s => {
+        const { totalMatNeto, totalMoNeto } = calcTotalesItems(s.materiales || [], s.manoObra || [])
+        mat += totalMatNeto
+        mo += totalMoNeto
+      })
+      return { mat, mo }
+    }
+
+    pagados.forEach(s => {
+      totalCobrado += calcMontoReal(s)
+      const { totalMatNeto, totalMoNeto } = calcTotalesItems(s.materiales || [], s.manoObra || [])
+      totalMateriales += totalMatNeto
+      totalManoObra += totalMoNeto
+    })
+    pagadosSinIva.forEach(s => { totalSinIvaMonto += calcMontoTipo(s, false) })
+    pagadosConIva.forEach(s => { totalConIvaMonto += calcMontoTipo(s, true) })
+    aCobrar.forEach(s => { totalACobrarMonto += calcMontoReal(s) })
+
+    // Calcular materiales y mano de obra por categoría
+    const matMOBase = calcMatMOLista(base)
+    const matMOPagados = { mat: totalMateriales, mo: totalManoObra }
+    const matMOSinIva = calcMatMOLista(pagadosSinIva)
+    const matMOConIva = calcMatMOLista(pagadosConIva)
+    const matMOACobrar = calcMatMOLista(aCobrar)
+    const matMOEnGarantia = calcMatMOLista(enGarantia)
+    const matMONoCorresponde = calcMatMOLista(noCorresponde)
+    const matMOSolucionadoCliente = calcMatMOLista(solucionadoCliente)
+
+    const ticketPromedio = pagados.length > 0 ? totalCobrado / pagados.length : 0
+    const resueltosTotales = base.filter(s => s.estado === 'resuelto' || s.estado === 'solucionado-cliente').length
+    const tasaResolucion = base.length > 0 ? (resueltosTotales / base.length) * 100 : 0
+
+    const porMetodo = {}
+    pagados.forEach(s => {
+      const metodo = s.metodoPago || 'No especificado'
+      if (!porMetodo[metodo]) porMetodo[metodo] = { count: 0, monto: 0 }
+      porMetodo[metodo].count += 1
+      porMetodo[metodo].monto += calcMontoReal(s)
+    })
+
+    // Datos para gráfico de barras por estado de pago
+    const barrasEstadoPago = [
+      { label: 'Pagado', count: pagados.length, monto: totalCobrado, color: '#66BB6A' },
+      { label: 'A cobrar', count: aCobrar.length, monto: totalACobrarMonto, color: '#EF5350' },
+      { label: 'Sin IVA', count: pagadosSinIva.length, monto: totalSinIvaMonto, color: '#42A5F5' },
+      { label: 'Con IVA', count: pagadosConIva.length, monto: totalConIvaMonto, color: '#AB47BC' },
+      { label: 'Garantía', count: enGarantia.length, monto: 0, color: '#FFA726' },
+      { label: 'No corresp.', count: noCorresponde.length, monto: 0, color: '#78909C' },
+    ]
+
+    return {
+      totalServicios: base.length,
+      pagados: { count: pagados.length, monto: totalCobrado },
+      pagadosSinIva: { count: pagadosSinIva.length, monto: totalSinIvaMonto },
+      pagadosConIva: { count: pagadosConIva.length, monto: totalConIvaMonto },
+      enGarantia: { count: enGarantia.length },
+      noCorresponde: { count: noCorresponde.length },
+      aCobrar: { count: aCobrar.length, monto: totalACobrarMonto },
+      solucionadoCliente: { count: solucionadoCliente.length },
+      totalMateriales, totalManoObra, ticketPromedio, tasaResolucion, porMetodo,
+      totalMatBase: matMOBase.mat, totalMOBase: matMOBase.mo,
+      matMO: {
+        pagados: matMOPagados, sinIva: matMOSinIva, conIva: matMOConIva,
+        aCobrar: matMOACobrar, enGarantia: matMOEnGarantia,
+        noCorresponde: matMONoCorresponde, solucionadoCliente: matMOSolucionadoCliente,
+      },
+      barrasEstadoPago,
+      serviciosPagados: pagados,
+      serviciosSinIva: pagadosSinIva,
+      serviciosConIva: pagadosConIva,
+      serviciosACobrar: aCobrar,
+      serviciosEnGarantia: enGarantia,
+      serviciosNoCorresponde: noCorresponde,
+      serviciosSolucionadoCliente: solucionadoCliente,
+      serviciosBase: base,
+    }
+  }, [filtrados, filtroPeriodoModo, filtroSemana, filtroMes, filtroAnio, filtroPersonalizadoDesde, filtroPersonalizadoHasta])
+
+  const METODO_ICONS = {
+    'Efectivo': { icon: '💵', bg: 'rgba(76,175,80,0.2)', color: '#66BB6A' },
+    'Transferencia': { icon: '🏦', bg: 'rgba(33,150,243,0.2)', color: '#42A5F5' },
+    'Echeq': { icon: '📄', bg: 'rgba(156,39,176,0.2)', color: '#AB47BC' },
+    'Tarjeta Crédito/Débito': { icon: '💳', bg: 'rgba(255,152,0,0.2)', color: '#FFA726' },
+    'Otro': { icon: '📋', bg: 'rgba(158,158,158,0.2)', color: '#90A4AE' },
+    'No especificado': { icon: '❓', bg: 'rgba(158,158,158,0.15)', color: '#78909C' },
+  }
+
+  // Materiales/MO dinámicos según tarjeta seleccionada
+  const matMOActual = filtroFinanzaCard && statsFinancieros.matMO[filtroFinanzaCard]
+    ? statsFinancieros.matMO[filtroFinanzaCard]
+    : { mat: statsFinancieros.totalMatBase, mo: statsFinancieros.totalMOBase }
+  const totalMatMO = matMOActual.mat + matMOActual.mo
+  const pctMat = totalMatMO > 0 ? (matMOActual.mat / totalMatMO) * 100 : 0
+  const pctMO = totalMatMO > 0 ? (matMOActual.mo / totalMatMO) * 100 : 0
+
+  // Generar lista de años disponibles
+  const aniosDisponibles = useMemo(() => {
+    const years = new Set()
+    servicios.forEach(s => {
+      const f = getFechaServicio(s)
+      if (f) years.add(f.getFullYear())
+    })
+    const arr = [...years].sort((a, b) => b - a)
+    if (arr.length === 0) arr.push(new Date().getFullYear())
+    return arr
+  }, [servicios])
+
+  // ── Datos para gráfico de ingreso de servicios ──
+  const datosIngresoServicios = useMemo(() => {
+    const mesesNombres = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
+    const diasSemana = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom']
+    const base = filtrarPorPeriodo(filtrados)
+
+    const getFechaIngreso = (s) => {
+      if (s.creadoEn?.toDate) return s.creadoEn.toDate()
+      if (s.creadoEn) return new Date(s.creadoEn)
+      return null
+    }
+
+    if (graficoIngresoModo === 'anio') {
+      // Barras: una por mes del año seleccionado
+      const year = filtroAnio
+      const data = Array(12).fill(0)
+      base.forEach(s => {
+        const f = getFechaIngreso(s)
+        if (f && f.getFullYear() === year) data[f.getMonth()]++
+      })
+      return { labels: mesesNombres, values: data, titulo: `Servicios ingresados por mes — ${year}` }
+    }
+
+    if (graficoIngresoModo === 'mes') {
+      // Barras: una por día del mes seleccionado
+      const [y, m] = filtroMes.split('-').map(Number)
+      const diasEnMes = new Date(y, m, 0).getDate()
+      const data = Array(diasEnMes).fill(0)
+      base.forEach(s => {
+        const f = getFechaIngreso(s)
+        if (f && f.getFullYear() === y && f.getMonth() === m - 1) data[f.getDate() - 1]++
+      })
+      return { labels: Array.from({length: diasEnMes}, (_, i) => String(i + 1)), values: data, titulo: `Servicios ingresados por día — ${mesesNombres[m - 1]} ${y}` }
+    }
+
+    if (graficoIngresoModo === 'semana') {
+      // Barras: Lun-Dom de la semana seleccionada
+      const data = Array(7).fill(0)
+      if (filtroSemana) {
+        const [yearStr, weekStr] = filtroSemana.split('-W')
+        const year = parseInt(yearStr, 10)
+        const week = parseInt(weekStr, 10)
+        let desde = new Date(year, 0, 1 + (week - 1) * 7)
+        const dayOffset = desde.getDay() <= 4 ? desde.getDay() - 1 : desde.getDay() - 8
+        desde.setDate(desde.getDate() - dayOffset)
+        desde.setHours(0,0,0,0)
+        const hasta = new Date(desde)
+        hasta.setDate(hasta.getDate() + 7)
+        base.forEach(s => {
+          const f = getFechaIngreso(s)
+          if (f && f >= desde && f < hasta) {
+            let day = f.getDay() - 1
+            if (day < 0) day = 6
+            data[day]++
+          }
+        })
+      }
+      return { labels: diasSemana, values: data, titulo: `Servicios ingresados por día — Semana ${filtroSemana || ''}` }
+    }
+
+    // 'todos': agrupar por mes/año
+    const porMesAnio = {}
+    base.forEach(s => {
+      const f = getFechaIngreso(s)
+      if (f) {
+        const key = `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}`
+        porMesAnio[key] = (porMesAnio[key] || 0) + 1
+      }
+    })
+    const sortedKeys = Object.keys(porMesAnio).sort()
+    return {
+      labels: sortedKeys.map(k => { const [y, m] = k.split('-'); return `${mesesNombres[parseInt(m,10)-1]} ${y.slice(2)}` }),
+      values: sortedKeys.map(k => porMesAnio[k]),
+      titulo: 'Servicios ingresados por mes — Todos los períodos'
+    }
+  }, [filtrados, graficoIngresoModo, filtroAnio, filtroMes, filtroSemana, filtroPeriodoModo, filtroPersonalizadoDesde, filtroPersonalizadoHasta])
+
+
   const exportarExcel = () => {
     const data = filtrados.map(s => ({
       'Nombre y Apellido': s.nombre || '',
@@ -1911,7 +2420,7 @@ export default function Admin() {
             Exportar Excel
           </button>
           <button className="btn-secondary" onClick={() => {
-            const url = 'https://eulerservicios.netlify.app/'
+            const url = window.location.origin + '/'
             navigator.clipboard.writeText(url)
             alert('✅ Link del formulario copiado')
           }}>
@@ -1939,6 +2448,8 @@ export default function Admin() {
           <div className="stat-label">Resueltos</div>
         </div>
       </div>
+
+
 
       <div className="filtros" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
         <input 
@@ -1999,6 +2510,11 @@ export default function Admin() {
           <Map size={15} /> Mapa
         </button>
         <button
+          onClick={() => setVistaActual('finanzas')}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: '0.85rem', fontWeight: 600, background: vistaActual === 'finanzas' ? 'var(--dorado)' : '#FDF3DC', color: vistaActual === 'finanzas' ? 'white' : '#B8860B' }}>
+          <DollarSign size={15} /> Finanzas
+        </button>
+        <button
           onClick={() => setVistaActual('papelera')}
           style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: '0.85rem', fontWeight: 600, background: vistaActual === 'papelera' ? 'var(--rojo)' : '#FFF0EE', color: vistaActual === 'papelera' ? 'white' : 'var(--rojo)' }}>
           <Trash2 size={15} /> Papelera
@@ -2019,6 +2535,311 @@ export default function Admin() {
           <BookOpen size={15} /> Manuales y Soluciones
         </button>
       </div>
+
+      {vistaActual === 'finanzas' && (
+        <>
+        <div className="finance-panel" style={{ marginTop: 0 }}>
+          <div className="finance-header">
+            <div className="finance-title">
+              <span className="icon-circle"><DollarSign size={15} color="#e0a42d" /></span>
+              Analítica Financiera
+            </div>
+          </div>
+
+          {/* Selector de período */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, marginBottom: 20, background: 'rgba(255,255,255,0.06)', borderRadius: 10, padding: '12px 14px', position: 'relative', zIndex: 1 }}>
+            <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.5)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Período:</span>
+            <div className="finance-period-selector">
+              {[{ key: 'semana', label: 'Semana' }, { key: 'mes', label: 'Mes' }, { key: 'anio', label: 'Año' }, { key: 'personalizado', label: 'Personalizado' }, { key: 'todos', label: 'Todos' }].map(p => (
+                <button key={p.key} className={`finance-period-btn${filtroPeriodoModo === p.key ? ' active' : ''}`} onClick={() => setFiltroPeriodoModo(p.key)}>
+                  {p.label}
+                </button>
+              ))}
+            </div>
+            {filtroPeriodoModo === 'semana' && (
+              <input type="week" value={filtroSemana} onChange={e => setFiltroSemana(e.target.value)}
+                style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.1)', color: '#fff', fontFamily: 'var(--font)', fontSize: '0.8rem' }} />
+            )}
+            {filtroPeriodoModo === 'mes' && (
+              <input type="month" value={filtroMes} onChange={e => setFiltroMes(e.target.value)}
+                style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.1)', color: '#fff', fontFamily: 'var(--font)', fontSize: '0.8rem' }} />
+            )}
+            {filtroPeriodoModo === 'anio' && (
+              <select value={filtroAnio} onChange={e => setFiltroAnio(Number(e.target.value))}
+                style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.1)', color: '#fff', fontFamily: 'var(--font)', fontSize: '0.8rem' }}>
+                {aniosDisponibles.map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+            )}
+            {filtroPeriodoModo === 'personalizado' && (
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)' }}>Desde:</span>
+                <input type="date" value={filtroPersonalizadoDesde} onChange={e => setFiltroPersonalizadoDesde(e.target.value)}
+                  style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.1)', color: '#fff', fontFamily: 'var(--font)', fontSize: '0.8rem', colorScheme: 'dark' }} />
+                <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)', marginLeft: 4 }}>Hasta:</span>
+                <input type="date" value={filtroPersonalizadoHasta} onChange={e => setFiltroPersonalizadoHasta(e.target.value)}
+                  style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.1)', color: '#fff', fontFamily: 'var(--font)', fontSize: '0.8rem', colorScheme: 'dark' }} />
+              </div>
+            )}
+            <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.35)', marginLeft: 'auto' }}>
+              {statsFinancieros.totalServicios} servicio{statsFinancieros.totalServicios !== 1 ? 's' : ''} en período
+            </span>
+          </div>
+
+          {/* Tarjetas principales — layout jerárquico */}
+          <div style={{ marginBottom: 16, position: 'relative', zIndex: 1 }}>
+            {/* Fila 1: Total Cobrado (hero) */}
+            <div className={`finance-card finance-card-hero${filtroFinanzaCard === 'pagados' ? ' finance-card-active' : ''}`} onClick={() => setFiltroFinanzaCard(prev => prev === 'pagados' ? null : 'pagados')} style={{ cursor: 'pointer', marginBottom: 10 }}>
+              <div className="finance-card-label" style={{ textAlign: 'center' }}>Total Cobrado</div>
+              <div className="finance-card-value dorado" style={{ textAlign: 'center', fontSize: '1.8rem' }}>${formatMoney(statsFinancieros.pagados.monto)}</div>
+              <div style={{ textAlign: 'center', marginTop: 6 }}><span className="finance-card-count"><Check size={11} /> {statsFinancieros.pagados.count} servicio{statsFinancieros.pagados.count !== 1 ? 's' : ''}</span></div>
+            </div>
+            {/* Fila 2: Sin IVA + Con IVA (sub del total) */}
+            <div className="finance-cards-sub-row">
+              <div className={`finance-card${filtroFinanzaCard === 'sinIva' ? ' finance-card-active' : ''}`} onClick={() => setFiltroFinanzaCard(prev => prev === 'sinIva' ? null : 'sinIva')} style={{ cursor: 'pointer' }}>
+                <div className="finance-card-label">Cobrados sin IVA</div>
+                <div className="finance-card-value">${formatMoney(statsFinancieros.pagadosSinIva.monto)}</div>
+                <div className="finance-card-count">{statsFinancieros.pagadosSinIva.count} servicio{statsFinancieros.pagadosSinIva.count !== 1 ? 's' : ''}</div>
+              </div>
+              <div className={`finance-card${filtroFinanzaCard === 'conIva' ? ' finance-card-active' : ''}`} onClick={() => setFiltroFinanzaCard(prev => prev === 'conIva' ? null : 'conIva')} style={{ cursor: 'pointer' }}>
+                <div className="finance-card-label">Cobrados con IVA</div>
+                <div className="finance-card-value">${formatMoney(statsFinancieros.pagadosConIva.monto)}</div>
+                <div className="finance-card-count">{statsFinancieros.pagadosConIva.count} servicio{statsFinancieros.pagadosConIva.count !== 1 ? 's' : ''}</div>
+              </div>
+            </div>
+            {/* Fila 3: Estado del servicio */}
+            <div className="finance-cards-status-row">
+              <div className={`finance-card${filtroFinanzaCard === 'aCobrar' ? ' finance-card-active' : ''}`} onClick={() => setFiltroFinanzaCard(prev => prev === 'aCobrar' ? null : 'aCobrar')} style={{ cursor: 'pointer' }}>
+                <div className="finance-card-label">Pendiente de cobro</div>
+                <div className="finance-card-value rojo">${formatMoney(statsFinancieros.aCobrar.monto)}</div>
+                <div className="finance-card-count"><Clock size={11} /> {statsFinancieros.aCobrar.count} servicio{statsFinancieros.aCobrar.count !== 1 ? 's' : ''}</div>
+              </div>
+              <div className={`finance-card${filtroFinanzaCard === 'enGarantia' ? ' finance-card-active' : ''}`} onClick={() => setFiltroFinanzaCard(prev => prev === 'enGarantia' ? null : 'enGarantia')} style={{ cursor: 'pointer' }}>
+                <div className="finance-card-label">En Garantía</div>
+                <div className="finance-card-value naranja">{statsFinancieros.enGarantia.count}</div>
+                <div className="finance-card-sub">servicio{statsFinancieros.enGarantia.count !== 1 ? 's' : ''}</div>
+              </div>
+              <div className={`finance-card${filtroFinanzaCard === 'noCorresponde' ? ' finance-card-active' : ''}`} onClick={() => setFiltroFinanzaCard(prev => prev === 'noCorresponde' ? null : 'noCorresponde')} style={{ cursor: 'pointer' }}>
+                <div className="finance-card-label">No corresponde</div>
+                <div className="finance-card-value">{statsFinancieros.noCorresponde.count}</div>
+                <div className="finance-card-sub">servicio{statsFinancieros.noCorresponde.count !== 1 ? 's' : ''}</div>
+              </div>
+              <div className={`finance-card${filtroFinanzaCard === 'solucionadoCliente' ? ' finance-card-active' : ''}`} onClick={() => setFiltroFinanzaCard(prev => prev === 'solucionadoCliente' ? null : 'solucionadoCliente')} style={{ cursor: 'pointer' }}>
+                <div className="finance-card-label">Soluc. por cliente</div>
+                <div className="finance-card-value" style={{ color: '#CE93D8' }}>{statsFinancieros.solucionadoCliente.count}</div>
+                <div className="finance-card-sub">sin visita técnica</div>
+              </div>
+            </div>
+          </div>
+
+          {/* GRÁFICO DE BARRAS — Ingreso de servicios por fecha */}
+          <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '16px', marginBottom: 16, position: 'relative', zIndex: 1 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
+              <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.7px', fontWeight: 700 }}>
+                <TrendingUp size={13} style={{ verticalAlign: 'middle', marginRight: 4 }} />{datosIngresoServicios.titulo}
+              </div>
+              <div className="finance-period-selector">
+                {[{ key: 'semana', label: 'Semana' }, { key: 'mes', label: 'Mes' }, { key: 'anio', label: 'Año' }, { key: 'todos', label: 'Todos' }].map(p => (
+                  <button key={p.key} className={`finance-period-btn${graficoIngresoModo === p.key ? ' active' : ''}`} onClick={() => setGraficoIngresoModo(p.key)}>
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {datosIngresoServicios.values.every(v => v === 0) ? (
+              <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: '0.8rem', padding: 16 }}>No hay servicios ingresados en este período</div>
+            ) : (
+              <div style={{ display: 'flex', gap: 3, alignItems: 'flex-end', padding: '0 4px', overflowX: datosIngresoServicios.labels.length > 31 ? 'auto' : 'visible' }}>
+                {datosIngresoServicios.values.map((val, i) => {
+                  const maxVal = Math.max(...datosIngresoServicios.values, 1)
+                  const barHeight = Math.max((val / maxVal) * 140, val > 0 ? 4 : 2)
+                  return (
+                    <div key={i} className="ingreso-chart-bar-group" style={{ minWidth: datosIngresoServicios.labels.length > 20 ? 18 : undefined }}>
+                      <span className="ingreso-chart-count">{val > 0 ? val : ''}</span>
+                      <div style={{ height: 140, display: 'flex', alignItems: 'flex-end', width: '100%', justifyContent: 'center' }}>
+                        <div className="ingreso-chart-bar" style={{ height: barHeight, opacity: val === 0 ? 0.3 : 1 }} />
+                      </div>
+                      <span className="ingreso-chart-label">{datosIngresoServicios.labels[i]}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+            <div style={{ textAlign: 'center', marginTop: 10, fontSize: '0.68rem', color: 'rgba(255,255,255,0.35)' }}>
+              Total: {datosIngresoServicios.values.reduce((a, b) => a + b, 0)} servicios ingresados
+            </div>
+          </div>
+
+          {/* GRÁFICO DE BARRAS — Estado de cobro (montos) */}
+          <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '16px', marginBottom: 16, position: 'relative', zIndex: 1 }}>
+            <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.7px', fontWeight: 700, marginBottom: 14 }}>Montos por estado de cobro</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {statsFinancieros.barrasEstadoPago.filter(b => b.monto > 0).map(bar => {
+                const maxMonto = Math.max(...statsFinancieros.barrasEstadoPago.map(b => b.monto), 1)
+                const totalMontos = statsFinancieros.barrasEstadoPago.reduce((acc, b) => acc + b.monto, 0) || 1
+                const barWidth = (bar.monto / maxMonto) * 100
+                const pctReal = (bar.monto / totalMontos) * 100
+                return (
+                  <div key={bar.label}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>{bar.label} ({bar.count})</span>
+                      <span style={{ fontSize: '0.75rem', color: '#fff', fontWeight: 700, fontFamily: 'var(--font-display)' }}>${formatMoney(bar.monto)}</span>
+                    </div>
+                    <div style={{ height: 22, borderRadius: 6, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${barWidth}%`, background: `linear-gradient(90deg, ${bar.color}88, ${bar.color})`, borderRadius: 6, transition: 'width 0.8s ease', display: 'flex', alignItems: 'center', paddingLeft: 8 }}>
+                        {barWidth > 15 && <span style={{ fontSize: '0.65rem', color: '#fff', fontWeight: 700 }}>{pctReal.toFixed(0)}%</span>}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+              {statsFinancieros.barrasEstadoPago.every(b => b.monto === 0) && (
+                <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: '0.8rem', padding: 16 }}>No hay montos para mostrar en este período</div>
+              )}
+            </div>
+          </div>
+
+          {/* GRÁFICO DE BARRAS — Conteo por estado de pago */}
+          <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '16px', marginBottom: 16, position: 'relative', zIndex: 1 }}>
+            <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.7px', fontWeight: 700, marginBottom: 14 }}>Cantidad de servicios por estado de cobro</div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', height: 160, padding: '0 8px' }}>
+              {statsFinancieros.barrasEstadoPago.map(bar => {
+                const maxCount = Math.max(...statsFinancieros.barrasEstadoPago.map(b => b.count), 1)
+                const pct = (bar.count / maxCount) * 100
+                return (
+                  <div key={bar.label} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                    <span style={{ fontSize: '0.72rem', color: '#fff', fontWeight: 700 }}>{bar.count}</span>
+                    <div style={{ width: '100%', maxWidth: 50, borderRadius: '6px 6px 0 0', background: `linear-gradient(180deg, ${bar.color}, ${bar.color}66)`, height: `${Math.max(pct, 4)}%`, transition: 'height 0.8s ease', minHeight: 4 }} />
+                    <span style={{ fontSize: '0.58rem', color: 'rgba(255,255,255,0.5)', fontWeight: 600, textAlign: 'center', lineHeight: 1.2 }}>{bar.label}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Desglose Materiales vs Mano de Obra */}
+          <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.7px', fontWeight: 700, marginBottom: 8 }}>
+            Desglose Materiales vs Mano de Obra {filtroFinanzaCard ? <span style={{ color: 'var(--dorado)', textTransform: 'none' }}>— {({ pagados: 'Total Cobrado', sinIva: 'Cobrados sin IVA', conIva: 'Cobrados con IVA', aCobrar: 'Pendientes de cobro', enGarantia: 'En Garantía', noCorresponde: 'No corresponde', solucionadoCliente: 'Soluc. por cliente' })[filtroFinanzaCard]}</span> : <span style={{ textTransform: 'none' }}>— Todos los servicios</span>}
+          </div>
+          <div className="finance-breakdown">
+            <div className="breakdown-card">
+              <div className="breakdown-card-header">
+                <div className="breakdown-card-title"><Package size={13} color="#42A5F5" /> Materiales</div>
+                <div className="breakdown-card-amount">${formatMoney(matMOActual.mat)}</div>
+              </div>
+              <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.4)' }}>{pctMat.toFixed(1)}% del total facturado</div>
+              <div className="breakdown-bar"><div className="breakdown-bar-fill materiales" style={{ width: `${pctMat}%` }} /></div>
+            </div>
+            <div className="breakdown-card">
+              <div className="breakdown-card-header">
+                <div className="breakdown-card-title"><Wrench size={13} color="#FFA726" /> Mano de obra</div>
+                <div className="breakdown-card-amount">${formatMoney(matMOActual.mo)}</div>
+              </div>
+              <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.4)' }}>{pctMO.toFixed(1)}% del total facturado</div>
+              <div className="breakdown-bar"><div className="breakdown-bar-fill mano-obra" style={{ width: `${pctMO}%` }} /></div>
+            </div>
+          </div>
+
+          {/* GRÁFICO DE BARRAS — Métodos de pago */}
+          {Object.keys(statsFinancieros.porMetodo).length > 0 && (
+            <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '16px', marginBottom: 16, position: 'relative', zIndex: 1 }}>
+              <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.7px', fontWeight: 700, marginBottom: 14 }}>Facturación por método de pago</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {Object.entries(statsFinancieros.porMetodo)
+                  .sort((a, b) => b[1].monto - a[1].monto)
+                  .map(([metodo, data]) => {
+                    const info = METODO_ICONS[metodo] || METODO_ICONS['Otro']
+                    const maxMetodo = Math.max(...Object.values(statsFinancieros.porMetodo).map(m => m.monto), 1)
+                    const pct = (data.monto / maxMetodo) * 100
+                    return (
+                      <div key={metodo}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                          <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontSize: '0.9rem' }}>{info.icon}</span> {metodo} ({data.count})
+                          </span>
+                          <span style={{ fontSize: '0.75rem', color: '#fff', fontWeight: 700, fontFamily: 'var(--font-display)' }}>${formatMoney(data.monto)}</span>
+                        </div>
+                        <div style={{ height: 18, borderRadius: 5, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${pct}%`, background: `linear-gradient(90deg, ${info.color}88, ${info.color})`, borderRadius: 5, transition: 'width 0.8s ease' }} />
+                        </div>
+                      </div>
+                    )
+                  })}
+              </div>
+            </div>
+          )}
+
+          {/* Métodos de Pago - Cards */}
+          {Object.keys(statsFinancieros.porMetodo).length > 0 && (
+            <div className="payment-methods">
+              <div className="payment-methods-title">Detalle por método de pago</div>
+              <div className="payment-methods-grid">
+                {Object.entries(statsFinancieros.porMetodo)
+                  .sort((a, b) => b[1].monto - a[1].monto)
+                  .map(([metodo, data]) => {
+                    const info = METODO_ICONS[metodo] || METODO_ICONS['Otro']
+                    return (
+                      <div key={metodo} className="payment-method-item">
+                        <div className="payment-method-icon" style={{ background: info.bg }}>{info.icon}</div>
+                        <div className="payment-method-info">
+                          <div className="payment-method-name">{metodo}</div>
+                          <div className="payment-method-amount">${formatMoney(data.monto)}</div>
+                          <div className="payment-method-count">{data.count} pago{data.count !== 1 ? 's' : ''}</div>
+                        </div>
+                      </div>
+                    )
+                  })}
+              </div>
+            </div>
+          )}
+
+          {/* Footer: Ticket promedio + Tasa de resolución */}
+          <div className="finance-footer-stats">
+            <div className="finance-mini-stat">
+              <TrendingUp size={14} color="#66BB6A" />
+              Ticket promedio: <strong>${formatMoney(statsFinancieros.ticketPromedio)}</strong>
+            </div>
+            <div className="finance-mini-stat">
+              <Check size={14} color="#42A5F5" />
+              Tasa de resolución: <strong>{statsFinancieros.tasaResolucion.toFixed(1)}%</strong>
+            </div>
+            <div className="finance-mini-stat">
+              Total servicios en período: <strong>{statsFinancieros.totalServicios}</strong>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ marginTop: 24 }}>
+          <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--azul)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <List size={18} />
+            {filtroFinanzaCard ? (
+              <>
+                {({ pagados: 'Total Cobrado', sinIva: 'Cobrados sin IVA', conIva: 'Cobrados con IVA', aCobrar: 'Pendientes de cobro', enGarantia: 'En Garantía', noCorresponde: 'No corresponde', solucionadoCliente: 'Soluc. por cliente' })[filtroFinanzaCard]} ({({ pagados: statsFinancieros.serviciosPagados, sinIva: statsFinancieros.serviciosSinIva, conIva: statsFinancieros.serviciosConIva, aCobrar: statsFinancieros.serviciosACobrar, enGarantia: statsFinancieros.serviciosEnGarantia, noCorresponde: statsFinancieros.serviciosNoCorresponde, solucionadoCliente: statsFinancieros.serviciosSolucionadoCliente })[filtroFinanzaCard]?.length || 0})
+                <button onClick={() => setFiltroFinanzaCard(null)} style={{ background: 'rgba(239,83,80,0.15)', color: '#EF5350', border: '1px solid rgba(239,83,80,0.3)', borderRadius: 6, padding: '2px 10px', fontSize: '0.72rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' }}>
+                  ✕ Quitar filtro
+                </button>
+              </>
+            ) : (
+              <>Servicios del período ({statsFinancieros.totalServicios})</>
+            )}
+          </div>
+          {(() => {
+            const listaServicios = filtroFinanzaCard
+              ? ({ pagados: statsFinancieros.serviciosPagados, sinIva: statsFinancieros.serviciosSinIva, conIva: statsFinancieros.serviciosConIva, aCobrar: statsFinancieros.serviciosACobrar, enGarantia: statsFinancieros.serviciosEnGarantia, noCorresponde: statsFinancieros.serviciosNoCorresponde, solucionadoCliente: statsFinancieros.serviciosSolucionadoCliente })[filtroFinanzaCard] || []
+              : filtrarPorPeriodo(filtrados)
+            return listaServicios.length === 0 ? (
+              <div className="empty-state" style={{ background: 'white' }}>
+                <AlertCircle size={48} />
+                <p>No hay servicios {filtroFinanzaCard ? 'en esta categoría' : 'cobrados en este período'}</p>
+              </div>
+            ) : (
+              listaServicios.map(s => (
+                <ServicioCard key={s.id} s={s} onUpdate={update} onEliminar={eliminar} onFoto={abrirMedia} clientes={clientes} navigate={navigate} />
+              ))
+            )
+          })()}
+        </div>
+        </>
+      )}
 
       {vistaActual === 'mapa' && (
         <MapaServicios servicios={filtrados.length > 0 ? filtrados : servicios.filter(s => s.estado !== 'resuelto')} />
@@ -2057,7 +2878,7 @@ export default function Admin() {
         )
       )}
 
-      <button className="fab" onClick={() => navigate('/servicios/nuevo')} title="Nuevo servicio">
+      <button className="fab" onClick={() => navigate('/admin/nuevo')} title="Nuevo servicio">
         <Plus size={24} />
       </button>
 
@@ -2079,7 +2900,7 @@ export default function Admin() {
           </p>
           <button
             onClick={() => {
-              localStorage.setItem('euler_device_role', '/servicios')
+              localStorage.setItem('euler_device_role', '/admin')
               alert('✅ Rol de Administrador asignado a este dispositivo. Ahora podés "Agregar a la pantalla de inicio".')
             }}
             style={{ padding: '8px 16px', borderRadius: 8, background: 'var(--azul)', color: 'white', border: 'none', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}

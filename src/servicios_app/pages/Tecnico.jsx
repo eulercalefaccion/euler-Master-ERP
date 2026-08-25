@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore'
+import { collection, onSnapshot, query, orderBy, where } from 'firebase/firestore'
 import { db } from '../../services/firebaseConfig'
-import { ChevronRight, AlertCircle, BookOpen, List } from 'lucide-react'
-import PinLock from '../components/PinLock'
+import { ChevronRight, AlertCircle, BookOpen, List, Map } from 'lucide-react'
+// useAuth provided by ERP auth shim
+const useAuth = () => ({ user: { uid: 'erp-admin', nombre: 'Administrador', role: 'admin' }, logout: () => {} })
 import ManualesSoluciones from '../components/ManualesSoluciones'
+import MapaServicios from '../components/MapaServicios'
 
 function formatFecha(ts) {
   if (!ts) return '—'
@@ -42,34 +44,26 @@ const EQUIPO_LABELS = {
 
 export default function Tecnico() {
   const navigate = useNavigate()
-  const [usuario, setUsuario] = useState(() => {
-    const u = sessionStorage.getItem('euler_tecnico')
-    return u ? JSON.parse(u) : null
-  })
+  const { nombre } = useAuth()
   const [servicios, setServicios] = useState([])
   const [loading, setLoading] = useState(true)
   const [filtroTexto, setFiltroTexto] = useState('')
-  const [vistaActual, setVistaActual] = useState('servicios') // 'servicios' | 'manuales'
+  const [vistaActual, setVistaActual] = useState('servicios') // 'servicios' | 'manuales' | 'mapa'
 
   useEffect(() => {
-    if (!usuario) return
     const q = query(collection(db, 'servicios'), orderBy('creadoEn', 'desc'))
     const unsub = onSnapshot(q, snap => {
       const todos = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-      // Mostrar solo pendientes y en-curso, y filtrar por asignación
       const filtradosYOrdenados = todos.filter(s => {
         if (s.estado === 'resuelto' || s.estado === 'solucionado-cliente') return false
-        // Si no está asignado a nadie, lo ven todos
         if (!s.tecnico || s.tecnico.trim() === '' || s.tecnico === 'Sin asignar') return true
-        // Si está asignado a ESTE técnico, lo ve
-        if (s.tecnico === usuario.nombre) return true
-        // Si está asignado a otro técnico, NO lo ve
+        if (s.tecnico === nombre) return true
         return false
       }).sort((a, b) => {
-        const aEsMio = a.tecnico === usuario.nombre ? 1 : 0
-        const bEsMio = b.tecnico === usuario.nombre ? 1 : 0
+        const aEsMio = a.tecnico === nombre ? 1 : 0
+        const bEsMio = b.tecnico === nombre ? 1 : 0
         if (aEsMio !== bEsMio) {
-          return bEsMio - aEsMio // Asignados a mí primero
+          return bEsMio - aEsMio
         }
         const tA = a.creadoEn?.toMillis ? a.creadoEn.toMillis() : new Date(a.creadoEn || 0).getTime()
         const tB = b.creadoEn?.toMillis ? b.creadoEn.toMillis() : new Date(b.creadoEn || 0).getTime()
@@ -79,19 +73,7 @@ export default function Tecnico() {
       setLoading(false)
     })
     return unsub
-  }, [usuario])
-
-  if (!usuario) {
-    return <PinLock modo="tecnico" titulo="Vista Técnico" onUnlock={(u) => {
-      sessionStorage.setItem('euler_tecnico', JSON.stringify(u))
-      setUsuario(u)
-    }} />
-  }
-
-  const cerrarSesion = () => {
-    sessionStorage.removeItem('euler_tecnico')
-    setUsuario(null)
-  }
+  }, [nombre])
 
   const serviciosFiltrados = servicios.filter(s => {
     if (filtroTexto) {
@@ -111,13 +93,11 @@ export default function Tecnico() {
       <div className="admin-header">
         <div>
           <div className="admin-title">Mis Servicios</div>
-          <div style={{ fontSize: '0.82rem', color: 'var(--gris-texto)' }}>Hola, {usuario.nombre}</div>
+          <div style={{ fontSize: '0.82rem', color: 'var(--gris-texto)' }}>Hola, {nombre}</div>
         </div>
-        <button className="btn-secondary" onClick={cerrarSesion}>Salir</button>
       </div>
 
-      {/* Pestañas de Navegación del Técnico */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
         <button
           onClick={() => setVistaActual('servicios')}
           style={{
@@ -136,6 +116,25 @@ export default function Tecnico() {
           }}
         >
           <List size={15} /> Mis Servicios
+        </button>
+        <button
+          onClick={() => setVistaActual('mapa')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '10px 16px',
+            borderRadius: 8,
+            border: 'none',
+            cursor: 'pointer',
+            fontFamily: 'var(--font)',
+            fontSize: '0.85rem',
+            fontWeight: 600,
+            background: vistaActual === 'mapa' ? 'var(--azul)' : '#EEF4FF',
+            color: vistaActual === 'mapa' ? 'white' : 'var(--azul)'
+          }}
+        >
+          <Map size={15} /> Mapa
         </button>
         <button
           onClick={() => setVistaActual('manuales')}
@@ -160,7 +159,6 @@ export default function Tecnico() {
 
       {vistaActual === 'servicios' && (
         <>
-          {/* Stats rápidos */}
           <div className="stats-row" style={{ marginBottom: 20 }}>
             <div className="stat-card">
               <div className="stat-number" style={{ color: '#E65100' }}>
@@ -204,10 +202,10 @@ export default function Tecnico() {
               <div key={s.id}
                 onClick={() => navigate(`/tecnico/servicio/${s.id}`)}
                 style={{
-                  background: s.tecnico === usuario.nombre ? '#F4F9FF' : 'white', borderRadius: 12, padding: '16px 18px',
+                  background: s.tecnico === nombre ? '#F4F9FF' : 'white', borderRadius: 12, padding: '16px 18px',
                   marginBottom: 10, boxShadow: 'var(--sombra)', cursor: 'pointer',
-                  borderLeft: `4px solid ${s.tecnico === usuario.nombre ? 'var(--azul)' : (ESTADO_COLOR[s.estado] || 'var(--azul)')}`,
-                  border: s.tecnico === usuario.nombre ? '1px solid #BEE3F8' : 'none',
+                  borderLeft: `4px solid ${s.tecnico === nombre ? 'var(--azul)' : (ESTADO_COLOR[s.estado] || 'var(--azul)')}`,
+                  border: s.tecnico === nombre ? '1px solid #BEE3F8' : 'none',
                   borderLeftWidth: '4px',
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 }}>
@@ -215,7 +213,7 @@ export default function Tecnico() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
                     {s.numeroST && <span style={{ fontSize: '0.72rem', color: 'var(--naranja)', fontWeight: 700 }}>{s.numeroST}</span>}
                     <span className={`tag tag-estado tag-${s.estado === 'visitado-incompleto' ? 'en-curso' : s.estado}`}>{getEstadoLabel(s.estado)}</span>
-                    {s.tecnico === usuario.nombre && (
+                    {s.tecnico === nombre && (
                       <span className="tag" style={{ background: '#E3F2FD', color: '#1565C0', border: '1px solid #90CAF9', fontWeight: 'bold', fontSize: '0.68rem' }}>
                         📌 SERVICIO ASIGNADO
                       </span>
@@ -250,7 +248,13 @@ export default function Tecnico() {
       )}
 
       {vistaActual === 'manuales' && (
-        <ManualesSoluciones usuarioRol="tecnico" usuarioNombre={usuario.nombre} />
+        <ManualesSoluciones usuarioRol="tecnico" usuarioNombre={nombre} />
+      )}
+
+      {vistaActual === 'mapa' && (
+        <div style={{ marginTop: 16 }}>
+          <MapaServicios servicios={servicios.filter(s => s.estado === 'pendiente')} />
+        </div>
       )}
 
       {/* Configuración PWA Dispositivo */}

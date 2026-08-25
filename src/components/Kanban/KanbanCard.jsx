@@ -1,6 +1,6 @@
 import React from 'react';
 import { Draggable } from '@hello-pangea/dnd';
-import { MapPin, Calendar, CheckCircle, Tag, DollarSign } from 'lucide-react';
+import { MapPin, Calendar, CheckCircle, Tag, DollarSign, FileText } from 'lucide-react';
 
 const KanbanCard = ({ item, index, onCardClick, globalLabels = {} }) => {
   const getPaymentBadge = (status) => {
@@ -106,6 +106,17 @@ const KanbanCard = ({ item, index, onCardClick, globalLabels = {} }) => {
               <span style={{ fontSize: '0.7rem', fontWeight: '600', padding: '0.1rem 0.5rem', color: 'var(--primary-700)', backgroundColor: '#f0f9ff', borderRadius: '4px', border: '1px solid #bae6fd' }}>
                 $ {item.amount.toLocaleString('es-AR')}
               </span>
+            )}
+            {item.status === 'aprobado' && (
+              item.documentoCliente ? (
+                <span style={{ fontSize: '0.65rem', fontWeight: '600', padding: '0.1rem 0.4rem', color: '#166534', backgroundColor: '#f0fdf4', borderRadius: '4px', border: '1px solid #bbf7d0', display: 'flex', alignItems: 'center', gap: '0.2rem' }} title="Documento para el cliente cargado">
+                  <FileText size={10} /> Doc ✓
+                </span>
+              ) : (
+                <span style={{ fontSize: '0.65rem', fontWeight: '600', padding: '0.1rem 0.4rem', color: '#92400e', backgroundColor: '#fffbeb', borderRadius: '4px', border: '1px solid #fde68a', display: 'flex', alignItems: 'center', gap: '0.2rem' }} title="Falta documento para el cliente">
+                  ⚠️ Sin doc
+                </span>
+              )
             )}
           </div>
         </div>

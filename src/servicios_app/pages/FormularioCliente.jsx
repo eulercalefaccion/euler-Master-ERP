@@ -26,6 +26,13 @@ const MODELOS_CALDERA = {
   'OTRA': ['OTRO'],
 }
 
+// Normaliza dirección para comparación (case-insensitive, sin espacios extra)
+function normalizarDireccion(direccion, localidad) {
+  const dir = (direccion || '').trim().toLowerCase().replace(/\s+/g, ' ')
+  const loc = (localidad || '').trim().toLowerCase().replace(/\s+/g, ' ')
+  return `${dir}|${loc}`
+}
+
 // Busca cliente por teléfono normalizado
 async function buscarOCrearCliente(codigoArea, numero, nombre, apellido, email, direccion, pisoDpto, localidad, barrio, lote, lat, lng) {
   const telefonoNormalizado = `${codigoArea.trim()}${numero.trim()}`
@@ -101,6 +108,7 @@ export default function FormularioCliente() {
   const [fotos, setFotos] = useState([])
   const [enviando, setEnviando] = useState(false)
   const [enviado, setEnviado] = useState(false)
+  const [actualizoExistente, setActualizoExistente] = useState(false)
   const [error, setError] = useState('')
   const [mapaCoords, setMapaCoords] = useState(null)
   const [geocodificando, setGeocodificando] = useState(false)
@@ -253,9 +261,16 @@ export default function FormularioCliente() {
         return s.estado !== 'resuelto' && s.estado !== 'solucionado-cliente'
       })
 
-      if (servicioActivoDoc) {
+      // Comparar dirección del formulario con la del servicio activo existente
+      const direccionFormulario = normalizarDireccion(form.direccion, form.localidad)
+      const mismaDireccion = servicioActivoDoc
+        ? normalizarDireccion(servicioActivoDoc.data().direccion, servicioActivoDoc.data().localidad) === direccionFormulario
+        : false
+
+      if (servicioActivoDoc && mismaDireccion) {
+        // Mismo cliente + misma dirección → actualizar servicio existente + notificar admin
         const activeData = servicioActivoDoc.data()
-        const nuevaDescripcion = `${activeData.descripcion || ''}\n\n[Actualización Solicitud]: ${form.descripcion.trim()}`
+        const nuevaDescripcion = `${activeData.descripcion || ''}\n\n[Actualización Solicitud ${new Date().toLocaleDateString('es-AR')}]: ${form.descripcion.trim()}`
         
         // Combinar fotos del cliente
         const fotosActuales = activeData.fotosCliente || []
@@ -265,9 +280,13 @@ export default function FormularioCliente() {
           descripcion: nuevaDescripcion,
           fotosCliente: nuevasFotos,
           fotoURL: nuevasFotos.length > 0 ? nuevasFotos[0] : (activeData.fotoURL || null),
+          // Notificación para el admin
+          tieneActualizacionCliente: true,
+          ultimaActualizacionCliente: serverTimestamp(),
         })
+        setActualizoExistente(true)
       } else {
-        // Generar número ST automático para nuevo servicio
+        // Dirección distinta O no tiene servicio activo → crear servicio nuevo
         const snap = await getCountFromServer(collection(db, 'servicios'))
         const total = snap.data().count + 1
         const anio = new Date().getFullYear()
@@ -323,10 +342,13 @@ export default function FormularioCliente() {
             <div className="success-icon">
               <CheckCircle size={36} />
             </div>
-            <h2>¡Solicitud enviada!</h2>
+            <h2>{actualizoExistente ? '¡Actualización registrada!' : '¡Solicitud enviada!'}</h2>
             <p>
-              Recibimos tu solicitud correctamente.<br />
-              A la brevedad nos comunicaremos con vos para coordinar la visita.
+              {actualizoExistente ? (
+                <>Ya tenés un servicio activo en esta dirección.<br />Tu información fue agregada como actualización a ese servicio.</>
+              ) : (
+                <>Recibimos tu solicitud correctamente.<br />A la brevedad nos comunicaremos con vos para coordinar la visita.</>
+              )}
             </p>
             <p style={{ marginTop: 16, fontSize: '0.85rem', color: '#888' }}>
               Ante cualquier consulta podés escribirnos al WhatsApp.

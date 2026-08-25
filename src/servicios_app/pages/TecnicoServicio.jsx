@@ -406,7 +406,7 @@ export default function TecnicoServicio() {
         {section('Diagnostico tecnico/Solucion/recomendacion/notas')}
         <textarea style={{ ...inp, resize: 'vertical', minHeight: 120 }}
           placeholder="¿Qué tenía el equipo? ¿Qué se hizo? Recomendaciones..."
-          value={diagnostico}
+          defaultValue={diagnostico}
           onChange={e => setDiagnostico(e.target.value)}
         />
       </div>

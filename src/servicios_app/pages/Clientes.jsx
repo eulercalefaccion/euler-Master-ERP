@@ -3,12 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import { collection, onSnapshot, addDoc, serverTimestamp, query, orderBy, getCountFromServer } from 'firebase/firestore'
 import { db } from '../../services/firebaseConfig'
 import { UserPlus, Search, ChevronRight, Users } from 'lucide-react'
-import PinLock from '../components/PinLock'
 import AutocompleteLocalidad from '../components/AutocompleteLocalidad'
 
 export default function Clientes() {
   const navigate = useNavigate()
-  const [desbloqueado, setDesbloqueado] = useState(true)
   const [clientes, setClientes] = useState([])
   const [loading, setLoading] = useState(true)
   const [busqueda, setBusqueda] = useState('')
@@ -17,16 +15,13 @@ export default function Clientes() {
   const [guardando, setGuardando] = useState(false)
 
   useEffect(() => {
-    if (!desbloqueado) return
     const q = query(collection(db, 'clientes'), orderBy('nombre'))
     const unsub = onSnapshot(q, snap => {
       setClientes(snap.docs.map(d => ({ id: d.id, ...d.data() })))
       setLoading(false)
     })
     return unsub
-  }, [desbloqueado])
-
-
+  }, [])
 
   const filtrados = clientes.filter(c => {
     const busq = busqueda.toLowerCase()

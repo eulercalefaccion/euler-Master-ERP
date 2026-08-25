@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { collection, addDoc, serverTimestamp, getCountFromServer, getDocs, query, where } from 'firebase/firestore'
 import { db } from '../../services/firebaseConfig'
 import { User, MapPin, Wrench, Camera, Settings } from 'lucide-react'
+// useAuth provided by ERP auth shim
+const useAuth = () => ({ user: { uid: 'erp-admin', nombre: 'Administrador', role: 'admin' }, logout: () => {} })
 import AutocompleteLocalidad from '../components/AutocompleteLocalidad'
 import { useTecnicos } from '../components/PinLock'
 
@@ -31,6 +33,7 @@ const MODELOS_CALDERA = {
 }
 
 export default function NuevoServicio() {
+  const { nombre: nombreUsuario } = useAuth();
   const navigate = useNavigate()
   const { tecnicosLista: TECNICOS } = useTecnicos()
   const [form, setForm] = useState({
@@ -145,13 +148,14 @@ export default function NuevoServicio() {
         estado: 'pendiente',
         notasInternasHistorial: form.notasInternas.trim() ? [{
           fecha: new Date().toISOString(),
-          texto: form.notasInternas.trim()
+          texto: form.notasInternas.trim(),
+          usuario: nombreUsuario || 'Admin'
         }] : [],
         creadoEn: serverTimestamp(),
         origen: 'interno',
       })
 
-      navigate('/servicios')
+      navigate('/admin')
     } catch (err) {
       console.error(err)
       setError('Error al guardar. Intentá nuevamente.')

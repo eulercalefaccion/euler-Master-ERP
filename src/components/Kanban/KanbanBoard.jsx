@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { DragDropContext } from '@hello-pangea/dnd';
 import {
   Plus, X, Save, MessageSquare, DollarSign, MapPin, Calendar, Tag,
-  Trash2, ListPlus, Target, History, FileText, RefreshCw, Receipt, Download, Loader, Search, Settings, AlertCircle, LayoutGrid, List, Map as MapIcon, CheckCircle
+  Trash2, ListPlus, Target, History, FileText, RefreshCw, Receipt, Download, Upload, Loader, Search, Settings, AlertCircle, LayoutGrid, List, Map as MapIcon, CheckCircle
 } from 'lucide-react';
 import KanbanColumn from './KanbanColumn';
 import LabelsManagerModal from './LabelsManagerModal';
@@ -10,12 +10,13 @@ import CrmListView from './CrmListView';
 import CrmMapView from './CrmMapView';
 import BalanceTermico from './BalanceTermico';
 import FolletosManagerModal from './FolletosManagerModal';
-import { db } from '../../services/firebaseConfig';
+import { db, storage } from '../../services/firebaseConfig';
 import { dbJornadas } from '../../services/firebaseJornadas';
 import {
   collection, onSnapshot, query, addDoc, updateDoc, deleteDoc, doc,
-  serverTimestamp, increment, setDoc, arrayUnion
+  serverTimestamp, increment, setDoc, arrayUnion, getDocs, where
 } from 'firebase/firestore';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { getTipoCambio, calcularPrecios, calcularPrecioManoDeObra, IVA } from '../../services/tipoCambioService';
 import { generarPDFPresupuesto } from '../../services/pdfPresupuesto';
 import { getNextSequenceValue, formatPresupuestoNumber, formatObraNumber } from '../../utils/sequenceGenerator';
@@ -320,6 +321,11 @@ const KanbanBoard = () => {
   const [selectedFolletos, setSelectedFolletos] = useState([]);
   const [isFolletosManagerOpen, setIsFolletosManagerOpen] = useState(false);
   const [folletosAdicionales, setFolletosAdicionales] = useState([]);
+
+  // Documento para el Cliente
+  const docClienteInputRef = useRef(null);
+  const [isUploadingDocCliente, setIsUploadingDocCliente] = useState(false);
+  const [uploadDocProgress, setUploadDocProgress] = useState(0);
 
   // Lista de folletos disponibles (artículos con folletoUrl en lista_precios o folletos locales por palabra clave)
   const folletosDisponibles = useMemo(() => {
@@ -945,6 +951,92 @@ const KanbanBoard = () => {
     } catch (err) { alert('Error: ' + err.message); }
   };
 
+  // ─── Documento para el Cliente ──────────────────────────────────────────────
+  const handleDocClienteUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.type !== 'application/pdf') {
+      alert('Solo se aceptan archivos PDF.');
+      return;
+    }
+
+    if (file.size > 25 * 1024 * 1024) {
+      alert('El archivo no puede superar los 25 MB.');
+      return;
+    }
+
+    setIsUploadingDocCliente(true);
+    setUploadDocProgress(0);
+
+    const storageRef = ref(storage, `presupuestos/${selectedLead.id}/documento_cliente/${Date.now()}_${file.name}`);
+    const uploadTask = uploadBytesResumable(storageRef, file);
+
+    uploadTask.on(
+      'state_changed',
+      (snapshot) => {
+        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        setUploadDocProgress(Math.round(progress));
+      },
+      (error) => {
+        console.error('Error subiendo documento para el cliente:', error);
+        alert('Error al subir el archivo.');
+        setIsUploadingDocCliente(false);
+      },
+      async () => {
+        try {
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          const docData = {
+            url: downloadURL,
+            storagePath: uploadTask.snapshot.ref.fullPath,
+            nombre: file.name,
+            fechaSubida: new Date().toISOString(),
+            subidoPor: currentUser?.email || 'desconocido',
+            subidoPorNombre: currentUser?.name || currentUser?.email || 'desconocido'
+          };
+
+          const nombre = currentUser?.name || currentUser?.email || 'Desconocido';
+
+          // Guardar en presupuesto
+          await updateDoc(doc(db, 'presupuestos', selectedLead.id), {
+            documentoCliente: docData,
+            bitacora: arrayUnion({
+              tipo: 'documento_cliente',
+              icono: '📄',
+              descripcion: `${nombre} subió el documento para el cliente: ${file.name}`,
+              fecha: new Date().toISOString(),
+              usuario: currentUser?.email,
+              email: currentUser?.email
+            })
+          });
+
+          // Sincronizar a la obra vinculada
+          try {
+            const obrasQuery = query(collection(db, 'obras'), where('presupuestoId', '==', selectedLead.id));
+            const obrasSnap = await getDocs(obrasQuery);
+            if (!obrasSnap.empty) {
+              const obraDoc = obrasSnap.docs[0];
+              await updateDoc(doc(db, 'obras', obraDoc.id), { documentoCliente: docData });
+            }
+          } catch (syncErr) {
+            console.warn('No se pudo sincronizar el documento a la obra:', syncErr);
+          }
+
+          // Actualizar vista local
+          setSelectedLead(prev => prev ? { ...prev, documentoCliente: docData } : prev);
+
+        } catch (err) {
+          console.error('Error guardando referencia en BD:', err);
+          alert('Error al registrar el archivo en la base de datos.');
+        } finally {
+          setIsUploadingDocCliente(false);
+          setUploadDocProgress(0);
+          if (docClienteInputRef.current) docClienteInputRef.current.value = '';
+        }
+      }
+    );
+  };
+
   // ─── Drag & drop ────────────────────────────────────────────────────────────
   const onDragEnd = async result => {
     const { destination, source, draggableId } = result;
@@ -1503,7 +1595,7 @@ const KanbanBoard = () => {
       <LabelsManagerModal isOpen={isLabelsModalOpen} onClose={() => setIsLabelsModalOpen(false)} />
 
       {/* ── Kanban Board / Vistas ── */}
-      <div className={viewMode === 'kanban' ? "mobile-kanban-container" : ""} style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '1rem', flex: 1, minHeight: 0, height: viewMode === 'kanban' ? 'calc(100vh - 200px)' : 'auto', flexDirection: viewMode === 'kanban' ? 'row' : 'column' }}>
+      <div className={viewMode === 'kanban' ? "mobile-kanban-container" : ""} style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '1rem', flex: 1, minHeight: 0, height: viewMode === 'kanban' ? 'calc(100vh - 260px)' : 'auto', flexDirection: viewMode === 'kanban' ? 'row' : 'column' }}>
         
         {(() => {
           const filterAndSortItems = (itemsArray) => {
@@ -2992,6 +3084,78 @@ const KanbanBoard = () => {
                       </div>
                     </div>
                   </div>
+
+                  {/* SECCIÓN: Documento para el Cliente */}
+                  {selectedLead.status === 'aprobado' && (
+                    <div style={{ borderBottom:'1px solid var(--border-light)', paddingBottom:'1rem', marginTop: '0.5rem' }}>
+                      <h4 style={{ margin:'0 0 0.75rem 0', color:'var(--primary-700)', fontSize:'0.9rem', textTransform:'uppercase', letterSpacing:'0.05em', display:'flex', alignItems:'center', gap:'0.5rem' }}>
+                        <FileText size={16} /> Documento para el Cliente
+                      </h4>
+
+                      {selectedLead.documentoCliente ? (
+                        <div style={{ display:'flex', flexDirection:'column', gap:'0.75rem' }}>
+                          <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', padding:'0.75rem', backgroundColor:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:'8px' }}>
+                            <span style={{ fontSize:'1.3rem' }}>✅</span>
+                            <div style={{ flex:1 }}>
+                              <div style={{ fontSize:'0.85rem', fontWeight:'600', color:'#166534' }}>{selectedLead.documentoCliente.nombre}</div>
+                              <div style={{ fontSize:'0.7rem', color:'#15803d', marginTop:'0.15rem' }}>
+                                Subido el {new Date(selectedLead.documentoCliente.fechaSubida).toLocaleDateString('es-AR')} por {selectedLead.documentoCliente.subidoPorNombre || selectedLead.documentoCliente.subidoPor}
+                              </div>
+                            </div>
+                          </div>
+                          <div style={{ display:'flex', gap:'0.5rem' }}>
+                            <button
+                              onClick={() => window.open(selectedLead.documentoCliente.url, '_blank')}
+                              style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:'0.4rem', padding:'0.5rem 1rem', borderRadius:'8px', border:'none', background:'linear-gradient(135deg, #2563eb, #1d4ed8)', color:'white', fontWeight:'600', fontSize:'0.8rem', cursor:'pointer', boxShadow:'0 2px 8px rgba(37,99,235,0.3)', transition:'all 0.2s' }}
+                            >
+                              <Download size={15} /> Descargar Documento
+                            </button>
+                            <button
+                              onClick={() => docClienteInputRef.current?.click()}
+                              disabled={isUploadingDocCliente}
+                              style={{ display:'flex', alignItems:'center', gap:'0.3rem', padding:'0.5rem 0.75rem', borderRadius:'8px', border:'1px solid #e2e8f0', background:'#f8fafc', color:'#64748b', fontWeight:'500', fontSize:'0.75rem', cursor:'pointer', transition:'all 0.2s' }}
+                            >
+                              <RefreshCw size={13} /> Reemplazar
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ display:'flex', flexDirection:'column', gap:'0.75rem' }}>
+                          <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', padding:'0.75rem', backgroundColor:'#fffbeb', border:'1px solid #fde68a', borderRadius:'8px' }}>
+                            <span style={{ fontSize:'1.3rem' }}>⚠️</span>
+                            <span style={{ fontSize:'0.85rem', fontWeight:'500', color:'#92400e' }}>Sin documento cargado</span>
+                          </div>
+                          <button
+                            onClick={() => docClienteInputRef.current?.click()}
+                            disabled={isUploadingDocCliente}
+                            style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'0.4rem', padding:'0.6rem 1rem', borderRadius:'8px', border:'2px dashed #93c5fd', background:'#eff6ff', color:'#2563eb', fontWeight:'600', fontSize:'0.85rem', cursor:'pointer', transition:'all 0.2s' }}
+                          >
+                            <Upload size={16} /> Subir PDF de Replanteo
+                          </button>
+                        </div>
+                      )}
+
+                      {isUploadingDocCliente && (
+                        <div style={{ marginTop:'0.5rem' }}>
+                          <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', marginBottom:'0.3rem' }}>
+                            <Loader size={14} style={{ animation: 'spin 1s linear infinite' }} />
+                            <span style={{ fontSize:'0.75rem', color:'var(--text-secondary)' }}>Subiendo... {uploadDocProgress}%</span>
+                          </div>
+                          <div style={{ width:'100%', height:'6px', backgroundColor:'#e2e8f0', borderRadius:'3px', overflow:'hidden' }}>
+                            <div style={{ width:`${uploadDocProgress}%`, height:'100%', backgroundColor:'#2563eb', borderRadius:'3px', transition:'width 0.3s' }} />
+                          </div>
+                        </div>
+                      )}
+
+                      <input
+                        type="file"
+                        ref={docClienteInputRef}
+                        accept=".pdf,application/pdf"
+                        style={{ display:'none' }}
+                        onChange={handleDocClienteUpload}
+                      />
+                    </div>
+                  )}
 
                   {/* SECCIÓN 5: Archivos Adjuntos */}
                   {selectedLead.archivos && selectedLead.archivos.length > 0 && (
