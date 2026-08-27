@@ -2008,7 +2008,7 @@ function GestionTecnicos() {
 }
 
 
-// ── Componente Selector Múltiple de Estados con Checkboxes ────────────────────────
+// ── Componente Reutilizable: Selector Múltiple con Checkboxes ──────────────────
 const ESTADOS_INFO = [
   { value: 'pendiente', label: 'Pendiente', color: '#E65100' },
   { value: 'coordinado', label: 'Coordinado', color: '#0288D1' },
@@ -2017,8 +2017,24 @@ const ESTADOS_INFO = [
   { value: 'resuelto', label: 'Resuelto', color: '#2E7D32' },
 ];
 
-function FiltroEstadosCheckbox({ selected = [], onChange }) {
+const COBROS_INFO = [
+  { value: 'a-cobrar', label: 'A Cobrar', color: '#EF5350' },
+  { value: 'pagado', label: 'Pagado', color: '#27AE60' },
+  { value: 'en-garantia', label: 'En Garantía', color: '#FFA726' },
+  { value: 'no-corresponde', label: 'No corresponde', color: '#78909C' },
+];
+
+function MultiSelectDropdown({
+  placeholder = "Seleccionar",
+  labelPrefix = "Seleccionados",
+  options = [],
+  selected = [],
+  onChange,
+  searchable = false,
+  minWidth = 160
+}) {
   const [abierto, setAbierto] = useState(false);
+  const [busqueda, setBusqueda] = useState('');
   const dropdownRef = useRef(null);
 
   useEffect(() => {
@@ -2031,6 +2047,10 @@ function FiltroEstadosCheckbox({ selected = [], onChange }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    if (!abierto) setBusqueda('');
+  }, [abierto]);
+
   const toggle = (val) => {
     if (selected.includes(val)) {
       onChange(selected.filter(v => v !== val));
@@ -2039,8 +2059,19 @@ function FiltroEstadosCheckbox({ selected = [], onChange }) {
     }
   };
 
+  const opcionesFiltradas = useMemo(() => {
+    if (!busqueda.trim()) return options;
+    const q = busqueda.toLowerCase();
+    return options.filter(o => {
+      const txt = (o.label || o.value || o || '').toLowerCase();
+      return txt.includes(q);
+    });
+  }, [options, busqueda]);
+
   const seleccionarTodos = () => {
-    onChange(ESTADOS_INFO.map(e => e.value));
+    const todosVisibles = opcionesFiltradas.map(o => (o.value !== undefined ? o.value : o));
+    const nuevo = Array.from(new Set([...selected, ...todosVisibles]));
+    onChange(nuevo);
   };
 
   const limpiar = () => {
@@ -2050,14 +2081,14 @@ function FiltroEstadosCheckbox({ selected = [], onChange }) {
   const count = selected.length;
   const isActive = count > 0;
 
-  let labelText = 'Todos los estados';
+  let labelText = placeholder;
   if (count === 1) {
-    const item = ESTADOS_INFO.find(e => e.value === selected[0]);
-    labelText = item ? item.label : selected[0];
-  } else if (count > 1 && count < ESTADOS_INFO.length) {
-    labelText = `Estados (${count})`;
-  } else if (count === ESTADOS_INFO.length) {
-    labelText = 'Todos los estados (5)';
+    const item = options.find(o => (o.value !== undefined ? o.value : o) === selected[0]);
+    labelText = item ? (item.label || item.value) : selected[0];
+  } else if (count > 1 && count < options.length) {
+    labelText = `${labelPrefix} (${count})`;
+  } else if (count > 0 && count === options.length) {
+    labelText = `Todos (${count})`;
   }
 
   return (
@@ -2079,13 +2110,13 @@ function FiltroEstadosCheckbox({ selected = [], onChange }) {
           fontSize: '0.85rem',
           fontWeight: isActive ? 700 : 500,
           cursor: 'pointer',
-          minWidth: 175,
+          minWidth: minWidth,
           outline: 'none',
           boxShadow: isActive ? '0 0 0 2px rgba(26,82,118,0.15)' : 'none',
           transition: 'all 0.15s ease'
         }}
       >
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 170 }}>
           {isActive && (
             <span style={{
               width: 8,
@@ -2095,7 +2126,7 @@ function FiltroEstadosCheckbox({ selected = [], onChange }) {
               flexShrink: 0
             }} />
           )}
-          {labelText}
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{labelText}</span>
         </span>
         <ChevronDown size={14} style={{ transform: abierto ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', color: isActive ? '#1A5276' : '#8899AA', flexShrink: 0 }} />
       </button>
@@ -2110,10 +2141,12 @@ function FiltroEstadosCheckbox({ selected = [], onChange }) {
           borderRadius: 10,
           boxShadow: '0 8px 24px rgba(12,53,82,0.18)',
           border: '1px solid #D8E2EE',
-          minWidth: 260,
+          minWidth: Math.max(minWidth + 30, 240),
+          maxWidth: 320,
           padding: '8px 0',
           animation: 'fadeInUp 0.15s ease'
         }}>
+          {/* Header con acciones */}
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
@@ -2139,49 +2172,87 @@ function FiltroEstadosCheckbox({ selected = [], onChange }) {
             )}
           </div>
 
-          <div style={{ maxHeight: 250, overflowY: 'auto', padding: '4px 0' }}>
-            {ESTADOS_INFO.map(e => {
-              const isChecked = selected.includes(e.value);
-              return (
-                <label
-                  key={e.value}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    padding: '8px 14px',
-                    cursor: 'pointer',
-                    background: isChecked ? '#F4F8FD' : 'transparent',
-                    transition: 'background 0.1s',
-                    fontSize: '0.85rem',
-                    fontWeight: isChecked ? 700 : 500,
-                    color: '#0C3552'
-                  }}
-                  onMouseEnter={(ev) => { if (!isChecked) ev.currentTarget.style.background = '#FAFBFD'; }}
-                  onMouseLeave={(ev) => { if (!isChecked) ev.currentTarget.style.background = 'transparent'; }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={isChecked}
-                    onChange={() => toggle(e.value)}
+          {/* Buscador interno si tiene muchas opciones */}
+          {(searchable || options.length > 6) && (
+            <div style={{ padding: '6px 12px', borderBottom: '1px solid #F0F3F7' }}>
+              <input
+                type="text"
+                placeholder="Buscar opción..."
+                value={busqueda}
+                onChange={e => setBusqueda(e.target.value)}
+                autoFocus
+                style={{
+                  width: '100%',
+                  padding: '6px 10px',
+                  borderRadius: 6,
+                  border: '1px solid #D8E2EE',
+                  fontFamily: 'var(--font)',
+                  fontSize: '0.8rem',
+                  outline: 'none'
+                }}
+              />
+            </div>
+          )}
+
+          {/* Lista de opciones con checkboxes */}
+          <div style={{ maxHeight: 240, overflowY: 'auto', padding: '4px 0' }}>
+            {opcionesFiltradas.length === 0 ? (
+              <div style={{ padding: '12px 14px', fontSize: '0.8rem', color: '#8899AA', textAlign: 'center' }}>
+                Sin resultados
+              </div>
+            ) : (
+              opcionesFiltradas.map(opt => {
+                const val = opt.value !== undefined ? opt.value : opt;
+                const lbl = opt.label !== undefined ? opt.label : opt;
+                const isChecked = selected.includes(val);
+                const optColor = opt.color;
+
+                return (
+                  <label
+                    key={String(val)}
                     style={{
-                      width: 16,
-                      height: 16,
-                      accentColor: '#1A5276',
-                      cursor: 'pointer'
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      padding: '7px 14px',
+                      cursor: 'pointer',
+                      background: isChecked ? '#F4F8FD' : 'transparent',
+                      transition: 'background 0.1s',
+                      fontSize: '0.84rem',
+                      fontWeight: isChecked ? 700 : 500,
+                      color: '#0C3552'
                     }}
-                  />
-                  <span style={{
-                    width: 9,
-                    height: 9,
-                    borderRadius: '50%',
-                    background: e.color,
-                    flexShrink: 0
-                  }} />
-                  <span style={{ flex: 1 }}>{e.label}</span>
-                </label>
-              );
-            })}
+                    onMouseEnter={(ev) => { if (!isChecked) ev.currentTarget.style.background = '#FAFBFD'; }}
+                    onMouseLeave={(ev) => { if (!isChecked) ev.currentTarget.style.background = 'transparent'; }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() => toggle(val)}
+                      style={{
+                        width: 16,
+                        height: 16,
+                        accentColor: '#1A5276',
+                        cursor: 'pointer',
+                        flexShrink: 0
+                      }}
+                    />
+                    {optColor && (
+                      <span style={{
+                        width: 9,
+                        height: 9,
+                        borderRadius: '50%',
+                        background: optColor,
+                        flexShrink: 0
+                      }} />
+                    )}
+                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={String(lbl)}>
+                      {lbl}
+                    </span>
+                  </label>
+                );
+              })
+            )}
           </div>
         </div>
       )}
@@ -2198,10 +2269,10 @@ export default function Admin() {
   const [clientes, setClientes] = useState([])
   const [loading, setLoading] = useState(true)
   const [filtrosEstados, setFiltrosEstados] = useState([])
-  const [filtroPago, setFiltroPago] = useState('')
-  const [filtroTecnico, setFiltroTecnico] = useState('')
-  const [filtroCliente, setFiltroCliente] = useState('')
-  const [filtroLocalidad, setFiltroLocalidad] = useState('')
+  const [filtrosPagos, setFiltrosPagos] = useState([])
+  const [filtrosTecnicos, setFiltrosTecnicos] = useState([])
+  const [filtrosClientes, setFiltrosClientes] = useState([])
+  const [filtrosLocalidades, setFiltrosLocalidades] = useState([])
   const [filtroIngreso, setFiltroIngreso] = useState('')
   const [filtroVisita, setFiltroVisita] = useState('')
   const [filtroCierre, setFiltroCierre] = useState('')
@@ -2277,10 +2348,10 @@ export default function Admin() {
     const limpiarFiltros = () => {
     setFiltroTexto('');
     setFiltrosEstados([]);
-    setFiltroPago('');
-    setFiltroTecnico('');
-    setFiltroCliente('');
-    setFiltroLocalidad('');
+    setFiltrosPagos([]);
+    setFiltrosTecnicos([]);
+    setFiltrosClientes([]);
+    setFiltrosLocalidades([]);
     setFiltroIngreso('');
     setFiltroVisita('');
     setFiltroCierre('');
@@ -2289,10 +2360,10 @@ export default function Admin() {
   const tieneFiltrosActivos = Boolean(
     filtroTexto.trim() ||
     filtrosEstados.length > 0 ||
-    filtroPago ||
-    filtroTecnico ||
-    filtroCliente ||
-    filtroLocalidad ||
+    filtrosPagos.length > 0 ||
+    filtrosTecnicos.length > 0 ||
+    filtrosClientes.length > 0 ||
+    filtrosLocalidades.length > 0 ||
     filtroIngreso ||
     filtroVisita ||
     filtroCierre
@@ -2300,10 +2371,10 @@ export default function Admin() {
 
   const cantidadFiltrosActivos = (filtroTexto.trim() ? 1 : 0) +
     (filtrosEstados.length > 0 ? 1 : 0) +
-    (filtroPago ? 1 : 0) +
-    (filtroTecnico ? 1 : 0) +
-    (filtroCliente ? 1 : 0) +
-    (filtroLocalidad ? 1 : 0) +
+    (filtrosPagos.length > 0 ? 1 : 0) +
+    (filtrosTecnicos.length > 0 ? 1 : 0) +
+    (filtrosClientes.length > 0 ? 1 : 0) +
+    (filtrosLocalidades.length > 0 ? 1 : 0) +
     (filtroIngreso ? 1 : 0) +
     (filtroVisita ? 1 : 0) +
     (filtroCierre ? 1 : 0);
@@ -2316,22 +2387,36 @@ export default function Admin() {
       });
       if (!match) return false;
     }
-    if (filtroTecnico && s.tecnico !== filtroTecnico) return false
-    if (filtroCliente && s.clienteId !== filtroCliente) return false
-    if (filtroLocalidad && (s.localidad || '').toLowerCase() !== filtroLocalidad.toLowerCase()) return false
-    
-    if (filtroPago && (s.estadoPago || 'a-cobrar') !== filtroPago) return false
-    
+
+    if (filtrosPagos.length > 0) {
+      const pagoActual = s.estadoPago || 'a-cobrar';
+      if (!filtrosPagos.includes(pagoActual)) return false;
+    }
+
+    if (filtrosTecnicos.length > 0) {
+      if (!filtrosTecnicos.includes(s.tecnico)) return false;
+    }
+
+    if (filtrosClientes.length > 0) {
+      if (!filtrosClientes.includes(s.clienteId)) return false;
+    }
+
+    if (filtrosLocalidades.length > 0) {
+      const loc = (s.localidad || '').toLowerCase();
+      const match = filtrosLocalidades.some(l => (l || '').toLowerCase() === loc);
+      if (!match) return false;
+    }
+
     // Fecha de Ingreso
     if (filtroIngreso && s.creadoEn) {
-      const d = s.creadoEn.toDate ? s.creadoEn.toDate() : new Date(s.creadoEn)
-      if (d.toISOString().slice(0, 10) !== filtroIngreso) return false
+      const d = s.creadoEn.toDate ? s.creadoEn.toDate() : new Date(s.creadoEn);
+      if (d.toISOString().slice(0, 10) !== filtroIngreso) return false;
     }
     // Fecha de Visita (Asignación o real)
-    if (filtroVisita && s.fechaAsignada !== filtroVisita && (!s.horaLlegada || new Date(s.horaLlegada).toISOString().slice(0, 10) !== filtroVisita)) return false
+    if (filtroVisita && s.fechaAsignada !== filtroVisita && (!s.horaLlegada || new Date(s.horaLlegada).toISOString().slice(0, 10) !== filtroVisita)) return false;
     // Fecha de Cierre
     if (filtroCierre && s.fechaCierre) {
-      if (new Date(s.fechaCierre).toISOString().slice(0, 10) !== filtroCierre) return false
+      if (new Date(s.fechaCierre).toISOString().slice(0, 10) !== filtroCierre) return false;
     }
 
     if (filtroTexto) {
@@ -2350,6 +2435,22 @@ export default function Admin() {
   })
 
   const localidades = [...new Set(servicios.map(s => s.localidad).filter(Boolean))].sort()
+
+  
+  const opcionesTecnicos = useMemo(() => {
+    return (TECNICOS || []).map(t => ({ value: t, label: t, color: '#1A5276' }));
+  }, [TECNICOS]);
+
+  const opcionesClientes = useMemo(() => {
+    return clientes.map(c => ({
+      value: c.id,
+      label: `${c.nombreCompleto || c.nombre} ${c.numeroCliente ? `(${c.numeroCliente})` : ''}`.trim()
+    })).sort((a, b) => a.label.localeCompare(b.label));
+  }, [clientes]);
+
+  const opcionesLocalidades = useMemo(() => {
+    return localidades.map(l => ({ value: l, label: l }));
+  }, [localidades]);
 
   const stats = {
     pendientes: servicios.filter(s => s.estado === 'pendiente').length,
@@ -2709,73 +2810,64 @@ export default function Admin() {
             background: filtroTexto.trim() ? '#EEF4FF' : '#FFFFFF',
             fontFamily: 'var(--font)',
             fontSize: '0.85rem',
-            flex: '1 1 220px',
+            flex: '1 1 200px',
             outline: 'none',
             boxShadow: filtroTexto.trim() ? '0 0 0 2px rgba(26,82,118,0.12)' : 'none'
           }} 
         />
         
         {/* Selector con casillas de verificación para estados */}
-        <FiltroEstadosCheckbox selected={filtrosEstados} onChange={setFiltrosEstados} />
+        <MultiSelectDropdown
+          placeholder="Todos los estados"
+          labelPrefix="Estados"
+          options={ESTADOS_INFO}
+          selected={filtrosEstados}
+          onChange={setFiltrosEstados}
+          minWidth={165}
+        />
 
-        <select 
-          value={filtroPago} 
-          onChange={e => setFiltroPago(e.target.value)}
-          style={{
-            border: filtroPago ? '1.5px solid #1A5276' : '1px solid #D8E2EE',
-            background: filtroPago ? '#EEF4FF' : '#FFFFFF',
-            fontWeight: filtroPago ? 700 : 400,
-            color: filtroPago ? '#0C3552' : 'inherit'
-          }}
-        >
-          <option value="">Todos los cobros</option>
-          <option value="a-cobrar">A Cobrar</option>
-          <option value="pagado">Pagado</option>
-          <option value="en-garantia">En Garantía</option>
-          <option value="no-corresponde">No corresponde</option>
-        </select>
+        {/* Selector con casillas de verificación para cobros */}
+        <MultiSelectDropdown
+          placeholder="Todos los cobros"
+          labelPrefix="Cobros"
+          options={COBROS_INFO}
+          selected={filtrosPagos}
+          onChange={setFiltrosPagos}
+          minWidth={155}
+        />
 
-        <select 
-          value={filtroTecnico} 
-          onChange={e => setFiltroTecnico(e.target.value)}
-          style={{
-            border: filtroTecnico ? '1.5px solid #1A5276' : '1px solid #D8E2EE',
-            background: filtroTecnico ? '#EEF4FF' : '#FFFFFF',
-            fontWeight: filtroTecnico ? 700 : 400,
-            color: filtroTecnico ? '#0C3552' : 'inherit'
-          }}
-        >
-          <option value="">Todos los técnicos</option>
-          {TECNICOS.map(t => <option key={t} value={t}>{t}</option>)}
-        </select>
+        {/* Selector con casillas de verificación para técnicos */}
+        <MultiSelectDropdown
+          placeholder="Todos los técnicos"
+          labelPrefix="Técnicos"
+          options={opcionesTecnicos}
+          selected={filtrosTecnicos}
+          onChange={setFiltrosTecnicos}
+          searchable={opcionesTecnicos.length > 5}
+          minWidth={165}
+        />
 
-        <select 
-          value={filtroCliente} 
-          onChange={e => setFiltroCliente(e.target.value)}
-          style={{
-            border: filtroCliente ? '1.5px solid #1A5276' : '1px solid #D8E2EE',
-            background: filtroCliente ? '#EEF4FF' : '#FFFFFF',
-            fontWeight: filtroCliente ? 700 : 400,
-            color: filtroCliente ? '#0C3552' : 'inherit'
-          }}
-        >
-          <option value="">Todos los clientes</option>
-          {clientes.map(c => <option key={c.id} value={c.id}>{c.nombreCompleto || c.nombre} {c.numeroCliente ? `(${c.numeroCliente})` : ''}</option>)}
-        </select>
+        {/* Selector con casillas de verificación para clientes */}
+        <MultiSelectDropdown
+          placeholder="Todos los clientes"
+          labelPrefix="Clientes"
+          options={opcionesClientes}
+          selected={filtrosClientes}
+          onChange={setFiltrosClientes}
+          searchable={true}
+          minWidth={170}
+        />
 
-        <select 
-          value={filtroLocalidad} 
-          onChange={e => setFiltroLocalidad(e.target.value)}
-          style={{
-            border: filtroLocalidad ? '1.5px solid #1A5276' : '1px solid #D8E2EE',
-            background: filtroLocalidad ? '#EEF4FF' : '#FFFFFF',
-            fontWeight: filtroLocalidad ? 700 : 400,
-            color: filtroLocalidad ? '#0C3552' : 'inherit'
-          }}
-        >
-          <option value="">Todas las localidades</option>
-          {localidades.map(l => <option key={l} value={l}>{l}</option>)}
-        </select>
+        {/* Selector con casillas de verificación para localidades */}
+        <MultiSelectDropdown
+          placeholder="Todas las localidades"
+          labelPrefix="Localidades"
+          options={opcionesLocalidades}
+          selected={filtrosLocalidades}
+          onChange={setFiltrosLocalidades}
+          searchable={opcionesLocalidades.length > 5}
+          minWidth={170}
+        />
         
         <div style={{
           display: 'flex',
