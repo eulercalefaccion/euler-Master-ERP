@@ -2007,6 +2007,189 @@ function GestionTecnicos() {
   )
 }
 
+
+// ── Componente Selector Múltiple de Estados con Checkboxes ────────────────────────
+const ESTADOS_INFO = [
+  { value: 'pendiente', label: 'Pendiente', color: '#E65100' },
+  { value: 'coordinado', label: 'Coordinado', color: '#0288D1' },
+  { value: 'en-curso', label: 'En curso/Incompleto', color: '#1565C0' },
+  { value: 'solucionado-cliente', label: 'Solucionado por el cliente', color: '#7B1FA2' },
+  { value: 'resuelto', label: 'Resuelto', color: '#2E7D32' },
+];
+
+function FiltroEstadosCheckbox({ selected = [], onChange }) {
+  const [abierto, setAbierto] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setAbierto(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const toggle = (val) => {
+    if (selected.includes(val)) {
+      onChange(selected.filter(v => v !== val));
+    } else {
+      onChange([...selected, val]);
+    }
+  };
+
+  const seleccionarTodos = () => {
+    onChange(ESTADOS_INFO.map(e => e.value));
+  };
+
+  const limpiar = () => {
+    onChange([]);
+  };
+
+  const count = selected.length;
+  const isActive = count > 0;
+
+  let labelText = 'Todos los estados';
+  if (count === 1) {
+    const item = ESTADOS_INFO.find(e => e.value === selected[0]);
+    labelText = item ? item.label : selected[0];
+  } else if (count > 1 && count < ESTADOS_INFO.length) {
+    labelText = `Estados (${count})`;
+  } else if (count === ESTADOS_INFO.length) {
+    labelText = 'Todos los estados (5)';
+  }
+
+  return (
+    <div ref={dropdownRef} style={{ position: 'relative', display: 'inline-block' }}>
+      <button
+        type="button"
+        onClick={() => setAbierto(!abierto)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 8,
+          padding: '8px 12px',
+          borderRadius: 8,
+          border: isActive ? '1.5px solid #1A5276' : '1px solid #D8E2EE',
+          background: isActive ? '#EEF4FF' : '#FFFFFF',
+          color: isActive ? '#0C3552' : '#5A6A7A',
+          fontFamily: 'var(--font)',
+          fontSize: '0.85rem',
+          fontWeight: isActive ? 700 : 500,
+          cursor: 'pointer',
+          minWidth: 175,
+          outline: 'none',
+          boxShadow: isActive ? '0 0 0 2px rgba(26,82,118,0.15)' : 'none',
+          transition: 'all 0.15s ease'
+        }}
+      >
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {isActive && (
+            <span style={{
+              width: 8,
+              height: 8,
+              borderRadius: '50%',
+              background: '#1A5276',
+              flexShrink: 0
+            }} />
+          )}
+          {labelText}
+        </span>
+        <ChevronDown size={14} style={{ transform: abierto ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', color: isActive ? '#1A5276' : '#8899AA', flexShrink: 0 }} />
+      </button>
+
+      {abierto && (
+        <div style={{
+          position: 'absolute',
+          top: 'calc(100% + 4px)',
+          left: 0,
+          zIndex: 1000,
+          background: '#FFFFFF',
+          borderRadius: 10,
+          boxShadow: '0 8px 24px rgba(12,53,82,0.18)',
+          border: '1px solid #D8E2EE',
+          minWidth: 260,
+          padding: '8px 0',
+          animation: 'fadeInUp 0.15s ease'
+        }}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            padding: '4px 14px 8px',
+            borderBottom: '1px solid #F0F3F7',
+            fontSize: '0.75rem'
+          }}>
+            <button
+              type="button"
+              onClick={seleccionarTodos}
+              style={{ background: 'none', border: 'none', color: '#1A5276', cursor: 'pointer', fontWeight: 700, padding: 0 }}
+            >
+              Seleccionar todos
+            </button>
+            {isActive && (
+              <button
+                type="button"
+                onClick={limpiar}
+                style={{ background: 'none', border: 'none', color: '#C44121', cursor: 'pointer', fontWeight: 700, padding: 0 }}
+              >
+                Limpiar ({count})
+              </button>
+            )}
+          </div>
+
+          <div style={{ maxHeight: 250, overflowY: 'auto', padding: '4px 0' }}>
+            {ESTADOS_INFO.map(e => {
+              const isChecked = selected.includes(e.value);
+              return (
+                <label
+                  key={e.value}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    padding: '8px 14px',
+                    cursor: 'pointer',
+                    background: isChecked ? '#F4F8FD' : 'transparent',
+                    transition: 'background 0.1s',
+                    fontSize: '0.85rem',
+                    fontWeight: isChecked ? 700 : 500,
+                    color: '#0C3552'
+                  }}
+                  onMouseEnter={(ev) => { if (!isChecked) ev.currentTarget.style.background = '#FAFBFD'; }}
+                  onMouseLeave={(ev) => { if (!isChecked) ev.currentTarget.style.background = 'transparent'; }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isChecked}
+                    onChange={() => toggle(e.value)}
+                    style={{
+                      width: 16,
+                      height: 16,
+                      accentColor: '#1A5276',
+                      cursor: 'pointer'
+                    }}
+                  />
+                  <span style={{
+                    width: 9,
+                    height: 9,
+                    borderRadius: '50%',
+                    background: e.color,
+                    flexShrink: 0
+                  }} />
+                  <span style={{ flex: 1 }}>{e.label}</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 // ── Main Admin ─────────────────────────────────────────────────────────────────
 export default function Admin() {
   const navigate = useNavigate()
@@ -2014,7 +2197,7 @@ export default function Admin() {
   const [servicios, setServicios] = useState([])
   const [clientes, setClientes] = useState([])
   const [loading, setLoading] = useState(true)
-  const [filtroEstado, setFiltroEstado] = useState('')
+  const [filtrosEstados, setFiltrosEstados] = useState([])
   const [filtroPago, setFiltroPago] = useState('')
   const [filtroTecnico, setFiltroTecnico] = useState('')
   const [filtroCliente, setFiltroCliente] = useState('')
@@ -2091,13 +2274,47 @@ export default function Admin() {
     }
   }
 
+    const limpiarFiltros = () => {
+    setFiltroTexto('');
+    setFiltrosEstados([]);
+    setFiltroPago('');
+    setFiltroTecnico('');
+    setFiltroCliente('');
+    setFiltroLocalidad('');
+    setFiltroIngreso('');
+    setFiltroVisita('');
+    setFiltroCierre('');
+  };
+
+  const tieneFiltrosActivos = Boolean(
+    filtroTexto.trim() ||
+    filtrosEstados.length > 0 ||
+    filtroPago ||
+    filtroTecnico ||
+    filtroCliente ||
+    filtroLocalidad ||
+    filtroIngreso ||
+    filtroVisita ||
+    filtroCierre
+  );
+
+  const cantidadFiltrosActivos = (filtroTexto.trim() ? 1 : 0) +
+    (filtrosEstados.length > 0 ? 1 : 0) +
+    (filtroPago ? 1 : 0) +
+    (filtroTecnico ? 1 : 0) +
+    (filtroCliente ? 1 : 0) +
+    (filtroLocalidad ? 1 : 0) +
+    (filtroIngreso ? 1 : 0) +
+    (filtroVisita ? 1 : 0) +
+    (filtroCierre ? 1 : 0);
+
   const filtrados = servicios.filter(s => {
-    if (filtroEstado) {
-      if (filtroEstado === 'en-curso') {
-        if (s.estado !== 'en-curso' && s.estado !== 'visitado-incompleto') return false
-      } else {
-        if (s.estado !== filtroEstado) return false
-      }
+    if (filtrosEstados.length > 0) {
+      const match = filtrosEstados.some(est => {
+        if (est === 'en-curso') return s.estado === 'en-curso' || s.estado === 'visitado-incompleto';
+        return s.estado === est;
+      });
+      if (!match) return false;
     }
     if (filtroTecnico && s.tecnico !== filtroTecnico) return false
     if (filtroCliente && s.clienteId !== filtroCliente) return false
@@ -2432,15 +2649,34 @@ export default function Admin() {
 
       <div className="stats-row">
         {[
-          { value: stats.pendientes, label: 'Pendientes', color: '#E65100' },
-          { value: stats.enCurso, label: 'En curso/Incomp.', color: '#1565C0' },
-          { value: stats.solucionadoCliente, label: 'Soluc. Cliente', color: '#7B1FA2' },
-          { value: stats.resueltos, label: 'Resueltos', color: '#2E7D32' },
-        ].map(({ value, label, color }) => {
+          { key: 'pendiente', value: stats.pendientes, label: 'Pendientes', color: '#E65100' },
+          { key: 'en-curso', value: stats.enCurso, label: 'En curso/Incomp.', color: '#1565C0' },
+          { key: 'solucionado-cliente', value: stats.solucionadoCliente, label: 'Soluc. Cliente', color: '#7B1FA2' },
+          { key: 'resuelto', value: stats.resueltos, label: 'Resueltos', color: '#2E7D32' },
+        ].map(({ key, value, label, color }) => {
           const total = stats.pendientes + stats.enCurso + stats.solucionadoCliente + stats.resueltos;
           const pct = total > 0 ? ((value / total) * 100).toFixed(1).replace(/\.0$/, '') : '0';
+          const isSelected = filtrosEstados.length === 1 && filtrosEstados.includes(key);
           return (
-            <div className="stat-card" key={label}>
+            <div
+              className="stat-card"
+              key={label}
+              onClick={() => {
+                if (isSelected) {
+                  setFiltrosEstados([]);
+                } else {
+                  setFiltrosEstados([key]);
+                }
+              }}
+              style={{
+                cursor: 'pointer',
+                border: isSelected ? `2px solid ${color}` : '1px solid var(--borde)',
+                boxShadow: isSelected ? `0 4px 14px ${color}33` : 'var(--sombra)',
+                transform: isSelected ? 'scale(1.02)' : 'none',
+                transition: 'all 0.15s ease'
+              }}
+              title={`Clic para filtrar por ${label}`}
+            >
               <div className="stat-number" style={{ color }}>{value}</div>
               <div style={{
                 fontSize: '0.78rem',
@@ -2460,50 +2696,221 @@ export default function Admin() {
         })}
       </div>
 
-      <div className="filtros" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+      <div className="filtros" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12, alignItems: 'center' }}>
         <input 
           type="text" 
           placeholder="Buscar por nombre, apellido, dirección o teléfono..." 
           value={filtroTexto} 
           onChange={e => setFiltroTexto(e.target.value)}
-          style={{ padding: '8px', borderRadius: 6, border: '1px solid #D8E2EE', fontFamily: 'var(--font)', fontSize: '0.85rem', flex: '1 1 200px' }} 
+          style={{
+            padding: '8px 12px',
+            borderRadius: 8,
+            border: filtroTexto.trim() ? '1.5px solid #1A5276' : '1px solid #D8E2EE',
+            background: filtroTexto.trim() ? '#EEF4FF' : '#FFFFFF',
+            fontFamily: 'var(--font)',
+            fontSize: '0.85rem',
+            flex: '1 1 220px',
+            outline: 'none',
+            boxShadow: filtroTexto.trim() ? '0 0 0 2px rgba(26,82,118,0.12)' : 'none'
+          }} 
         />
-        <select value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}>
-          <option value="">Todos los estados</option>
-          {ESTADOS.map(e => <option key={e} value={e}>{getEstadoLabel(e)}</option>)}
-        </select>
-        <select value={filtroPago} onChange={e => setFiltroPago(e.target.value)}>
+        
+        {/* Selector con casillas de verificación para estados */}
+        <FiltroEstadosCheckbox selected={filtrosEstados} onChange={setFiltrosEstados} />
+
+        <select 
+          value={filtroPago} 
+          onChange={e => setFiltroPago(e.target.value)}
+          style={{
+            border: filtroPago ? '1.5px solid #1A5276' : '1px solid #D8E2EE',
+            background: filtroPago ? '#EEF4FF' : '#FFFFFF',
+            fontWeight: filtroPago ? 700 : 400,
+            color: filtroPago ? '#0C3552' : 'inherit'
+          }}
+        >
           <option value="">Todos los cobros</option>
           <option value="a-cobrar">A Cobrar</option>
           <option value="pagado">Pagado</option>
           <option value="en-garantia">En Garantía</option>
           <option value="no-corresponde">No corresponde</option>
         </select>
-        <select value={filtroTecnico} onChange={e => setFiltroTecnico(e.target.value)}>
+
+        <select 
+          value={filtroTecnico} 
+          onChange={e => setFiltroTecnico(e.target.value)}
+          style={{
+            border: filtroTecnico ? '1.5px solid #1A5276' : '1px solid #D8E2EE',
+            background: filtroTecnico ? '#EEF4FF' : '#FFFFFF',
+            fontWeight: filtroTecnico ? 700 : 400,
+            color: filtroTecnico ? '#0C3552' : 'inherit'
+          }}
+        >
           <option value="">Todos los técnicos</option>
           {TECNICOS.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
-        <select value={filtroCliente} onChange={e => setFiltroCliente(e.target.value)}>
+
+        <select 
+          value={filtroCliente} 
+          onChange={e => setFiltroCliente(e.target.value)}
+          style={{
+            border: filtroCliente ? '1.5px solid #1A5276' : '1px solid #D8E2EE',
+            background: filtroCliente ? '#EEF4FF' : '#FFFFFF',
+            fontWeight: filtroCliente ? 700 : 400,
+            color: filtroCliente ? '#0C3552' : 'inherit'
+          }}
+        >
           <option value="">Todos los clientes</option>
           {clientes.map(c => <option key={c.id} value={c.id}>{c.nombreCompleto || c.nombre} {c.numeroCliente ? `(${c.numeroCliente})` : ''}</option>)}
         </select>
-        <select value={filtroLocalidad} onChange={e => setFiltroLocalidad(e.target.value)}>
+
+        <select 
+          value={filtroLocalidad} 
+          onChange={e => setFiltroLocalidad(e.target.value)}
+          style={{
+            border: filtroLocalidad ? '1.5px solid #1A5276' : '1px solid #D8E2EE',
+            background: filtroLocalidad ? '#EEF4FF' : '#FFFFFF',
+            fontWeight: filtroLocalidad ? 700 : 400,
+            color: filtroLocalidad ? '#0C3552' : 'inherit'
+          }}
+        >
           <option value="">Todas las localidades</option>
           {localidades.map(l => <option key={l} value={l}>{l}</option>)}
         </select>
         
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <label style={{ fontSize: '0.8rem', color: 'var(--gris-texto)', fontWeight: 600 }}>Ingreso:</label>
-          <input type="date" value={filtroIngreso} onChange={e => setFiltroIngreso(e.target.value)} style={{ padding: '6px', borderRadius: 6, border: '1px solid #D8E2EE', fontFamily: 'var(--font)', fontSize: '0.85rem' }} />
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          padding: '4px 8px',
+          borderRadius: 8,
+          border: filtroIngreso ? '1.5px solid #1A5276' : '1px solid #D8E2EE',
+          background: filtroIngreso ? '#EEF4FF' : '#FFFFFF'
+        }}>
+          <label style={{ fontSize: '0.78rem', color: filtroIngreso ? '#0C3552' : 'var(--gris-texto)', fontWeight: 700 }}>Ingreso:</label>
+          <input type="date" value={filtroIngreso} onChange={e => setFiltroIngreso(e.target.value)} style={{ padding: '4px', border: 'none', background: 'transparent', fontFamily: 'var(--font)', fontSize: '0.82rem', outline: 'none' }} />
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <label style={{ fontSize: '0.8rem', color: 'var(--gris-texto)', fontWeight: 600 }}>Visita:</label>
-          <input type="date" value={filtroVisita} onChange={e => setFiltroVisita(e.target.value)} style={{ padding: '6px', borderRadius: 6, border: '1px solid #D8E2EE', fontFamily: 'var(--font)', fontSize: '0.85rem' }} />
+
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          padding: '4px 8px',
+          borderRadius: 8,
+          border: filtroVisita ? '1.5px solid #1A5276' : '1px solid #D8E2EE',
+          background: filtroVisita ? '#EEF4FF' : '#FFFFFF'
+        }}>
+          <label style={{ fontSize: '0.78rem', color: filtroVisita ? '#0C3552' : 'var(--gris-texto)', fontWeight: 700 }}>Visita:</label>
+          <input type="date" value={filtroVisita} onChange={e => setFiltroVisita(e.target.value)} style={{ padding: '4px', border: 'none', background: 'transparent', fontFamily: 'var(--font)', fontSize: '0.82rem', outline: 'none' }} />
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <label style={{ fontSize: '0.8rem', color: 'var(--gris-texto)', fontWeight: 600 }}>Cierre:</label>
-          <input type="date" value={filtroCierre} onChange={e => setFiltroCierre(e.target.value)} style={{ padding: '6px', borderRadius: 6, border: '1px solid #D8E2EE', fontFamily: 'var(--font)', fontSize: '0.85rem' }} />
+
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          padding: '4px 8px',
+          borderRadius: 8,
+          border: filtroCierre ? '1.5px solid #1A5276' : '1px solid #D8E2EE',
+          background: filtroCierre ? '#EEF4FF' : '#FFFFFF'
+        }}>
+          <label style={{ fontSize: '0.78rem', color: filtroCierre ? '#0C3552' : 'var(--gris-texto)', fontWeight: 700 }}>Cierre:</label>
+          <input type="date" value={filtroCierre} onChange={e => setFiltroCierre(e.target.value)} style={{ padding: '4px', border: 'none', background: 'transparent', fontFamily: 'var(--font)', fontSize: '0.82rem', outline: 'none' }} />
         </div>
+
+        {/* Botón Quitar filtros */}
+        {tieneFiltrosActivos && (
+          <button
+            type="button"
+            onClick={limpiarFiltros}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '8px 14px',
+              background: '#FFF0EE',
+              color: '#C44121',
+              border: '1.5px solid #F5B7B1',
+              borderRadius: 8,
+              fontFamily: 'var(--font)',
+              fontSize: '0.85rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              boxShadow: '0 2px 6px rgba(196,65,33,0.12)',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <XCircle size={15} /> Quitar filtros ({cantidadFiltrosActivos})
+          </button>
+        )}
+      </div>
+
+      {/* Testigo de filtros activos y Contador de Servicios Filtrados */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: 10,
+        marginBottom: 16,
+        padding: '10px 16px',
+        background: tieneFiltrosActivos ? '#EEF4FF' : '#FAFCFF',
+        borderRadius: 10,
+        border: tieneFiltrosActivos ? '1.5px solid #BCD3F2' : '1px solid #E2E8F0',
+        fontSize: '0.85rem',
+        boxShadow: tieneFiltrosActivos ? '0 2px 8px rgba(21,101,192,0.08)' : 'none'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          {tieneFiltrosActivos ? (
+            <>
+              <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
+                background: '#1565C0',
+                color: '#FFF',
+                padding: '3px 10px',
+                borderRadius: 12,
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                letterSpacing: '0.3px',
+                textTransform: 'uppercase'
+              }}>
+                ● Filtros activos ({cantidadFiltrosActivos})
+              </span>
+              <span style={{ fontWeight: 700, color: 'var(--azul)', fontSize: '0.92rem' }}>
+                {filtrados.length} {filtrados.length === 1 ? 'servicio coincidente' : 'servicios coincidentes'}
+              </span>
+              <span style={{ color: 'var(--gris-suave)' }}>
+                (de {servicios.length} en total)
+              </span>
+            </>
+          ) : (
+            <span style={{ fontWeight: 600, color: 'var(--gris-texto)' }}>
+              Mostrando el total de <strong style={{ color: 'var(--azul)' }}>{servicios.length}</strong> servicios
+            </span>
+          )}
+        </div>
+
+        {tieneFiltrosActivos && (
+          <button
+            type="button"
+            onClick={limpiarFiltros}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#C44121',
+              fontWeight: 700,
+              fontSize: '0.8rem',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: 0
+            }}
+          >
+            <Trash2 size={13} /> Limpiar todos los filtros
+          </button>
+        )}
       </div>
 
       {/* Tabs lista / mapa / papelera */}
@@ -2511,12 +2918,12 @@ export default function Admin() {
         <button
           onClick={() => setVistaActual('lista')}
           style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: '0.85rem', fontWeight: 600, background: vistaActual === 'lista' ? 'var(--azul)' : '#EEF4FF', color: vistaActual === 'lista' ? 'white' : 'var(--azul)' }}>
-          <List size={15} /> Lista
+          <List size={15} /> Lista ({filtrados.length})
         </button>
         <button
           onClick={() => setVistaActual('mapa')}
           style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: '0.85rem', fontWeight: 600, background: vistaActual === 'mapa' ? 'var(--azul)' : '#EEF4FF', color: vistaActual === 'mapa' ? 'white' : 'var(--azul)' }}>
-          <Map size={15} /> Mapa
+          <Map size={15} /> Mapa ({filtrados.length})
         </button>
         <button
           onClick={() => setVistaActual('finanzas')}
