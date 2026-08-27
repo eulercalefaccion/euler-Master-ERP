@@ -2420,7 +2420,7 @@ export default function Admin() {
             Exportar Excel
           </button>
           <button className="btn-secondary" onClick={() => {
-            const url = window.location.origin + '/'
+            const url = 'https://eulerservicios.netlify.app/'
             navigator.clipboard.writeText(url)
             alert('✅ Link del formulario copiado')
           }}>
@@ -2431,25 +2431,34 @@ export default function Admin() {
       </div>
 
       <div className="stats-row">
-        <div className="stat-card">
-          <div className="stat-number" style={{ color: '#E65100' }}>{stats.pendientes}</div>
-          <div className="stat-label">Pendientes</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-number" style={{ color: '#1565C0' }}>{stats.enCurso}</div>
-          <div className="stat-label">En curso/Incomp.</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-number" style={{ color: '#7B1FA2' }}>{stats.solucionadoCliente}</div>
-          <div className="stat-label">Soluc. Cliente</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-number" style={{ color: '#2E7D32' }}>{stats.resueltos}</div>
-          <div className="stat-label">Resueltos</div>
-        </div>
+        {[
+          { value: stats.pendientes, label: 'Pendientes', color: '#E65100' },
+          { value: stats.enCurso, label: 'En curso/Incomp.', color: '#1565C0' },
+          { value: stats.solucionadoCliente, label: 'Soluc. Cliente', color: '#7B1FA2' },
+          { value: stats.resueltos, label: 'Resueltos', color: '#2E7D32' },
+        ].map(({ value, label, color }) => {
+          const total = stats.pendientes + stats.enCurso + stats.solucionadoCliente + stats.resueltos;
+          const pct = total > 0 ? ((value / total) * 100).toFixed(1).replace(/\.0$/, '') : '0';
+          return (
+            <div className="stat-card" key={label}>
+              <div className="stat-number" style={{ color }}>{value}</div>
+              <div style={{
+                fontSize: '0.78rem',
+                color: color,
+                margin: '2px 0 4px',
+                fontWeight: 700,
+                background: color + '15',
+                borderRadius: 8,
+                padding: '2px 8px',
+                display: 'inline-block'
+              }}>
+                {pct}%
+              </div>
+              <div className="stat-label">{label}</div>
+            </div>
+          );
+        })}
       </div>
-
-
 
       <div className="filtros" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
         <input 
