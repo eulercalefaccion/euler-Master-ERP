@@ -84,17 +84,15 @@ const buildPortada = (doc, presupuesto, logoBase64) => {
   doc.rect(0, H - 24, W, 2, 'F');
 
   // Logo
-  drawLogo(doc, W / 2, 80, logoBase64);
+  drawLogo(doc, W / 2, 75, logoBase64);
 
   // Título
-  doc.setFontSize(14);
+  doc.setFontSize(13);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...WHITE);
-  doc.text('PRESUPUESTO DE CALEFACCIÓN POR AGUA', W / 2, 116, { align: 'center' });
+  doc.text('PRESUPUESTO DE CALEFACCIÓN POR AGUA', W / 2, 110, { align: 'center' });
 
-  // Datos del presupuesto
-  const versionSuffix = (presupuesto.revision !== undefined) ? '' : ''; // The filename already has _RevX, we don't append it here because it might duplicate. Let's just use the presupuestoNumber directly since we updated it in KanbanBoard.
-  
+  // Datos del presupuesto (metadatos)
   const campos = [
     ['Cliente:',           presupuesto.clientName || presupuesto.name || '—'],
     ['N° Presupuesto:',    `${presupuesto.presupuestoNumber || '—'}`],
@@ -104,30 +102,12 @@ const buildPortada = (doc, presupuesto, logoBase64) => {
     ['Modo de precios:',   presupuesto.canal === 'canal2' ? 'Sin Factura (Canal 2)' : 'Con IVA 21% discriminado'],
   ];
 
-  if (presupuesto.revision > 0) {
-    const allChanges = [];
-    if (presupuesto.revisionsHistory) {
-      presupuesto.revisionsHistory.forEach((hist) => {
-        if (hist.cambiosPublicos && hist.revisionNumber > 0) {
-          allChanges.push(`Rev${hist.revisionNumber}: ${hist.cambiosPublicos}`);
-        }
-      });
-    }
-    if (presupuesto.cambiosPublicos) {
-      allChanges.push(`Rev${presupuesto.revision}: ${presupuesto.cambiosPublicos}`);
-    }
-    
-    if (allChanges.length > 0) {
-      campos.push(['Historial de Cambios:', allChanges.join('\n')]);
-    }
-  }
-
   const labelColor = [106, 159, 192];
-  let yPos = 140;
+  let yPos = 124;
 
   campos.forEach(([label, valor]) => {
     if (!valor || valor === '—' || valor === '') return;
-    doc.setFontSize(10);
+    doc.setFontSize(9.5);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...labelColor);
     doc.text(label, W / 2 - 5, yPos, { align: 'right' });
@@ -139,8 +119,153 @@ const buildPortada = (doc, presupuesto, logoBase64) => {
     const lines = doc.splitTextToSize(String(valor), maxTextWidth);
     doc.text(lines, W / 2 + 8, yPos);
     
-    yPos += Math.max(14, lines.length * 5 + 4);
+    yPos += Math.max(9, lines.length * 4.5 + 3.5);
   });
+
+  // ── Historial de Cambios (ocupa todo el ancho de la página para no superar márgenes) ──
+  if (presupuesto.revision > 0) {
+    const changeItems = [];
+    if (presupuesto.revisionsHistory) {
+      presupuesto.revisionsHistory.forEach((hist) => {
+        if (hist.cambiosPublicos && hist.revisionNumber > 0) {
+          const lines = String(hist.cambiosPublicos).split('\n').map(l => l.trim()).filter(Boolean);
+          if (lines.length > 0) {
+            changeItems.push({
+              rev: `Rev${hist.revisionNumber}`,
+              lines
+            });
+          }
+        }
+      });
+    }
+    if (presupuesto.cambiosPublicos) {
+      const lines = String(presupuesto.cambiosPublicos).split('\n').map(l => l.trim()).filter(Boolean);
+      if (lines.length > 0) {
+        changeItems.push({
+          rev: `Rev${presupuesto.revision}`,
+          lines
+        });
+      }
+    }
+
+    if (changeItems.length > 0) {
+      const maxBottom = H - 28;
+      const xLeft = 24;
+      const contentWidth = W - 48; // 162mm en A4
+      const indent = 5;
+      const itemWidth = contentWidth - indent;
+
+      // Unificar en lista para calcular espacio
+      const flatList = [];
+      changeItems.forEach((grp) => {
+        flatList.push({ type: 'rev', text: `${grp.rev}:` });
+        grp.lines.forEach((line) => {
+          flatList.push({ type: 'line', text: `•  ${line}` });
+        });
+      });
+
+      // Cálculo de fuente e interlineado dinámico según cantidad de elementos
+      let fontSize = 8.5;
+      let lineHeight = 4.2;
+      let isTwoCols = false;
+
+      doc.setFontSize(fontSize);
+      let totalLines = 0;
+      flatList.forEach((item) => {
+        const w = item.type === 'rev' ? contentWidth : itemWidth;
+        const wrapped = doc.splitTextToSize(item.text, w);
+        totalLines += wrapped.length;
+      });
+
+      const availableH = maxBottom - yPos - 8;
+      if (totalLines * lineHeight > availableH) {
+        fontSize = 7.5;
+        lineHeight = 3.6;
+        doc.setFontSize(fontSize);
+        totalLines = 0;
+        flatList.forEach((item) => {
+          const w = item.type === 'rev' ? contentWidth : itemWidth;
+          const wrapped = doc.splitTextToSize(item.text, w);
+          totalLines += wrapped.length;
+        });
+
+        if (totalLines * lineHeight > availableH) {
+          isTwoCols = true;
+          fontSize = 7.5;
+          lineHeight = 3.4;
+        }
+      }
+
+      // Título de la sección
+      yPos += 3;
+      doc.setFontSize(9.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...labelColor);
+      doc.text('Historial de Cambios:', xLeft, yPos);
+      yPos += 5.2;
+
+      if (!isTwoCols) {
+        doc.setFontSize(fontSize);
+        flatList.forEach((item) => {
+          if (yPos + lineHeight > maxBottom) return;
+          if (item.type === 'rev') {
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(...labelColor);
+            doc.text(item.text, xLeft, yPos);
+            yPos += lineHeight;
+          } else {
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(...WHITE);
+            const wrapped = doc.splitTextToSize(item.text, itemWidth);
+            wrapped.forEach((wLine) => {
+              if (yPos + lineHeight > maxBottom) return;
+              doc.text(wLine, xLeft + indent, yPos);
+              yPos += lineHeight;
+            });
+          }
+        });
+      } else {
+        // Formato a 2 columnas si los cambios son extremadamente numerosos
+        const colWidth = (contentWidth - 8) / 2;
+        const colItemWidth = colWidth - indent;
+        const col1X = xLeft;
+        const col2X = xLeft + colWidth + 8;
+        const startY = yPos;
+        let currentCol = 1;
+        let currentY = startY;
+
+        doc.setFontSize(fontSize);
+        flatList.forEach((item) => {
+          const x = currentCol === 1 ? col1X : col2X;
+          const w = item.type === 'rev' ? colWidth : colItemWidth;
+          const currentIndent = item.type === 'rev' ? 0 : indent;
+
+          const wrapped = doc.splitTextToSize(item.text, w);
+          if (currentY + wrapped.length * lineHeight > maxBottom && currentCol === 1) {
+            currentCol = 2;
+            currentY = startY;
+          }
+
+          if (currentY + lineHeight <= maxBottom) {
+            if (item.type === 'rev') {
+              doc.setFont('helvetica', 'bold');
+              doc.setTextColor(...labelColor);
+            } else {
+              doc.setFont('helvetica', 'normal');
+              doc.setTextColor(...WHITE);
+            }
+
+            wrapped.forEach((wLine) => {
+              if (currentY + lineHeight <= maxBottom) {
+                doc.text(wLine, x + currentIndent, currentY);
+                currentY += lineHeight;
+              }
+            });
+          }
+        });
+      }
+    }
+  }
 
   // Footer
   doc.setFontSize(9);
