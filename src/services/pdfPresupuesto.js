@@ -24,6 +24,30 @@ const GRAY_LIGHT  = [245, 245, 245];
 const formatARS = (n) =>
   n != null ? `$ ${Math.round(n).toLocaleString('es-AR')}` : '—';
 
+const getPresupuestoFecha = (presupuesto) => {
+  if (presupuesto?.revisionSavedAt) {
+    const d = new Date(presupuesto.revisionSavedAt);
+    if (!isNaN(d.getTime())) return d.toLocaleDateString('es-AR');
+  }
+  if (presupuesto?.savedAt) {
+    const d = new Date(presupuesto.savedAt);
+    if (!isNaN(d.getTime())) return d.toLocaleDateString('es-AR');
+  }
+  if (presupuesto?.revision > 0 && presupuesto?.revisionsHistory && presupuesto.revisionsHistory.length > 0) {
+    const lastHist = presupuesto.revisionsHistory[presupuesto.revisionsHistory.length - 1];
+    if (lastHist?.savedAt) {
+      const d = new Date(lastHist.savedAt);
+      if (!isNaN(d.getTime())) return d.toLocaleDateString('es-AR');
+    }
+  }
+  if (presupuesto?.date) return presupuesto.date;
+  if (presupuesto?.createdAt) {
+    const d = presupuesto.createdAt.toDate ? presupuesto.createdAt.toDate() : new Date(presupuesto.createdAt);
+    if (!isNaN(d.getTime())) return d.toLocaleDateString('es-AR');
+  }
+  return new Date().toLocaleDateString('es-AR');
+};
+
 // ─── LOGO Euler (texto estilizado, se reemplaza con imagen si está disponible)
 const drawLogo = (doc, x, y, logoBase64) => {
   if (logoBase64) {
@@ -62,11 +86,6 @@ const buildPortada = (doc, presupuesto, logoBase64) => {
   // Logo
   drawLogo(doc, W / 2, 80, logoBase64);
 
-  // Separador
-  doc.setDrawColor(...[42, 90, 138]);
-  doc.setLineWidth(0.5);
-  doc.line(40, 100, W - 40, 100);
-
   // Título
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
@@ -81,7 +100,7 @@ const buildPortada = (doc, presupuesto, logoBase64) => {
     ['N° Presupuesto:',    `${presupuesto.presupuestoNumber || '—'}`],
     ['Revisión:',          presupuesto.revision !== undefined ? `Rev${presupuesto.revision}` : 'Rev0'],
     ['Dirección de obra:', presupuesto.location || '—'],
-    ['Fecha:',             presupuesto.date || new Date().toLocaleDateString('es-AR')],
+    ['Fecha:',             getPresupuestoFecha(presupuesto)],
     ['Modo de precios:',   presupuesto.canal === 'canal2' ? 'Sin Factura (Canal 2)' : 'Con IVA 21% discriminado'],
   ];
 
@@ -415,7 +434,7 @@ const buildGarantiasYCierre = (doc, presupuesto) => {
     ['Cliente:',           presupuesto.clientName || presupuesto.name || '—'],
     ['Direccion de obra:',  presupuesto.location || '—'],
     ['N° Presupuesto:',    presupuesto.presupuestoNumber || '—'],
-    ['Fecha:',             presupuesto.date || new Date().toLocaleDateString('es-AR')],
+    ['Fecha:',             getPresupuestoFecha(presupuesto)],
     ['Total:',             totalText],
   ];
 

@@ -744,6 +744,7 @@ const KanbanBoard = () => {
       const baseNum = (selectedLead.presupuestoNumber || '').split('_Rev')[0].split('_V')[0];
       const newPresupuestoNumber = `${baseNum}_Rev${newRevision}`;
       
+      const now = new Date();
       const updatedFields = {
         notas: detailNotes,
         amount,
@@ -753,7 +754,8 @@ const KanbanBoard = () => {
         presupuestoNumber: newPresupuestoNumber,
         cambiosRealizados: isInitial ? 'Presupuesto Inicial' : changeNoteInternal.trim(),
         cambiosPublicos: isInitial ? '' : changeNotePublic.trim(),
-        revisionSavedAt: new Date().toISOString(),
+        revisionSavedAt: now.toISOString(),
+        date: now.toLocaleDateString('es-AR'),
         revisionsHistory: history,
         
         name: editLeadFields.name,
@@ -916,7 +918,8 @@ const KanbanBoard = () => {
         cambiosPublicos: rev.cambiosPublicos || '',
         revision: rev.revisionNumber || 0,
         amount: rev.amount || 0,
-        date: new Date(rev.savedAt).toLocaleDateString('es-AR')
+        revisionSavedAt: rev.savedAt,
+        date: rev.savedAt ? new Date(rev.savedAt).toLocaleDateString('es-AR') : selectedLead.date
       };
       
       const autoSelectedUrls = [];
@@ -1381,6 +1384,7 @@ const KanbanBoard = () => {
         labels: [],
         status: 'pendiente',
         date: new Date().toLocaleDateString('es-AR'),
+        revisionSavedAt: new Date().toISOString(),
         amount: 0,
         paymentStatus: 'Pendiente',
         createdAt: serverTimestamp(),
