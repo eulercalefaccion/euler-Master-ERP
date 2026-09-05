@@ -4,6 +4,7 @@ import {
   doc, getDoc, onSnapshot, updateDoc, collection, query, where, orderBy, getDocs
 } from 'firebase/firestore'
 import { db } from '../../services/firebaseConfig'
+import { useAuth } from '../../context/AuthContext'
 import { FileText, Camera, Edit2, Save, ChevronRight } from 'lucide-react'
 import MediaLightbox from '../components/MediaLightbox'
 import AutocompleteLocalidad from '../components/AutocompleteLocalidad'
@@ -30,6 +31,8 @@ function calcTotal(materiales, manoObra) {
 export default function ClienteDetalle() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { currentUser } = useAuth()
+  const isTecnico = currentUser?.role === 'tecnico' || currentUser?.rol === 'tecnico'
   const [cliente, setCliente] = useState(null)
   const [servicios, setServicios] = useState([])
   const [editando, setEditando] = useState(false)
@@ -131,7 +134,7 @@ export default function ClienteDetalle() {
           ${s.diagnostico ? `<div style="font-size:12px;margin-bottom:4px;"><strong>Diagnóstico${s.tecnicoDiagnostico ? ` (por ${s.tecnicoDiagnostico})` : ''}:</strong> ${s.diagnostico}</div>` : ''}
           ${s.recomendaciones ? `<div style="font-size:12px;margin-bottom:4px;"><strong>Recomendaciones:</strong> ${s.recomendaciones}</div>` : ''}
           ${s.tareasPendientes ? `<div style="font-size:12px;margin-bottom:4px;"><strong>Tareas pendientes:</strong> ${s.tareasPendientes}</div>` : ''}
-          ${conIVA > 0 ? `<div style="font-size:12px;margin-top:8px;font-weight:700;color:#1E3A5F;">Total: $${formatMoney(conIVA)} (c/IVA)</div>` : ''}
+          ${!isTecnico && conIVA > 0 ? `<div style="font-size:12px;margin-top:8px;font-weight:700;color:#1E3A5F;">Total: $${formatMoney(conIVA)} (c/IVA)</div>` : ''}
           <div style="font-size:11px;color:#27AE60;margin-top:4px;font-weight:600;">Estado: ${(s.estado || '').replace('-', ' ').toUpperCase()}</div>
         </div>`
     }).join('')
@@ -498,7 +501,7 @@ export default function ClienteDetalle() {
                         <div style={{ fontSize: '0.85rem', color: 'var(--azul)', whiteSpace: 'pre-wrap' }}>{evento.servicio.diagnostico}</div>
                       </div>
                     )}
-                    {((evento.servicio.notasInternasHistorial && evento.servicio.notasInternasHistorial.length > 0) || evento.servicio.notasInternas) && (
+                    {!isTecnico && ((evento.servicio.notasInternasHistorial && evento.servicio.notasInternasHistorial.length > 0) || evento.servicio.notasInternas) && (
                       <div style={{ marginBottom: 12, borderLeft: '3px solid var(--azul)', paddingLeft: 8, display: 'grid', gap: 6 }}>
                         <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--gris-texto)', textTransform: 'uppercase', marginBottom: 2 }}>Notas Internas (Admin)</div>
                         {evento.servicio.notasInternasHistorial?.map((nota, idx) => (
@@ -527,13 +530,15 @@ export default function ClienteDetalle() {
                           {(evento.servicio.materiales || []).map((m, i) => (
                             <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', borderBottom: '1px solid #EAECEF', paddingBottom: 4 }}>
                               <span>{m.cant}x {m.desc}</span>
-                              <span style={{ color: 'var(--gris-texto)' }}>${formatMoney(m.precio * m.cant)}</span>
+                              {!isTecnico && (
+                                <span style={{ color: 'var(--gris-texto)' }}>${formatMoney(m.precio * m.cant)}</span>
+                              )}
                             </div>
                           ))}
                         </div>
                       </div>
                     )}
-                    {conIVA > 0 && (
+                    {!isTecnico && conIVA > 0 && (
                       <div style={{ textAlign: 'right', fontSize: '0.85rem', fontWeight: 700, color: 'var(--azul)', paddingTop: 8, borderTop: '1px solid #EAECEF' }}>
                         Total cobrado (c/IVA): ${formatMoney(conIVA)}
                       </div>

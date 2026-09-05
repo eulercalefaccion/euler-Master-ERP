@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Plus, FileText, Wrench, MoreVertical, Building, User, Mail, Phone, X, Save, Edit2, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Search, Filter, Plus, FileText, Wrench, MoreVertical, Building, User, Mail, Phone, X, Save, Edit2, Trash2, ExternalLink } from 'lucide-react';
 import ValidatedInput from '../../components/Form/ValidatedInput';
 import { db } from '../../services/firebaseConfig';
 import { collection, onSnapshot, query, addDoc, updateDoc, deleteDoc, writeBatch, doc } from 'firebase/firestore';
 
 const Clientes = () => {
+  const navigate = useNavigate();
   const [clientes, setClientes] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('Todos');
@@ -189,6 +191,12 @@ const Clientes = () => {
     try {
       const payload = {
         ...formData,
+        nombre: formData.name,
+        nombreCompleto: formData.name,
+        nombreBusqueda: (formData.name || '').toLowerCase().trim(),
+        telefono: formData.phone || '',
+        direccion: formData.address || '',
+        localidad: formData.location || '',
         facturacionNombre: formData.facturacionIgualCliente ? formData.name : formData.facturacionNombre,
         facturacionCuit: formData.facturacionIgualCliente ? formData.cuit : formData.facturacionCuit,
         facturacionDni: formData.facturacionIgualCliente ? formData.dni : formData.facturacionDni,
@@ -331,7 +339,12 @@ const Clientes = () => {
             </thead>
             <tbody>
               {filteredClientes.map(cliente => (
-                <tr key={cliente.id} style={{ borderBottom: '1px solid var(--border-light)', transition: 'background-color 0.15s' }} className="table-row-hover">
+                <tr 
+                  key={cliente.id} 
+                  onClick={() => navigate(`/clientes/${cliente.id}`)}
+                  style={{ borderBottom: '1px solid var(--border-light)', transition: 'background-color 0.15s', cursor: 'pointer' }} 
+                  className="table-row-hover"
+                >
                   <td style={{ padding: '1rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                       <div style={{ width: '40px', height: '40px', borderRadius: '8px', backgroundColor: 'var(--primary-50)', color: 'var(--primary-600)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -366,7 +379,7 @@ const Clientes = () => {
                     </div>
                   </td>
 
-                  <td style={{ padding: '1rem', textAlign: 'center', position: 'relative' }}>
+                  <td style={{ padding: '1rem', textAlign: 'center', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
                     <button 
                       onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === cliente.id ? null : cliente.id); }}
                       style={{ color: 'var(--text-tertiary)', padding: '0.5rem', borderRadius: '50%', transition: 'background-color 0.2s' }} 
@@ -379,9 +392,16 @@ const Clientes = () => {
                       <div style={{
                         position: 'absolute', right: '1rem', top: '3rem', zIndex: 20,
                         backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-light)',
-                        borderRadius: '8px', boxShadow: 'var(--shadow-lg)', minWidth: '160px',
+                        borderRadius: '8px', boxShadow: 'var(--shadow-lg)', minWidth: '170px',
                         overflow: 'hidden'
                       }}>
+                        <button 
+                          onClick={() => { setOpenMenuId(null); navigate(`/clientes/${cliente.id}`); }}
+                          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', padding: '0.75rem 1rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.875rem', color: 'var(--primary-600)', textAlign: 'left', fontWeight: 600 }}
+                          className="table-row-hover"
+                        >
+                          <ExternalLink size={14} /> Ver Ficha 360°
+                        </button>
                         <button 
                           onClick={() => openEditPanel(cliente)}
                           style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', padding: '0.75rem 1rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.875rem', color: 'var(--text-primary)', textAlign: 'left' }}

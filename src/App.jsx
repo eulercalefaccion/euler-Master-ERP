@@ -6,6 +6,7 @@ import { TecnicosProvider } from './servicios_app/components/PinLock';
 import MainLayout from './layouts/MainLayout';
 import PresupuestosCRM from './pages/Presupuestos/PresupuestosCRM';
 import Clientes from './pages/Clientes/Clientes';
+import ClienteDetalleERP from './pages/Clientes/ClienteDetalleERP';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard/Dashboard';
 import Obras from './pages/Obras/Obras';
@@ -70,6 +71,7 @@ function App() {
         <Route path="/presupuesto" element={<FormularioPublico />} />
         <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
         <Route path="/clientes" element={<PrivateRoute><Clientes /></PrivateRoute>} />
+        <Route path="/clientes/:id" element={<PrivateRoute><ClienteDetalleERP /></PrivateRoute>} />
         <Route path="/servicios" element={<PrivateRoute><div className="servicios-app"><ServiciosTecnicos /></div></PrivateRoute>} />
         <Route path="/servicios/clientes" element={<PrivateRoute><div className="servicios-app"><ServiciosClientes /></div></PrivateRoute>} />
         <Route path="/servicios/clientes/:id" element={<PrivateRoute><div className="servicios-app"><ClienteDetalle /></div></PrivateRoute>} />
