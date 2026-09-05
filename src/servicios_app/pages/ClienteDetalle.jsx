@@ -55,11 +55,14 @@ export default function ClienteDetalle() {
       const esVideo = url.toLowerCase().includes('/video/upload/') || url.match(/\.(mp4|webm|ogg|mov|avi)($|\?)/i)
       return esVideo ? 'video' : 'foto'
     }
-    return eventosFoto.map(e => ({
-      url: e.data.url,
-      tipo: detectarTipo(e.data.url),
-      info: `${e.titulo} · ST-${e.servicio.numeroST || 'S/N'}`
-    }))
+    return eventosFoto.map(e => {
+      const tec = e.data.tecnico || e.servicio.tecnicoVisito || e.servicio.tecnico || 'Técnico';
+      return {
+        url: e.data.url,
+        tipo: detectarTipo(e.data.url),
+        info: `Subido por: ${tec} (${e.data.tipo || 'Evidencia'}) · ST-${e.servicio.numeroST || 'S/N'}`
+      };
+    })
   }
 
   const abrirVisor = (url) => {
@@ -124,8 +127,8 @@ export default function ClienteDetalle() {
           </div>
           ${equipos ? `<div style="font-size:12px;margin-bottom:4px;"><strong>Equipo:</strong> ${equipos}</div>` : ''}
           ${s.marca ? `<div style="font-size:12px;margin-bottom:4px;"><strong>Marca/Modelo:</strong> ${s.marca} ${s.modelo || ''}</div>` : ''}
-          ${s.tecnico ? `<div style="font-size:12px;margin-bottom:4px;"><strong>Técnico:</strong> ${s.tecnico}</div>` : ''}
-          ${s.diagnostico ? `<div style="font-size:12px;margin-bottom:4px;"><strong>Diagnóstico:</strong> ${s.diagnostico}</div>` : ''}
+          ${(s.tecnico || s.tecnicoVisito) ? `<div style="font-size:12px;margin-bottom:4px;"><strong>Técnico que realizó / visitó el servicio:</strong> ${s.tecnicoVisito && s.tecnicoVisito !== s.tecnico ? `${s.tecnicoVisito} (visitó) / ${s.tecnico} (asignado)` : (s.tecnico || s.tecnicoVisito)}</div>` : ''}
+          ${s.diagnostico ? `<div style="font-size:12px;margin-bottom:4px;"><strong>Diagnóstico${s.tecnicoDiagnostico ? ` (por ${s.tecnicoDiagnostico})` : ''}:</strong> ${s.diagnostico}</div>` : ''}
           ${s.recomendaciones ? `<div style="font-size:12px;margin-bottom:4px;"><strong>Recomendaciones:</strong> ${s.recomendaciones}</div>` : ''}
           ${s.tareasPendientes ? `<div style="font-size:12px;margin-bottom:4px;"><strong>Tareas pendientes:</strong> ${s.tareasPendientes}</div>` : ''}
           ${conIVA > 0 ? `<div style="font-size:12px;margin-top:8px;font-weight:700;color:#1E3A5F;">Total: $${formatMoney(conIVA)} (c/IVA)</div>` : ''}
@@ -136,8 +139,14 @@ export default function ClienteDetalle() {
     // Collect all photos from services
     const todasFotos = servicios.flatMap(s => {
       const fotos = []
-      if (s.fotoURL) fotos.push({ url: s.fotoURL, fecha: formatFecha(s.creadoEn), st: s.numeroST || '', tipo: 'Cliente' })
-      ;(s.fotosHecnico || []).forEach(f => fotos.push({ url: f.url, fecha: f.fecha || formatFecha(s.creadoEn), st: s.numeroST || '', tipo: 'Técnico' }))
+      if (s.fotoURL) fotos.push({ url: s.fotoURL, fecha: formatFecha(s.creadoEn), st: s.numeroST || '', tipo: 'Cliente', tecnico: 'Cliente' })
+      ;(s.fotosHecnico || []).forEach(f => fotos.push({
+        url: f.url,
+        fecha: f.fecha ? new Date(f.fecha).toLocaleDateString('es-AR') : formatFecha(s.creadoEn),
+        st: s.numeroST || '',
+        tipo: f.tipo || 'Técnico',
+        tecnico: f.tecnico || s.tecnicoVisito || s.tecnico || 'Técnico'
+      }))
       return fotos
     })
 
@@ -147,7 +156,7 @@ export default function ClienteDetalle() {
         ${todasFotos.map(f => `
           <div style="text-align:center;">
             <img src="${f.url}" style="width:100%;height:100px;object-fit:cover;border-radius:6px;border:1px solid #D8E2EE;" />
-            <div style="font-size:10px;color:#888;margin-top:4px;">${f.tipo} · ${f.st} · ${f.fecha}</div>
+            <div style="font-size:10px;color:#888;margin-top:4px;">${f.tipo} · <strong>Técnico: ${f.tecnico || 'Técnico'}</strong> · ST-${f.st} · ${f.fecha}</div>
           </div>`).join('')}
       </div>` : ''
 
@@ -229,13 +238,14 @@ export default function ClienteDetalle() {
     // 2. Visita asignada / llegada
     if (s.horaLlegada || s.fechaAsignada) {
       const tVisita = s.horaLlegada ? new Date(s.horaLlegada) : new Date(s.fechaAsignada + 'T10:00:00')
+      const tecVisita = s.tecnicoVisito || s.tecnico || 'Técnico asignado'
       timelineEvents.push({
         id: `${s.id}-visita`,
         tipo: 'visita',
         fecha: tVisita,
         servicio: s,
-        titulo: 'Visita Técnica',
-        descripcion: s.tecnico ? `Técnico: ${s.tecnico}` : 'Visita agendada',
+        titulo: 'Visita Técnica al Domicilio',
+        descripcion: `Técnico que visitó: ${tecVisita}`,
         color: '#1565C0',
         icono: '👷'
       })
@@ -259,12 +269,13 @@ export default function ClienteDetalle() {
     // 4. Fotos
     ;(s.fotosHecnico || []).forEach((f, i) => {
       const tFoto = f.fecha ? new Date(f.fecha) : tCreado
+      const tecFoto = f.tecnico || s.tecnicoVisito || s.tecnico || 'Técnico'
       timelineEvents.push({
         id: `${s.id}-foto-tec-${i}`,
         tipo: 'foto',
         fecha: tFoto,
         servicio: s,
-        data: f,
+        data: { ...f, tecnico: tecFoto },
         titulo: `Evidencia Fotográfica (${f.tipo || 'Técnico'})`,
         color: '#2980B9',
         icono: '📷'
@@ -418,7 +429,15 @@ export default function ClienteDetalle() {
                 )}
 
                 {evento.tipo === 'visita' && (
-                  <div style={{ fontSize: '0.85rem', color: 'var(--azul)' }}>{evento.descripcion}</div>
+                  <div>
+                    <div style={{ fontSize: '0.88rem', color: 'var(--azul)', fontWeight: 700 }}>{evento.descripcion}</div>
+                    {(evento.servicio.horaLlegada || evento.servicio.horaSalida) && (
+                      <div style={{ fontSize: '0.78rem', color: 'var(--gris-texto)', marginTop: 4 }}>
+                        ⏱ {evento.servicio.horaLlegada ? `Llegada: ${new Date(evento.servicio.horaLlegada).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}` : ''}
+                        {evento.servicio.horaSalida ? ` · Salida: ${new Date(evento.servicio.horaSalida).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}` : ''}
+                      </div>
+                    )}
+                  </div>
                 )}
 
                 {evento.tipo === 'nota_voz' && (
@@ -431,28 +450,51 @@ export default function ClienteDetalle() {
                 )}
 
                 {evento.tipo === 'foto' && (
-                  <div onClick={() => abrirVisor(evento.data.url)} style={{ cursor: 'pointer', display: 'inline-block', width: 120, height: 120, position: 'relative' }}>
-                    {(() => {
-                      const esVideo = evento.data.url.toLowerCase().includes('/video/upload/') || evento.data.url.match(/\.(mp4|webm|ogg|mov|avi)($|\?)/i)
-                      return esVideo ? (
-                        <div className="video-thumbnail-container" style={{ borderRadius: 8 }}>
-                          <video src={evento.data.url} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }} muted />
-                          <div className="video-play-overlay" style={{ borderRadius: 8 }}>
-                            <div className="play-icon-circle">▶</div>
+                  <div>
+                    <div onClick={() => abrirVisor(evento.data.url)} style={{ cursor: 'pointer', display: 'inline-block', width: 130, height: 130, position: 'relative' }}>
+                      {(() => {
+                        const esVideo = evento.data.url.toLowerCase().includes('/video/upload/') || evento.data.url.match(/\.(mp4|webm|ogg|mov|avi)($|\?)/i)
+                        return esVideo ? (
+                          <div className="video-thumbnail-container" style={{ borderRadius: 8 }}>
+                            <video src={evento.data.url} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }} muted />
+                            <div className="video-play-overlay" style={{ borderRadius: 8 }}>
+                              <div className="play-icon-circle">▶</div>
+                            </div>
                           </div>
-                        </div>
-                      ) : (
-                        <img src={evento.data.url} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8, border: '1px solid #D8E2EE' }} />
-                      )
-                    })()}
+                        ) : (
+                          <img src={evento.data.url} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8, border: '1px solid #D8E2EE' }} />
+                        )
+                      })()}
+                    </div>
+                    <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--azul)' }}>
+                        👷 Subido por: <span style={{ color: '#1565C0' }}>{evento.data.tecnico || evento.servicio.tecnicoVisito || evento.servicio.tecnico || 'Técnico'}</span>
+                      </div>
+                      <div style={{ fontSize: '0.74rem', color: 'var(--gris-texto)' }}>
+                        📂 {evento.data.tipo || 'Evidencia'} · ST-{evento.servicio.numeroST || 'S/N'}
+                      </div>
+                    </div>
                   </div>
                 )}
 
                 {evento.tipo === 'resolucion' && (
                   <div>
+                    <div style={{ background: '#F0F7FF', border: '1px solid #C2E0FF', borderRadius: 8, padding: '8px 12px', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
+                      <div style={{ fontSize: '0.82rem', color: 'var(--azul)' }}>
+                        👷 <strong>Técnico actuante:</strong> <span style={{ color: '#1565C0', fontWeight: 700 }}>{evento.servicio.tecnicoDiagnostico || evento.servicio.tecnicoVisito || evento.servicio.tecnico || 'Técnico asignado'}</span>
+                      </div>
+                      {evento.servicio.fechaDiagnostico && (
+                        <div style={{ fontSize: '0.72rem', color: 'var(--gris-texto)' }}>
+                          🕒 {new Date(evento.servicio.fechaDiagnostico).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      )}
+                    </div>
+
                     {evento.servicio.diagnostico && (
                       <div style={{ marginBottom: 12 }}>
-                        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--naranja)', textTransform: 'uppercase', marginBottom: 4 }}>Diagnóstico / Trabajo Realizado</div>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--naranja)', textTransform: 'uppercase', marginBottom: 4 }}>
+                          Diagnóstico / Trabajo Realizado {evento.servicio.tecnicoDiagnostico ? `(por ${evento.servicio.tecnicoDiagnostico})` : ''}
+                        </div>
                         <div style={{ fontSize: '0.85rem', color: 'var(--azul)', whiteSpace: 'pre-wrap' }}>{evento.servicio.diagnostico}</div>
                       </div>
                     )}

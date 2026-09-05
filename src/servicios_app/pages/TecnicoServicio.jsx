@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { doc, onSnapshot, updateDoc, arrayUnion, getDoc } from 'firebase/firestore'
 import { db } from '../../services/firebaseConfig'
+import { useAuth } from '../../context/AuthContext'
 import { Camera, Mic, MicOff, Clock, CheckCircle, PlusCircle, XCircle, Save, MapPin, MessageCircle, Trash2 } from 'lucide-react'
 import TranscriberWorker from '../worker?worker'
 
@@ -30,6 +31,8 @@ function duracion(llegada, salida) {
 export default function TecnicoServicio() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const authContext = useAuth ? useAuth() : null
+  const currentUser = authContext?.currentUser || authContext?.user
   const [servicio, setServicio] = useState(null)
   const [guardando, setGuardando] = useState(false)
   const [subiendo, setSubiendo] = useState(false)
@@ -44,7 +47,8 @@ export default function TecnicoServicio() {
   const workerRef = useRef(null)
   const transcriptRef = useRef({})
 
-  const usuario = JSON.parse(sessionStorage.getItem('euler_tecnico') || '{}')
+  const usuarioSession = JSON.parse(sessionStorage.getItem('euler_tecnico') || '{}')
+  const tecnicoActual = usuarioSession.nombre || authContext?.nombre || (currentUser?.name && currentUser.name !== 'Administrador' ? currentUser.name : null) || (currentUser?.displayName && currentUser.displayName !== 'Administrador' ? currentUser.displayName : null) || servicio?.tecnico || currentUser?.email?.split('@')[0]?.toUpperCase() || 'Técnico'
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, 'servicios', id), snap => {
@@ -76,8 +80,10 @@ export default function TecnicoServicio() {
           currentNotas[transcriptRef.current.index].transcripcion = finalTranscript
           await updateDoc(doc(db, 'servicios', id), { notasVoz: currentNotas })
         } else {
-          const nuevaNota = { audioURL, transcripcion: finalTranscript, fecha: new Date().toISOString(), tecnico: usuario.nombre }
-          await updateDoc(doc(db, 'servicios', id), { notasVoz: arrayUnion(nuevaNota) })
+          const now = new Date().toISOString()
+          const nuevaNota = { audioURL, transcripcion: finalTranscript, fecha: now, tecnico: tecnicoActual }
+          const log = { tipo: 'nota_voz', tecnico: tecnicoActual, fecha: now, descripcion: `Nota de voz agregada por ${tecnicoActual}` }
+          await updateDoc(doc(db, 'servicios', id), { notasVoz: arrayUnion(nuevaNota), historialActividad: arrayUnion(log) })
         }
         transcriptRef.current = {}
       } else if (status === 'error') {
@@ -85,14 +91,16 @@ export default function TecnicoServicio() {
         setTranscribiendo(false)
         const audioURL = transcriptRef.current.audioURL
         if (audioURL) {
+          const now = new Date().toISOString()
           if (transcriptRef.current.isUpdate) {
             const docSnap = await getDoc(doc(db, 'servicios', id))
             const currentNotas = docSnap.data().notasVoz || []
             currentNotas[transcriptRef.current.index].transcripcion = '(Error al transcribir)'
             await updateDoc(doc(db, 'servicios', id), { notasVoz: currentNotas })
           } else {
-            const nuevaNota = { audioURL, transcripcion: '(Error al transcribir)', fecha: new Date().toISOString(), tecnico: usuario.nombre }
-            await updateDoc(doc(db, 'servicios', id), { notasVoz: arrayUnion(nuevaNota) })
+            const nuevaNota = { audioURL, transcripcion: '(Error al transcribir)', fecha: now, tecnico: tecnicoActual }
+            const log = { tipo: 'nota_voz', tecnico: tecnicoActual, fecha: now, descripcion: `Nota de voz agregada por ${tecnicoActual}` }
+            await updateDoc(doc(db, 'servicios', id), { notasVoz: arrayUnion(nuevaNota), historialActividad: arrayUnion(log) })
           }
         }
         transcriptRef.current = {}
@@ -104,7 +112,7 @@ export default function TecnicoServicio() {
       unsub()
       workerRef.current?.terminate()
     }
-  }, [id, usuario.nombre])
+  }, [id, tecnicoActual])
 
   const upd = async (data) => {
     await updateDoc(doc(db, 'servicios', id), data)
@@ -112,17 +120,37 @@ export default function TecnicoServicio() {
 
   const registrarLlegada = async () => {
     if (servicio?.horaLlegada) return
-    await upd({ horaLlegada: new Date().toISOString(), estado: 'en-curso' })
+    const now = new Date().toISOString()
+    const log = { tipo: 'llegada', tecnico: tecnicoActual, fecha: now, descripcion: `Llegada registrada por ${tecnicoActual}` }
+    await upd({
+      horaLlegada: now,
+      estado: 'en-curso',
+      tecnicoVisito: tecnicoActual,
+      historialActividad: arrayUnion(log)
+    })
   }
 
   const registrarSalida = async () => {
     if (servicio?.horaSalida) return
-    await upd({ horaSalida: new Date().toISOString() })
+    const now = new Date().toISOString()
+    const log = { tipo: 'salida', tecnico: tecnicoActual, fecha: now, descripcion: `Salida registrada por ${tecnicoActual}` }
+    await upd({
+      horaSalida: now,
+      historialActividad: arrayUnion(log)
+    })
   }
 
   const guardarNotas = async () => {
     setGuardando(true)
-    await upd({ diagnostico, materialesUsados: materiales })
+    const now = new Date().toISOString()
+    const log = { tipo: 'diagnostico', tecnico: tecnicoActual, fecha: now, descripcion: `Diagnóstico actualizado por ${tecnicoActual}` }
+    await upd({
+      diagnostico,
+      tecnicoDiagnostico: tecnicoActual,
+      fechaDiagnostico: now,
+      materialesUsados: materiales,
+      historialActividad: arrayUnion(log)
+    })
     setGuardando(false)
     alert('✅ Guardado')
   }
@@ -131,7 +159,19 @@ export default function TecnicoServicio() {
     if (!confirm('¿Marcar visita como realizada pero con trabajo pendiente?')) return
     setGuardando(true)
     const now = new Date().toISOString()
-    await upd({ diagnostico, materialesUsados: materiales, estado: 'visitado-incompleto', horaSalida: servicio?.horaSalida || now, fechaCierre: now })
+    const log = { tipo: 'incompleto', tecnico: tecnicoActual, fecha: now, descripcion: `Visita realizada con trabajo pendiente por ${tecnicoActual}` }
+    await upd({
+      diagnostico,
+      tecnicoDiagnostico: servicio?.tecnicoDiagnostico || tecnicoActual,
+      fechaDiagnostico: servicio?.fechaDiagnostico || now,
+      tecnicoVisito: servicio?.tecnicoVisito || tecnicoActual,
+      tecnicoCierre: tecnicoActual,
+      materialesUsados: materiales,
+      estado: 'visitado-incompleto',
+      horaSalida: servicio?.horaSalida || now,
+      fechaCierre: now,
+      historialActividad: arrayUnion(log)
+    })
     setGuardando(false)
     navigate('/tecnico')
   }
@@ -140,7 +180,19 @@ export default function TecnicoServicio() {
     if (!confirm('¿Marcar este servicio como resuelto?')) return
     setGuardando(true)
     const now = new Date().toISOString()
-    await upd({ diagnostico, materialesUsados: materiales, estado: 'resuelto', horaSalida: servicio?.horaSalida || now, fechaCierre: now })
+    const log = { tipo: 'resuelto', tecnico: tecnicoActual, fecha: now, descripcion: `Servicio cerrado como resuelto por ${tecnicoActual}` }
+    await upd({
+      diagnostico,
+      tecnicoDiagnostico: servicio?.tecnicoDiagnostico || tecnicoActual,
+      fechaDiagnostico: servicio?.fechaDiagnostico || now,
+      tecnicoVisito: servicio?.tecnicoVisito || tecnicoActual,
+      tecnicoCierre: tecnicoActual,
+      materialesUsados: materiales,
+      estado: 'resuelto',
+      horaSalida: servicio?.horaSalida || now,
+      fechaCierre: now,
+      historialActividad: arrayUnion(log)
+    })
     setGuardando(false)
     navigate('/tecnico')
   }
@@ -154,8 +206,24 @@ export default function TecnicoServicio() {
       const resourceType = file.type.startsWith('video/') ? 'video' : 'image'
       const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/${resourceType}/upload`, { method: 'POST', body: fd })
       const data = await res.json()
-      const foto = { url: data.secure_url, fecha: new Date().toISOString(), tipo, tecnico: usuario.nombre || 'Técnico' }
-      await updateDoc(doc(db, 'servicios', id), { fotosHecnico: arrayUnion(foto) })
+      const now = new Date().toISOString()
+      const foto = {
+        url: data.secure_url,
+        fecha: now,
+        tipo,
+        tecnico: tecnicoActual,
+        esVideo: resourceType === 'video'
+      }
+      const log = {
+        tipo: 'media',
+        tecnico: tecnicoActual,
+        fecha: now,
+        descripcion: `${resourceType === 'video' ? 'Video' : 'Foto'} (${tipo}) subido por ${tecnicoActual}`
+      }
+      await updateDoc(doc(db, 'servicios', id), {
+        fotosHecnico: arrayUnion(foto),
+        historialActividad: arrayUnion(log)
+      })
     } catch (e) { console.error(e) }
     setSubiendo(false)
   }
@@ -193,8 +261,13 @@ export default function TecnicoServicio() {
             workerRef.current.postMessage({ type: 'transcribe', audio: audioData })
           } else {
             // Guardar nota sin transcripción si falló la carga del modelo
-            const nuevaNota = { audioURL, transcripcion: '(Transcripción no disponible)', fecha: new Date().toISOString(), tecnico: usuario.nombre }
-            await updateDoc(doc(db, 'servicios', id), { notasVoz: arrayUnion(nuevaNota) })
+            const now = new Date().toISOString()
+            const nuevaNota = { audioURL, transcripcion: '(Transcripción no disponible)', fecha: now, tecnico: tecnicoActual }
+            const log = { tipo: 'nota_voz', tecnico: tecnicoActual, fecha: now, descripcion: `Nota de voz agregada por ${tecnicoActual}` }
+            await updateDoc(doc(db, 'servicios', id), {
+              notasVoz: arrayUnion(nuevaNota),
+              historialActividad: arrayUnion(log)
+            })
             setTranscribiendo(false)
           }
 
@@ -259,11 +332,20 @@ export default function TecnicoServicio() {
     <div className="container" style={{ maxWidth: 700 }}>
 
       {/* Banner de Asignación */}
-      {servicio.tecnico === usuario.nombre && (
-        <div style={{ background: '#E3F2FD', color: '#1565C0', border: '1.5px solid #90CAF9', borderRadius: 12, padding: '10px 14px', fontSize: '0.85rem', fontWeight: 700, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6, boxShadow: 'var(--sombra)' }}>
-          📌 SERVICIO ASIGNADO A VOS
+      <div style={{ background: '#F0F7FF', border: '1px solid #C2E0FF', borderRadius: 10, padding: '10px 14px', marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+        <div style={{ fontSize: '0.85rem', color: 'var(--azul)' }}>
+          👷 <strong>Técnico actuante:</strong> <span style={{ color: 'var(--azul-medio)', fontWeight: 700 }}>{tecnicoActual}</span>
         </div>
-      )}
+        {servicio.tecnico === tecnicoActual ? (
+          <div style={{ background: '#E3F2FD', color: '#1565C0', border: '1px solid #90CAF9', borderRadius: 6, padding: '3px 8px', fontSize: '0.75rem', fontWeight: 700 }}>
+            📌 ASIGNADO A VOS
+          </div>
+        ) : servicio.tecnico ? (
+          <div style={{ fontSize: '0.75rem', color: '#B7791F', background: '#FEFCBF', padding: '3px 8px', borderRadius: 6 }}>
+            Asignado original: {servicio.tecnico}
+          </div>
+        ) : null}
+      </div>
 
       {/* Header */}
       <div className="card">
@@ -404,6 +486,12 @@ export default function TecnicoServicio() {
       {/* Diagnóstico */}
       <div className="card">
         {section('Diagnostico tecnico/Solucion/recomendacion/notas')}
+        {servicio.tecnicoDiagnostico && (
+          <div style={{ fontSize: '0.78rem', color: 'var(--azul-medio)', marginBottom: 8, background: '#F0F7FF', padding: '6px 10px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>👷</span>
+            <span>Diagnóstico registrado por: <strong>{servicio.tecnicoDiagnostico}</strong>{servicio.fechaDiagnostico ? ` · ${new Date(servicio.fechaDiagnostico).toLocaleString('es-AR')}` : ''}</span>
+          </div>
+        )}
         <textarea style={{ ...inp, resize: 'vertical', minHeight: 120 }}
           placeholder="¿Qué tenía el equipo? ¿Qué se hizo? Recomendaciones..."
           defaultValue={diagnostico}
@@ -554,7 +642,10 @@ export default function TecnicoServicio() {
                   ) : (
                     <img src={f.url} alt="Foto técnico" onClick={() => window.open(f.url, '_blank')} style={{ width: '100%', height: 80, objectFit: 'cover', borderRadius: 8, border: '2px solid #D8E2EE', cursor: 'pointer' }} />
                   )}
-                  <div style={{ fontSize: '0.65rem', color: 'var(--gris-texto)', textAlign: 'center', marginTop: 2 }}>{f.tipo}</div>
+                  <div style={{ fontSize: '0.68rem', color: 'var(--azul)', textAlign: 'center', marginTop: 3, fontWeight: 700, textTransform: 'capitalize' }}>{f.tipo || 'Evidencia'}</div>
+                  <div style={{ fontSize: '0.62rem', color: 'var(--gris-texto)', textAlign: 'center' }}>
+                    👷 {f.tecnico || servicio.tecnico || 'Técnico'}
+                  </div>
                 </div>
               )
             })}

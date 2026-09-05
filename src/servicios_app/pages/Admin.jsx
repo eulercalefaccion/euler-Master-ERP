@@ -350,7 +350,7 @@ function ServicioCard({ s, onUpdate, onEliminar, onFoto, clientes, navigate }) {
   const obtenerMedios = () => {
     const lista = []
     if (s.fotoURL) {
-      lista.push({ url: s.fotoURL, tipo: detectarTipo(s.fotoURL), info: 'Foto inicial' })
+      lista.push({ url: s.fotoURL, tipo: detectarTipo(s.fotoURL), info: 'Foto adjuntada por cliente' })
     }
     if (s.fotosCliente && Array.isArray(s.fotosCliente)) {
       s.fotosCliente.forEach((url, i) => {
@@ -360,14 +360,18 @@ function ServicioCard({ s, onUpdate, onEliminar, onFoto, clientes, navigate }) {
     if (s.fotosHecnico && Array.isArray(s.fotosHecnico)) {
       s.fotosHecnico.forEach((f) => {
         if (f && f.url) {
-          lista.push({ url: f.url, tipo: detectarTipo(f.url), info: `Técnico - ${f.tipo || 'Galería'}` })
+          const tec = f.tecnico || s.tecnico || 'Técnico'
+          const fechaStr = f.fecha ? ` · ${new Date(f.fecha).toLocaleDateString('es-AR')}` : ''
+          lista.push({ url: f.url, tipo: detectarTipo(f.url), info: `Subido por: ${tec} (${f.tipo || 'Galería'}${fechaStr})` })
         }
       })
     }
     if (s.fotosAdmin && Array.isArray(s.fotosAdmin)) {
       s.fotosAdmin.forEach((f) => {
         if (f && f.url) {
-          lista.push({ url: f.url, tipo: detectarTipo(f.url), info: `Admin - ${f.tipo || 'Galería'}` })
+          const usr = f.usuario || 'Admin';
+          const fechaStr = f.fecha ? ` · ${new Date(f.fecha).toLocaleDateString('es-AR')}` : '';
+          lista.push({ url: f.url, tipo: detectarTipo(f.url), info: `Subido por: ${usr} (${f.tipo || 'Galería'}${fechaStr})` });
         }
       })
     }
@@ -508,7 +512,16 @@ function ServicioCard({ s, onUpdate, onEliminar, onFoto, clientes, navigate }) {
         )}
       </div>
 
-      {s.tecnico && <div className="servicio-info"><strong>👷</strong> {s.tecnico}{s.fechaAsignada ? ` — ${s.fechaAsignada}` : ''}</div>}
+      <div className="servicio-info" style={{ fontWeight: 600, color: (s.tecnico || s.tecnicoVisito) ? 'var(--azul)' : '#E65100' }}>
+        <strong>👷 Técnico:</strong> {s.tecnicoVisito && s.tecnicoVisito !== s.tecnico ? `${s.tecnicoVisito} (visitó) · ${s.tecnico} (asignado)` : (s.tecnico || s.tecnicoVisito || 'Sin asignar')}
+        {s.fechaAsignada ? ` — 📅 ${s.fechaAsignada}` : ''}
+      </div>
+      {s.diagnostico && (
+        <div className="servicio-info" style={{ fontSize: '0.78rem', color: '#2E7D32', fontWeight: 600 }}>
+          <strong>📋 Diagnóstico por:</strong> {s.tecnicoDiagnostico || s.tecnico || 'Técnico'}
+          {s.fechaDiagnostico ? ` (${new Date(s.fechaDiagnostico).toLocaleDateString('es-AR')})` : ''}
+        </div>
+      )}
       {(s.notasVoz || []).length > 0 && <div className="servicio-info"><strong>🎙</strong> {s.notasVoz.length} nota{s.notasVoz.length !== 1 ? 's' : ''} de voz</div>}
       {(materiales.length > 0 || manoObra.length > 0) && (
         <div className="servicio-info"><strong>💰</strong> Total: <strong>${formatMoney(conIVA)}</strong> c/IVA</div>
@@ -700,8 +713,24 @@ function ServicioCard({ s, onUpdate, onEliminar, onFoto, clientes, navigate }) {
                 }} />
               </div>
             </div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--gris-texto)', marginBottom: 6 }}>Diagnostico tecnico/Solucion/recomendacion/notas</div>
-            <SyncTextarea style={{ ...inputStyle, resize: 'vertical', minHeight: 120, marginBottom: 8 }} placeholder="¿Qué tenía el equipo? ¿Qué se hizo? Recomendaciones..." value={s.diagnostico || ''} onChange={val => upd({ diagnostico: val })} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, flexWrap: 'wrap', gap: 6 }}>
+              <div style={{ fontSize: '0.75rem', color: 'var(--gris-texto)', fontWeight: 600 }}>Diagnóstico técnico / Solución / Recomendaciones</div>
+              {s.tecnicoDiagnostico && (
+                <div style={{ fontSize: '0.75rem', color: 'var(--azul-medio)', background: '#EEF4FF', padding: '3px 8px', borderRadius: 6, fontWeight: 600 }}>
+                  👷 Registrado por: <strong>{s.tecnicoDiagnostico}</strong>{s.fechaDiagnostico ? ` (${new Date(s.fechaDiagnostico).toLocaleString('es-AR')})` : ''}
+                </div>
+              )}
+            </div>
+            <SyncTextarea
+              style={{ ...inputStyle, resize: 'vertical', minHeight: 120, marginBottom: 8 }}
+              placeholder="¿Qué tenía el equipo? ¿Qué se hizo? Recomendaciones..."
+              value={s.diagnostico || ''}
+              onChange={val => upd({
+                diagnostico: val,
+                tecnicoDiagnostico: s.tecnicoDiagnostico || s.tecnico || 'Administrador',
+                fechaDiagnostico: new Date().toISOString()
+              })}
+            />
             {/* Fallback for legacy data */}
             {s.recomendaciones && (
               <>
@@ -718,9 +747,15 @@ function ServicioCard({ s, onUpdate, onEliminar, onFoto, clientes, navigate }) {
           </div>
 
           {/* INFO DEL TÉCNICO */}
-          {(s.horaLlegada || s.notasTecnico || (s.fotosHecnico || []).length > 0 || (s.notasVoz || []).length > 0) && (
+          {(s.horaLlegada || s.notasTecnico || (s.fotosHecnico || []).length > 0 || (s.notasVoz || []).length > 0 || (s.historialActividad || []).length > 0) && (
             <div style={{ marginBottom: 16, background: '#F4F6F9', borderRadius: 8, padding: 12 }}>
               {sectionLabel('Registro del técnico')}
+              {(s.tecnicoVisito || s.tecnico) && (
+                <div style={{ fontSize: '0.88rem', color: 'var(--azul)', fontWeight: 700, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>👷</span>
+                  <span>Técnico que visitó el domicilio: <strong style={{ color: 'var(--azul-medio)' }}>{s.tecnicoVisito || s.tecnico}</strong></span>
+                </div>
+              )}
               {s.horaLlegada && (
                 <div style={{ fontSize: '0.83rem', color: 'var(--azul)', marginBottom: 6 }}>
                   <Clock size={13} style={{ verticalAlign: 'middle', marginRight: 4 }} />
@@ -735,25 +770,46 @@ function ServicioCard({ s, onUpdate, onEliminar, onFoto, clientes, navigate }) {
               )}
               {s.notasTecnico && <div style={{ fontSize: '0.83rem', color: 'var(--gris-texto)', fontStyle: 'italic' }}>"{s.notasTecnico}"</div>}
               {(s.fotosHecnico || []).length > 0 && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, marginTop: 8 }}>
-                  {(s.fotosHecnico || []).map((f, i) => {
-                    const esVideo = f.url.toLowerCase().includes('/video/upload/') || f.url.match(/\.(mp4|webm|ogg|mov|avi)($|\?)/i)
-                    return (
-                      <div key={i} style={{ width: '100%', height: 60, position: 'relative' }}>
-                        {esVideo ? (
-                          <div className="video-thumbnail-container" onClick={() => abrirVisor(f.url)}>
-                            <video src={f.url} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 6 }} muted />
-                            <div className="video-play-overlay" style={{ borderRadius: 6 }}>
-                              <div className="play-icon-circle" style={{ width: 24, height: 24, fontSize: '0.65rem' }}>▶</div>
-                            </div>
+                <div style={{ marginTop: 8, marginBottom: 8 }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--gris-texto)', textTransform: 'uppercase', marginBottom: 6 }}>
+                    📷 Fotos y Videos del Técnico ({s.fotosHecnico.length})
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 8 }}>
+                    {(s.fotosHecnico || []).map((f, i) => {
+                      const esVideo = f.url.toLowerCase().includes('/video/upload/') || f.url.match(/\.(mp4|webm|ogg|mov|avi)($|\?)/i)
+                      const fechaFoto = f.fecha ? new Date(f.fecha).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''
+                      return (
+                        <div key={i} style={{ background: 'white', borderRadius: 8, padding: 6, border: '1px solid #D8E2EE', display: 'flex', flexDirection: 'column' }}>
+                          <div style={{ width: '100%', height: 80, position: 'relative', borderRadius: 6, overflow: 'hidden', cursor: 'pointer' }}>
+                            {esVideo ? (
+                              <div className="video-thumbnail-container" onClick={() => abrirVisor(f.url)}>
+                                <video src={f.url} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 6 }} muted />
+                                <div className="video-play-overlay" style={{ borderRadius: 6 }}>
+                                  <div className="play-icon-circle" style={{ width: 28, height: 28, fontSize: '0.75rem' }}>▶</div>
+                                </div>
+                              </div>
+                            ) : (
+                              <img src={f.url} alt="Técnico" onClick={() => abrirVisor(f.url)}
+                                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 6, border: '1px solid #EAECEF' }} />
+                            )}
                           </div>
-                        ) : (
-                          <img src={f.url} alt="Técnico" onClick={() => abrirVisor(f.url)}
-                            style={{ width: '100%', height: 60, objectFit: 'cover', borderRadius: 6, cursor: 'pointer', border: '1px solid #D8E2EE' }} />
-                        )}
-                      </div>
-                    )
-                  })}
+                          <div style={{ marginTop: 4, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--azul)', textTransform: 'capitalize' }}>
+                              {f.tipo || 'Evidencia'}
+                            </div>
+                            <div style={{ fontSize: '0.68rem', color: '#1565C0', fontWeight: 600 }}>
+                              👷 {f.tecnico || s.tecnico || 'Técnico'}
+                            </div>
+                            {fechaFoto && (
+                              <div style={{ fontSize: '0.62rem', color: 'var(--gris-texto)' }}>
+                                🕒 {fechaFoto}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
               )}
               {(s.notasVoz || []).length > 0 && (
@@ -787,6 +843,26 @@ function ServicioCard({ s, onUpdate, onEliminar, onFoto, clientes, navigate }) {
                       )}
                     </div>
                   ))}
+                </div>
+              )}
+              {(s.historialActividad || []).length > 0 && (
+                <div style={{ marginTop: 14, borderTop: '1px dashed #D8E2EE', paddingTop: 10 }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--gris-texto)', textTransform: 'uppercase', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span>🕒</span> Registro de actividad y actualizaciones del técnico ({s.historialActividad.length})
+                  </div>
+                  <div style={{ display: 'grid', gap: 6, background: 'white', padding: 10, borderRadius: 8, border: '1px solid #D8E2EE', maxHeight: 180, overflowY: 'auto' }}>
+                    {s.historialActividad.slice().reverse().map((act, idx) => (
+                      <div key={idx} style={{ fontSize: '0.78rem', borderBottom: idx < s.historialActividad.length - 1 ? '1px solid #F0F2F5' : 'none', paddingBottom: 4, display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                        <div>
+                          <strong style={{ color: '#1565C0' }}>{act.tecnico || 'Técnico'}:</strong>{' '}
+                          <span style={{ color: 'var(--azul)' }}>{act.descripcion || act.tipo}</span>
+                        </div>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--gris-texto)', whiteSpace: 'nowrap' }}>
+                          {new Date(act.fecha).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
