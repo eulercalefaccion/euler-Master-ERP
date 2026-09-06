@@ -2363,7 +2363,7 @@ const KanbanBoard = () => {
                                   top: '100%',
                                   left: 0,
                                   right: 0,
-                                  maxHeight: '340px',
+                                  maxHeight: 'min(530px, 70vh)',
                                   overflowY: 'auto',
                                   background: 'white',
                                   border: '1px solid var(--border-strong)',
@@ -2427,9 +2427,9 @@ const KanbanBoard = () => {
                                                   setIsProductSearchFocused(false);
                                                 }}
                                                 style={{
-                                                  padding: '0.5rem 0.85rem',
+                                                  padding: '0.4rem 0.85rem',
                                                   cursor: 'pointer',
-                                                  fontSize: '0.875rem',
+                                                  fontSize: '0.85rem',
                                                   borderBottom: '1px solid var(--border-light)',
                                                   backgroundColor: selectedItemId === i.id ? 'var(--primary-50)' : 'transparent',
                                                   color: selectedItemId === i.id ? 'var(--primary-700)' : 'var(--text-primary)',
@@ -2476,9 +2476,9 @@ const KanbanBoard = () => {
                                                   setIsProductSearchFocused(false);
                                                 }}
                                                 style={{
-                                                  padding: '0.5rem 0.85rem',
+                                                  padding: '0.4rem 0.85rem',
                                                   cursor: 'pointer',
-                                                  fontSize: '0.875rem',
+                                                  fontSize: '0.85rem',
                                                   borderBottom: '1px solid var(--border-light)',
                                                   backgroundColor: selectedItemId === i.id ? 'var(--primary-50)' : 'transparent',
                                                   color: selectedItemId === i.id ? 'var(--primary-700)' : 'var(--text-primary)',
