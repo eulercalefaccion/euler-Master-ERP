@@ -204,6 +204,18 @@ const KanbanBoard = () => {
   const [isProductSearchFocused, setIsProductSearchFocused] = useState(false);
   const [activeReplaceItemId, setActiveReplaceItemId] = useState(null);
   const [replaceSearchQuery, setReplaceSearchQuery] = useState('');
+  const productSearchRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (productSearchRef.current && !productSearchRef.current.contains(e.target)) {
+        setIsProductDropdownOpen(false);
+        setIsProductSearchFocused(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     if (!isLeadModalOpen) {
@@ -2283,8 +2295,8 @@ const KanbanBoard = () => {
                   </div>
 
                   {/* ── Cotizador ── */}
-                  <div style={{ border:'1px solid var(--primary-100)',borderRadius:'8px',overflow:'hidden' }}>
-                    <div style={{ backgroundColor:'var(--primary-50)',padding:'0.5rem 0.75rem',borderBottom:'1px solid var(--primary-100)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                  <div style={{ border:'1px solid var(--primary-100)',borderRadius:'8px' }}>
+                    <div style={{ backgroundColor:'var(--primary-50)',padding:'0.5rem 0.75rem',borderBottom:'1px solid var(--primary-100)', display:'flex', justifyContent:'space-between', alignItems:'center', borderTopLeftRadius:'7px', borderTopRightRadius:'7px' }}>
                       <h4 style={{ margin:0,display:'flex',alignItems:'center',gap:'0.5rem',color:'var(--primary-700)', fontSize:'0.875rem' }}>
                         <ListPlus size={16}/> Cotizador — {canal === 'iva' ? 'Precios c/IVA' : 'Canal 2 (sin IVA)'}
                       </h4>
@@ -2318,14 +2330,14 @@ const KanbanBoard = () => {
                     </div>
 
                     {/* Selector de ítem */}
-                    <div style={{ padding:'0.5rem 0.75rem',display:'flex',gap:'0.5rem',alignItems:'flex-end',backgroundColor:'#fafafa',borderBottom:'1px solid var(--border-light)' }}>
+                    <div style={{ padding:'0.5rem 0.75rem',display:'flex',gap:'0.5rem',alignItems:'flex-end',backgroundColor:'#fafafa',borderBottom:'1px solid var(--border-light)', position:'relative', zIndex:40 }}>
                       <div style={{ flex:1 }}>
                         <label className="form-label" style={{ fontSize:'0.75rem' }}>Seleccionar del Catálogo</label>
                         {(() => {
                           const selectedItem = listaItems.find(i => i.id === selectedItemId);
                           const displayValue = isProductSearchFocused ? productSearchQuery : (selectedItem?.descripcion || '');
                           return (
-                            <div style={{ position: 'relative', display: 'flex', flexDirection: 'column' }}>
+                            <div ref={productSearchRef} style={{ position: 'relative', display: 'flex', flexDirection: 'column' }}>
                               <input
                                 type="text"
                                 className="input-field"
@@ -2339,12 +2351,6 @@ const KanbanBoard = () => {
                                   setIsProductSearchFocused(true);
                                   setIsProductDropdownOpen(true);
                                 }}
-                                onBlur={() => {
-                                  setTimeout(() => {
-                                    setIsProductSearchFocused(false);
-                                    setIsProductDropdownOpen(false);
-                                  }, 200);
-                                }}
                                 onClick={() => {
                                   setIsProductDropdownOpen(true);
                                 }}
@@ -2357,24 +2363,22 @@ const KanbanBoard = () => {
                                   top: '100%',
                                   left: 0,
                                   right: 0,
-                                  maxHeight: '220px',
+                                  maxHeight: '340px',
                                   overflowY: 'auto',
                                   background: 'white',
                                   border: '1px solid var(--border-strong)',
                                   borderRadius: '6px',
                                   zIndex: 1000,
-                                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                                  boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
                                   marginTop: '4px'
                                 }}>
                                   {(() => {
                                     const filterItems = (items) => {
+                                      if (!productSearchQuery || !productSearchQuery.trim()) return items;
+                                      const terms = productSearchQuery.toLowerCase().trim().split(/\s+/);
                                       return items.filter(i => {
-                                        if (!productSearchQuery || productSearchQuery.trim().length < 2) return true;
-                                        const query = productSearchQuery.toLowerCase().trim();
-                                        const descMatch = (i.descripcion || '').toLowerCase().includes(query);
-                                        const catMatch = (i.categoria || '').toLowerCase().includes(query);
-                                        const codeMatch = (i.id || '').toLowerCase().includes(query);
-                                        return descMatch || catMatch || codeMatch;
+                                        const text = `${i.descripcion || ''} ${i.categoria || ''} ${i.id || ''}`.toLowerCase();
+                                        return terms.every(term => text.includes(term));
                                       });
                                     };
 
@@ -2405,16 +2409,22 @@ const KanbanBoard = () => {
                                               fontWeight: '700',
                                               color: 'var(--text-tertiary)',
                                               textTransform: 'uppercase',
-                                              borderBottom: '1px solid var(--border-light)'
+                                              borderBottom: '1px solid var(--border-light)',
+                                              position: 'sticky',
+                                              top: 0,
+                                              zIndex: 2
                                             }}>
-                                              ── Materiales y Equipos ──
+                                              ── Materiales y Equipos ({filteredMaterials.length}) ──
                                             </div>
                                             {filteredMaterials.map(i => (
                                               <div
                                                 key={i.id}
-                                                onMouseDown={() => {
+                                                onMouseDown={(e) => {
+                                                  e.preventDefault();
                                                   setSelectedItemId(i.id);
                                                   setProductSearchQuery('');
+                                                  setIsProductDropdownOpen(false);
+                                                  setIsProductSearchFocused(false);
                                                 }}
                                                 style={{
                                                   padding: '0.5rem 0.85rem',
@@ -2448,16 +2458,22 @@ const KanbanBoard = () => {
                                               color: 'var(--text-tertiary)',
                                               textTransform: 'uppercase',
                                               borderBottom: '1px solid var(--border-light)',
-                                              borderTop: '1px solid var(--border-light)'
+                                              borderTop: '1px solid var(--border-light)',
+                                              position: 'sticky',
+                                              top: 0,
+                                              zIndex: 2
                                             }}>
-                                              ── Mano de Obra ──
+                                              ── Mano de Obra ({filteredMO.length}) ──
                                             </div>
                                             {filteredMO.map(i => (
                                               <div
                                                 key={i.id}
-                                                onMouseDown={() => {
+                                                onMouseDown={(e) => {
+                                                  e.preventDefault();
                                                   setSelectedItemId(i.id);
                                                   setProductSearchQuery('');
+                                                  setIsProductDropdownOpen(false);
+                                                  setIsProductSearchFocused(false);
                                                 }}
                                                 style={{
                                                   padding: '0.5rem 0.85rem',
