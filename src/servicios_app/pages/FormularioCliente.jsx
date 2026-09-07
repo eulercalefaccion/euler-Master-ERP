@@ -33,6 +33,59 @@ function normalizarDireccion(direccion, localidad) {
   return `${dir}|${loc}`
 }
 
+// Comprime imágenes pesadas en el navegador antes de subirlas a Cloudinary
+function comprimirImagen(file) {
+  return new Promise((resolve) => {
+    if (!file.type.startsWith('image/') || file.type === 'image/gif') {
+      return resolve(file)
+    }
+    if (file.size < 1.2 * 1024 * 1024) {
+      return resolve(file)
+    }
+
+    const img = new Image()
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      img.src = e.target.result
+    }
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      let { width, height } = img
+      const MAX_DIM = 1920
+      if (width > MAX_DIM || height > MAX_DIM) {
+        if (width > height) {
+          height = Math.round((height * MAX_DIM) / width)
+          width = MAX_DIM
+        } else {
+          width = Math.round((width * MAX_DIM) / height)
+          height = MAX_DIM
+        }
+      }
+      canvas.width = width
+      canvas.height = height
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(img, 0, 0, width, height)
+      canvas.toBlob(
+        (blob) => {
+          if (blob && blob.size < file.size) {
+            const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, '.jpg'), {
+              type: 'image/jpeg',
+              lastModified: Date.now(),
+            })
+            resolve(compressedFile)
+          } else {
+            resolve(file)
+          }
+        },
+        'image/jpeg',
+        0.82
+      )
+    }
+    img.onerror = () => resolve(file)
+    reader.readAsDataURL(file)
+  })
+}
+
 // Busca cliente por teléfono normalizado
 async function buscarOCrearCliente(codigoArea, numero, nombre, apellido, email, direccion, pisoDpto, localidad, barrio, lote, lat, lng) {
   const telefonoNormalizado = `${codigoArea.trim()}${numero.trim()}`
@@ -43,7 +96,15 @@ async function buscarOCrearCliente(codigoArea, numero, nombre, apellido, email, 
   const snapNombre = await getDocs(qNombre)
 
   if (!snapNombre.empty) {
-    return { id: snapNombre.docs[0].id, ...snapNombre.docs[0].data(), esNuevo: false }
+    const docSnap = snapNombre.docs[0]
+    const data = docSnap.data()
+    let numCli = data.numeroCliente
+    if (!numCli) {
+      const totalSnap = await getCountFromServer(collection(db, 'clientes'))
+      numCli = `C-${String(totalSnap.data().count + 1).padStart(3, '0')}`
+      updateDoc(doc(db, 'clientes', docSnap.id), { numeroCliente: numCli }).catch(console.error)
+    }
+    return { id: docSnap.id, ...data, numeroCliente: numCli, esNuevo: false }
   }
 
   // 2. Buscar por teléfono exacto
@@ -51,8 +112,15 @@ async function buscarOCrearCliente(codigoArea, numero, nombre, apellido, email, 
   const snap = await getDocs(q)
 
   if (!snap.empty) {
-    // Cliente existente encontrado
-    return { id: snap.docs[0].id, ...snap.docs[0].data(), esNuevo: false }
+    const docSnap = snap.docs[0]
+    const data = docSnap.data()
+    let numCli = data.numeroCliente
+    if (!numCli) {
+      const totalSnap = await getCountFromServer(collection(db, 'clientes'))
+      numCli = `C-${String(totalSnap.data().count + 1).padStart(3, '0')}`
+      updateDoc(doc(db, 'clientes', docSnap.id), { numeroCliente: numCli }).catch(console.error)
+    }
+    return { id: docSnap.id, ...data, numeroCliente: numCli, esNuevo: false }
   }
 
   // Crear cliente nuevo con número correlativo
@@ -65,6 +133,10 @@ async function buscarOCrearCliente(codigoArea, numero, nombre, apellido, email, 
     apellido: apellido.trim(),
     nombreCompleto: `${nombre.trim()} ${apellido.trim()}`,
     nombreBusqueda: `${nombre.trim()} ${apellido.trim()}`.toLowerCase(),
+    name: `${nombre.trim()} ${apellido.trim()}`,
+    phone: `${codigoArea.trim()} ${numero.trim()}`,
+    address: direccion.trim(),
+    location: localidad.trim(),
     codigoArea: codigoArea.trim(),
     numero: numero.trim(),
     telefonoNormalizado,
@@ -203,6 +275,16 @@ export default function FormularioCliente() {
       setError('Podés subir hasta 7 fotos o videos como máximo.')
       return
     }
+
+    const MAX_SIZE_BYTES = 10 * 1024 * 1024 // 10MB límite de Cloudinary
+    for (const f of files) {
+      if (f.size > MAX_SIZE_BYTES) {
+        setError(`El archivo "${f.name}" supera el límite de 10 MB (${(f.size / (1024 * 1024)).toFixed(1)} MB). Por favor seleccioná un archivo más liviano o un video más corto.`)
+        e.target.value = ''
+        return
+      }
+    }
+
     setError('')
     const nuevasFotos = files.map(file => ({
       file,
@@ -231,18 +313,38 @@ export default function FormularioCliente() {
     try {
       let fotosURLs = []
       if (fotos.length > 0) {
-        const uploadPromises = fotos.map(f => {
+        const uploadPromises = fotos.map(async (f) => {
+          let fileToUpload = f.file
+          if (fileToUpload.type.startsWith('image/')) {
+            try {
+              fileToUpload = await comprimirImagen(fileToUpload)
+            } catch (compErr) {
+              console.warn('No se pudo comprimir imagen:', compErr)
+            }
+          }
+
           const formData = new FormData()
-          formData.append('file', f.file)
+          formData.append('file', fileToUpload)
           formData.append('upload_preset', 'euler_servicios')
-          const isVideo = f.file.type.startsWith('video/')
+          const isVideo = fileToUpload.type.startsWith('video/')
           const resourceType = isVideo ? 'video' : 'image'
-          return fetch(`https://api.cloudinary.com/v1_1/djehdlthw/${resourceType}/upload`, {
+
+          const res = await fetch(`https://api.cloudinary.com/v1_1/djehdlthw/${resourceType}/upload`, {
             method: 'POST',
             body: formData,
-          }).then(res => res.json()).then(data => data.secure_url)
+          })
+          const data = await res.json()
+          if (!res.ok || !data.secure_url) {
+            const errorMsg = data?.error?.message || 'Error en la subida del archivo.'
+            if (errorMsg.includes('File size')) {
+              throw new Error(`El archivo "${f.file.name}" supera los 10 MB permitidos. Por favor subí un archivo más liviano o un video más corto.`)
+            }
+            throw new Error(`No se pudo subir "${f.file.name}". ${errorMsg}`)
+          }
+          return data.secure_url
         })
-        fotosURLs = await Promise.all(uploadPromises)
+        const urls = await Promise.all(uploadPromises)
+        fotosURLs = urls.filter(Boolean)
       }
 
       // Buscar o crear cliente automáticamente
@@ -274,7 +376,7 @@ export default function FormularioCliente() {
         
         // Combinar fotos del cliente
         const fotosActuales = activeData.fotosCliente || []
-        const nuevasFotos = [...fotosActuales, ...fotosURLs]
+        const nuevasFotos = [...fotosActuales, ...fotosURLs].filter(Boolean)
 
         await updateDoc(doc(db, 'servicios', servicioActivoDoc.id), {
           descripcion: nuevaDescripcion,
@@ -306,13 +408,13 @@ export default function FormularioCliente() {
           localidad: form.localidad.trim(),
           lat: mapaCoords?.lat || null,
           lng: mapaCoords?.lng || null,
-          equipos: form.equipos,
-          otroEquipo: form.otroEquipo,
-          marca: form.marca,
-          modelo: form.modelo,
+          equipos: form.equipos || [],
+          otroEquipo: form.otroEquipo || '',
+          marca: form.marca || '',
+          modelo: form.modelo || '',
           descripcion: form.descripcion.trim(),
           clienteId: cliente.id,
-          clienteNumero: cliente.numeroCliente,
+          clienteNumero: cliente.numeroCliente || '',
           numeroST,
           fotosCliente: fotosURLs,
           fotoURL: fotosURLs.length > 0 ? fotosURLs[0] : null,
@@ -327,8 +429,13 @@ export default function FormularioCliente() {
 
       setEnviado(true)
     } catch (err) {
-      console.error(err)
-      setError('Hubo un error al enviar. Intentá nuevamente.')
+      console.error('Error al enviar formulario:', err)
+      const msg = err?.message || ''
+      if (msg.includes('10 MB') || msg.includes('demasiado grande') || msg.includes('subir')) {
+        setError(msg)
+      } else {
+        setError('Hubo un error al procesar el envío (' + (msg || 'Error de conexión') + '). Por favor intentá nuevamente o contactanos por WhatsApp.')
+      }
     } finally {
       setEnviando(false)
     }
