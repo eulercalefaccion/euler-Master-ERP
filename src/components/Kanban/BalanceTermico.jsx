@@ -39,11 +39,27 @@ export default function BalanceTermico({ selectedLead, setSelectedLead, db }) {
     setIsSaving(true);
     try {
       const balanceData = {
-        environments: environments.map(e => ({
-          ...e,
-          superficie: e.superficie === '' ? 0 : (parseFloat(e.superficie) || 0),
-          altura: e.altura === '' ? 2.8 : (parseFloat(e.altura) || 2.8)
-        })),
+        environments: environments.map(e => {
+          let sup = 0;
+          if (e.modoCalculo === 'dimensiones') {
+            const l = parseFloat(e.largo) || 0;
+            const a = parseFloat(e.ancho) || 0;
+            sup = (l > 0 && a > 0) ? Math.round(l * a * 100) / 100 : (parseFloat(e.superficie) || 0);
+          } else {
+            sup = e.superficie === '' ? 0 : (parseFloat(e.superficie) || 0);
+          }
+          return {
+            ...e,
+            modoCalculo: e.modoCalculo || 'directa',
+            largo: e.largo === '' || e.largo === null || e.largo === undefined ? null : (parseFloat(e.largo) || null),
+            ancho: e.ancho === '' || e.ancho === null || e.ancho === undefined ? null : (parseFloat(e.ancho) || null),
+            superficie: sup,
+            altura: e.altura === '' ? 2.8 : (parseFloat(e.altura) || 2.8),
+            coefVolumetrico: (e.coefVolumetrico !== '' && e.coefVolumetrico !== null && e.coefVolumetrico !== undefined)
+              ? (parseFloat(e.coefVolumetrico) || null)
+              : null
+          };
+        }),
         params,
         emitterChoices,
         updatedAt: new Date().toISOString()
@@ -61,8 +77,12 @@ export default function BalanceTermico({ selectedLead, setSelectedLead, db }) {
     setEnvironments([...environments, {
       id: Date.now().toString(),
       nombre: '',
+      modoCalculo: 'directa',
+      largo: '',
+      ancho: '',
       superficie: 10,
       altura: 2.8,
+      coefVolumetrico: '',
       planta: 'Planta Baja',
       calefaccion: true
     }]);
@@ -70,6 +90,22 @@ export default function BalanceTermico({ selectedLead, setSelectedLead, db }) {
 
   const updateEnv = (id, field, value) => {
     setEnvironments(prev => prev.map(e => e.id === id ? { ...e, [field]: value } : e));
+  };
+
+  const handleDimensionChange = (id, field, value) => {
+    setEnvironments(prev => prev.map(e => {
+      if (e.id !== id) return e;
+      const nextLargo = field === 'largo' ? value : (e.largo ?? '');
+      const nextAncho = field === 'ancho' ? value : (e.ancho ?? '');
+      const l = parseFloat(nextLargo) || 0;
+      const a = parseFloat(nextAncho) || 0;
+      const sup = (l > 0 && a > 0) ? Math.round(l * a * 100) / 100 : (e.superficie || 0);
+      return {
+        ...e,
+        [field]: value,
+        superficie: sup
+      };
+    }));
   };
 
   const removeEnv = (id) => {
@@ -89,6 +125,9 @@ export default function BalanceTermico({ selectedLead, setSelectedLead, db }) {
     ...env,
     superficie: env.superficie === '' ? 0 : (parseFloat(env.superficie) || 0),
     altura: env.altura === '' ? 2.8 : (parseFloat(env.altura) || 2.8),
+    coefVolumetrico: (env.coefVolumetrico !== '' && env.coefVolumetrico !== null && env.coefVolumetrico !== undefined)
+      ? (parseFloat(env.coefVolumetrico) || null)
+      : null,
     choice: emitterChoices[env.id] || null
   }));
 
@@ -119,17 +158,21 @@ export default function BalanceTermico({ selectedLead, setSelectedLead, db }) {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
             <thead>
               <tr style={{ background: 'var(--bg-surface-hover)', borderBottom: '2px solid var(--border-strong)', textAlign: 'left' }}>
-                <th style={{ padding: '0.5rem', width: '200px' }}>Ambiente</th>
-                <th style={{ padding: '0.5rem', width: '120px' }}>Planta</th>
-                <th style={{ padding: '0.5rem' }}>Superficie (m²)</th>
-                <th style={{ padding: '0.5rem' }}>Altura (m)</th>
-                <th style={{ padding: '0.5rem', textAlign: 'center' }}>¿Calefaccionar?</th>
-                <th style={{ padding: '0.5rem', textAlign: 'center' }}>Eliminar</th>
+                <th style={{ padding: '0.5rem', minWidth: '160px' }}>Ambiente</th>
+                <th style={{ padding: '0.5rem', minWidth: '110px' }}>Planta</th>
+                <th style={{ padding: '0.5rem', minWidth: '120px', textAlign: 'center' }}>Cálculo Sup.</th>
+                <th style={{ padding: '0.5rem', width: '75px', textAlign: 'center' }}>Largo (m)</th>
+                <th style={{ padding: '0.5rem', width: '75px', textAlign: 'center' }}>Ancho (m)</th>
+                <th style={{ padding: '0.5rem', width: '95px' }}>Superficie (m²)</th>
+                <th style={{ padding: '0.5rem', width: '75px', textAlign: 'center' }}>Altura (m)</th>
+                <th style={{ padding: '0.5rem', width: '95px', textAlign: 'center' }}>Coef. (Kcal/m³)</th>
+                <th style={{ padding: '0.5rem', textAlign: 'center', width: '60px' }}>¿Calef.?</th>
+                <th style={{ padding: '0.5rem', textAlign: 'center', width: '50px' }}>Eliminar</th>
               </tr>
             </thead>
             <tbody>
               {environments.length === 0 && (
-                <tr><td colSpan="6" style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-tertiary)' }}>No hay ambientes. Presioná el botón abajo para agregar.</td></tr>
+                <tr><td colSpan="10" style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-tertiary)' }}>No hay ambientes. Presioná el botón abajo para agregar.</td></tr>
               )}
               {environments.map(env => (
                 <tr key={env.id} style={{ borderBottom: '1px solid var(--border-light)', background: 'white' }}>
@@ -142,16 +185,111 @@ export default function BalanceTermico({ selectedLead, setSelectedLead, db }) {
                       <option value="Planta Alta">Planta Alta</option>
                     </select>
                   </td>
+                  <td style={{ padding: '0.4rem', textAlign: 'center' }}>
+                    <div style={{ display: 'inline-flex', borderRadius: '4px', border: '1px solid #cbd5e1', overflow: 'hidden', width: '100%' }}>
+                      <button
+                        type="button"
+                        onClick={() => updateEnv(env.id, 'modoCalculo', 'dimensiones')}
+                        style={{
+                          flex: 1,
+                          padding: '0.3rem 0.2rem',
+                          fontSize: '0.72rem',
+                          fontWeight: env.modoCalculo === 'dimensiones' ? '700' : '400',
+                          background: env.modoCalculo === 'dimensiones' ? '#2563eb' : '#f8fafc',
+                          color: env.modoCalculo === 'dimensiones' ? 'white' : '#64748b',
+                          border: 'none',
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap'
+                        }}
+                        title="Calcular ingresando Largo y Ancho"
+                      >
+                        L × A
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => updateEnv(env.id, 'modoCalculo', 'directa')}
+                        style={{
+                          flex: 1,
+                          padding: '0.3rem 0.2rem',
+                          fontSize: '0.72rem',
+                          fontWeight: env.modoCalculo !== 'dimensiones' ? '700' : '400',
+                          background: env.modoCalculo !== 'dimensiones' ? '#2563eb' : '#f8fafc',
+                          color: env.modoCalculo !== 'dimensiones' ? 'white' : '#64748b',
+                          border: 'none',
+                          borderLeft: '1px solid #cbd5e1',
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap'
+                        }}
+                        title="Ingresar Superficie directamente"
+                      >
+                        Directa
+                      </button>
+                    </div>
+                  </td>
                   <td style={{ padding: '0.4rem' }}>
                     <input 
                       type="number" 
-                      step="0.1" 
-                      value={env.superficie ?? ''} 
-                      onChange={e => updateEnv(env.id, 'superficie', e.target.value)} 
+                      step="0.05" 
+                      disabled={env.modoCalculo !== 'dimensiones'}
+                      value={env.modoCalculo === 'dimensiones' ? (env.largo ?? '') : ''} 
+                      onChange={e => handleDimensionChange(env.id, 'largo', e.target.value)} 
                       onFocus={e => e.target.select()}
-                      placeholder="0.0"
-                      style={inps} 
+                      placeholder={env.modoCalculo === 'dimensiones' ? '0.0' : '—'}
+                      style={{
+                        ...inps,
+                        backgroundColor: env.modoCalculo === 'dimensiones' ? 'white' : '#f1f5f9',
+                        color: env.modoCalculo === 'dimensiones' ? 'inherit' : '#94a3b8',
+                        cursor: env.modoCalculo === 'dimensiones' ? 'text' : 'not-allowed',
+                        textAlign: 'center'
+                      }} 
                     />
+                  </td>
+                  <td style={{ padding: '0.4rem' }}>
+                    <input 
+                      type="number" 
+                      step="0.05" 
+                      disabled={env.modoCalculo !== 'dimensiones'}
+                      value={env.modoCalculo === 'dimensiones' ? (env.ancho ?? '') : ''} 
+                      onChange={e => handleDimensionChange(env.id, 'ancho', e.target.value)} 
+                      onFocus={e => e.target.select()}
+                      placeholder={env.modoCalculo === 'dimensiones' ? '0.0' : '—'}
+                      style={{
+                        ...inps,
+                        backgroundColor: env.modoCalculo === 'dimensiones' ? 'white' : '#f1f5f9',
+                        color: env.modoCalculo === 'dimensiones' ? 'inherit' : '#94a3b8',
+                        cursor: env.modoCalculo === 'dimensiones' ? 'text' : 'not-allowed',
+                        textAlign: 'center'
+                      }} 
+                    />
+                  </td>
+                  <td style={{ padding: '0.4rem' }}>
+                    <div style={{ position: 'relative' }}>
+                      <input 
+                        type="number" 
+                        step="0.1" 
+                        readOnly={env.modoCalculo === 'dimensiones'}
+                        value={env.superficie ?? ''} 
+                        onChange={e => {
+                          if (env.modoCalculo !== 'dimensiones') {
+                            updateEnv(env.id, 'superficie', e.target.value);
+                          }
+                        }} 
+                        onFocus={e => e.target.select()}
+                        placeholder="0.0"
+                        style={{
+                          ...inps,
+                          backgroundColor: env.modoCalculo === 'dimensiones' ? '#eff6ff' : 'white',
+                          borderColor: env.modoCalculo === 'dimensiones' ? '#93c5fd' : 'var(--border-light)',
+                          fontWeight: env.modoCalculo === 'dimensiones' ? '600' : 'normal',
+                          color: env.modoCalculo === 'dimensiones' ? '#1d4ed8' : 'inherit'
+                        }} 
+                      />
+                      {env.modoCalculo === 'dimensiones' && (
+                        <span style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', fontSize: '0.65rem', color: '#3b82f6', fontWeight: '700', pointerEvents: 'none' }}>
+                          auto
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td style={{ padding: '0.4rem' }}>
                     <input 
@@ -161,7 +299,25 @@ export default function BalanceTermico({ selectedLead, setSelectedLead, db }) {
                       onChange={e => updateEnv(env.id, 'altura', e.target.value)} 
                       onFocus={e => e.target.select()}
                       placeholder="2.8"
-                      style={inps} 
+                      style={{ ...inps, textAlign: 'center' }} 
+                    />
+                  </td>
+                  <td style={{ padding: '0.4rem' }}>
+                    <input 
+                      type="number" 
+                      step="1" 
+                      value={env.coefVolumetrico ?? ''} 
+                      onChange={e => updateEnv(env.id, 'coefVolumetrico', e.target.value)} 
+                      onFocus={e => e.target.select()}
+                      placeholder={params.coefVolumetrico ? `${params.coefVolumetrico}` : '45'}
+                      title={`Por defecto usa el sugerido global (${params.coefVolumetrico ?? 45} Kcal/h·m³). Podés escribir otro número para este ambiente.`}
+                      style={{
+                        ...inps,
+                        fontWeight: (env.coefVolumetrico !== '' && env.coefVolumetrico !== null && env.coefVolumetrico !== undefined) ? '600' : 'normal',
+                        color: (env.coefVolumetrico !== '' && env.coefVolumetrico !== null && env.coefVolumetrico !== undefined) ? '#1e40af' : '#64748b',
+                        backgroundColor: (env.coefVolumetrico !== '' && env.coefVolumetrico !== null && env.coefVolumetrico !== undefined) ? '#eff6ff' : 'white',
+                        textAlign: 'center'
+                      }} 
                     />
                   </td>
                   <td style={{ padding: '0.4rem', textAlign: 'center' }}>

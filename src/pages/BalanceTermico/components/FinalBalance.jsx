@@ -17,17 +17,22 @@ const FinalBalance = ({ environments, params, onBack, isEmbedded = false, onSave
   const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
-    // Si estamos incrustados, es posible que queramos cargar emitterChoices de un prop inicial si lo pasaran.
-    // Por simplicidad, si esEmbedded es true, confiaremos en que ambientes ya vienen filtrados o usaremos los por defecto.
     const initialChoices = {};
-    environments.filter(e => e.calefaccion).forEach(env => {
-      const isBathroom = env.nombre.toLowerCase().includes('baño') || env.nombre.toLowerCase().includes('toilette');
-      initialChoices[env.id] = env.choice || {
-        type: isBathroom ? 'Toallero 80cm' : 'Radiador',
-        customRads: null
-      };
+    setEmitterChoices(prev => {
+      const updated = { ...prev };
+      environments.filter(e => e.calefaccion).forEach(env => {
+        if (!updated[env.id]) {
+          const isBathroom = env.nombre.toLowerCase().includes('baño') || env.nombre.toLowerCase().includes('toilette');
+          updated[env.id] = env.choice || {
+            type: isBathroom ? 'Toallero 80cm' : 'Radiador',
+            customRads: null
+          };
+        } else if (env.choice && env.choice !== updated[env.id] && (!updated[env.id].customRads || !env.choice.customRads)) {
+          updated[env.id] = { ...updated[env.id], ...env.choice };
+        }
+      });
+      return updated;
     });
-    setEmitterChoices(initialChoices);
 
     if (!isEmbedded) {
       // Cargar presupuestos pendientes y en calculo
@@ -67,6 +72,18 @@ const FinalBalance = ({ environments, params, onBack, isEmbedded = false, onSave
     }));
   };
 
+  // Helper para calcular la propuesta automática óptima de radiadores
+  const getAutoRads = (needed) => {
+    if (needed <= 0) return [0];
+    let splits = 1;
+    if (needed > 12) splits = 2;
+    if (needed > 24) splits = 3;
+    if (needed > 36) splits = 4;
+    const base = Math.floor(needed / splits);
+    const remainder = needed % splits;
+    return Array.from({ length: splits }, (_, i) => base + (i < remainder ? 1 : 0));
+  };
+
   // Cálculo de entornos
   const computedEnvs = useMemo(() => {
     return environments.filter(e => e.calefaccion).map(env => {
@@ -74,7 +91,11 @@ const FinalBalance = ({ environments, params, onBack, isEmbedded = false, onSave
       const altura = parseFloat(env.altura) || 2.8;
       const volumen = superficie * altura;
 
-      const totalKcal = volumen * coef;
+      const envCoef = (env.coefVolumetrico !== undefined && env.coefVolumetrico !== null && env.coefVolumetrico !== '' && !isNaN(parseFloat(env.coefVolumetrico)))
+        ? parseFloat(env.coefVolumetrico)
+        : (params.coefVolumetrico ?? 45);
+
+      const totalKcal = volumen * envCoef;
       const transmisionKcal = totalKcal * 0.65;
       const infiltracionKcal = totalKcal * 0.35;
       const totalKcalMargin = totalKcal * margenMultiplier;
@@ -83,6 +104,7 @@ const FinalBalance = ({ environments, params, onBack, isEmbedded = false, onSave
 
       let envResult = {
         ...env,
+        coefVolumetrico: envCoef,
         volumen,
         transmisionW: transmisionKcal * 1.163,
         infiltracionW: infiltracionKcal * 1.163,
@@ -95,22 +117,16 @@ const FinalBalance = ({ environments, params, onBack, isEmbedded = false, onSave
       if (!esPisoRadiante) {
         const baseElementsNeeded = Math.ceil(totalKcalMargin / rendimientoElemento);
         const choice = emitterChoices[env.id] || { type: 'Radiador', customRads: null };
+        const autoRads = getAutoRads(baseElementsNeeded);
         let emitterSummary = '';
         let finalElements = 0;
         let radsArray = [];
 
         if (choice.type === 'Radiador') {
-          if (choice.customRads !== null && Array.isArray(choice.customRads)) {
-            // Usuario tiene configuración personalizada
-            radsArray = choice.customRads; // Mantenemos ceros o vacíos para que no desaparezca el input mientras tipea
+          if (choice.customRads !== null && Array.isArray(choice.customRads) && choice.customRads.length > 0) {
+            radsArray = choice.customRads;
           } else {
-            // Auto cálculo
-            let splits = 1;
-            if (baseElementsNeeded > 12) splits = 2;
-            if (baseElementsNeeded > 24) splits = 3;
-            if (baseElementsNeeded > 36) splits = 4;
-            const perRad = Math.ceil(baseElementsNeeded / splits);
-            radsArray = Array(splits).fill(perRad);
+            radsArray = autoRads;
           }
 
           const validRads = radsArray.filter(n => !isNaN(n) && n > 0);
@@ -125,18 +141,20 @@ const FinalBalance = ({ environments, params, onBack, isEmbedded = false, onSave
                return count === 1 ? `1 Radiador de ${size} elem.` : `${count} Radiadores de ${size} elem.`;
             }).join(' + ');
           }
-          envResult.radsArray = radsArray; // array para renderizar los inputs
+          envResult.radsArray = radsArray;
+          envResult.autoRads = autoRads;
         } else {
           // Toalleros
           finalElements = choice.type.includes('80') ? 3 : 5;
           emitterSummary = `1 ${choice.type} (${finalElements} elem. eq.)`;
           envResult.radsArray = [];
+          envResult.autoRads = [];
         }
         
         envResult.elementsNeeded = finalElements;
         envResult.choice = choice;
         envResult.emitterSummary = emitterSummary;
-        envResult.baseElementsNeeded = baseElementsNeeded; // para mostrar advertencias si difiere mucho
+        envResult.baseElementsNeeded = baseElementsNeeded;
       } else {
         // Lógica Piso Radiante
         const paso = params.pasoTubo || 20;
@@ -213,13 +231,16 @@ const FinalBalance = ({ environments, params, onBack, isEmbedded = false, onSave
         const currentNotas = currentData.notas || '';
         const notasAdicionales = `\n\n[SISTEMA] Balance Térmico IA actualizado el ${new Date().toLocaleDateString('es-AR')}.\nIngresá a la pestaña de "Balance Térmico" para verlo.`;
         
-        // Exportamos la estructura completa en balanceIA
         const balanceData = {
           environments: environments.map(e => ({
             id: e.id,
             nombre: e.nombre,
+            modoCalculo: e.modoCalculo,
+            largo: e.largo,
+            ancho: e.ancho,
             superficie: e.superficie,
             altura: e.altura,
+            coefVolumetrico: e.coefVolumetrico,
             planta: e.planta,
             calefaccion: e.calefaccion,
             choice: emitterChoices[e.id] || null
@@ -330,7 +351,12 @@ const FinalBalance = ({ environments, params, onBack, isEmbedded = false, onSave
               {computedEnvs.map(env => (
                 <tr key={env.id} style={{ borderBottom: '1px solid var(--border-light)' }}>
                   <td style={{ padding: '1rem 1.5rem', fontSize: '0.875rem', fontWeight: '500' }}>
-                    {env.planta ? `${env.planta.substring(0, 2).toUpperCase()} · ` : ''}{env.nombre}
+                    <div>
+                      {env.planta ? `${env.planta.substring(0, 2).toUpperCase()} · ` : ''}{env.nombre}
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '0.2rem' }}>
+                      Coef: <span style={{ fontWeight: '600', color: '#1e40af' }}>{env.coefVolumetrico}</span> Kcal/h·m³
+                    </div>
                   </td>
                   <td style={{ padding: '1rem 1.5rem', fontSize: '0.875rem', textAlign: 'right' }}>{env.superficie.toFixed(1)}</td>
                   
@@ -356,62 +382,137 @@ const FinalBalance = ({ environments, params, onBack, isEmbedded = false, onSave
                           <option value="Toallero 120cm">Toallero 120cm</option>
                         </select>
                       </td>
-                      <td style={{ padding: '1rem 1.5rem' }}>
+                      <td style={{ padding: '0.75rem 1.25rem' }}>
                         {env.choice.type === 'Radiador' ? (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem', alignItems: 'center' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                            {/* Selector de cantidad de radiadores + botón auto */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: '500' }}>Radiadores:</span>
+                                <select 
+                                  value={env.radsArray.length}
+                                  onChange={(e) => {
+                                    const newCount = parseInt(e.target.value) || 1;
+                                    const currentSum = env.radsArray.reduce((acc, curr) => acc + (parseInt(curr) || 0), 0);
+                                    const targetElements = currentSum > 0 ? currentSum : env.baseElementsNeeded;
+                                    const base = Math.floor(targetElements / newCount);
+                                    const rem = targetElements % newCount;
+                                    const newRads = Array.from({ length: newCount }, (_, i) => Math.max(1, base + (i < rem ? 1 : 0)));
+                                    handleChoiceChange(env.id, 'customRads', newRads);
+                                  }}
+                                  style={{
+                                    padding: '0.2rem 0.4rem',
+                                    fontSize: '0.8rem',
+                                    borderRadius: '4px',
+                                    border: '1px solid #cbd5e1',
+                                    background: 'white',
+                                    fontWeight: '600',
+                                    color: '#0f172a'
+                                  }}
+                                >
+                                  <option value="1">1 Radiador</option>
+                                  <option value="2">2 Radiadores</option>
+                                  <option value="3">3 Radiadores</option>
+                                  <option value="4">4 Radiadores</option>
+                                  <option value="5">5 Radiadores</option>
+                                  <option value="6">6 Radiadores</option>
+                                </select>
+                              </div>
+
+                              {env.choice.customRads !== null && (
+                                <button 
+                                  type="button"
+                                  onClick={() => handleChoiceChange(env.id, 'customRads', null)}
+                                  style={{ 
+                                    background: '#eff6ff', 
+                                    border: '1px solid #bfdbfe', 
+                                    borderRadius: '4px', 
+                                    color: '#2563eb', 
+                                    fontSize: '0.72rem', 
+                                    padding: '0.2rem 0.45rem', 
+                                    cursor: 'pointer', 
+                                    fontWeight: '600',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.2rem'
+                                  }}
+                                  title="Restablecer a la configuración sugerida por el sistema"
+                                >
+                                  ↺ Sugerido
+                                </button>
+                              )}
+                            </div>
+
+                            {/* Inputs para modificar elementos de cada radiador */}
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center' }}>
                               {env.radsArray.map((rad, idx) => (
-                                <div key={idx} style={{ display: 'flex', alignItems: 'center', backgroundColor: 'white', border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden' }}>
+                                <div 
+                                  key={idx} 
+                                  style={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    backgroundColor: '#f8fafc', 
+                                    border: '1px solid #cbd5e1', 
+                                    borderRadius: '4px', 
+                                    padding: '0.15rem 0.35rem',
+                                    gap: '0.25rem'
+                                  }}
+                                >
+                                  {env.radsArray.length > 1 && (
+                                    <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: '600' }}>
+                                      R{idx + 1}:
+                                    </span>
+                                  )}
                                   <input 
                                     type="number"
+                                    min="1"
+                                    max="40"
                                     value={rad === 0 ? '' : rad}
-                                    style={{ width: '40px', padding: '0.25rem', border: 'none', textAlign: 'center', fontSize: '0.875rem', outline: 'none' }}
+                                    onFocus={e => e.target.select()}
+                                    style={{ 
+                                      width: '42px', 
+                                      padding: '0.2rem', 
+                                      border: '1px solid #94a3b8', 
+                                      borderRadius: '3px', 
+                                      textAlign: 'center', 
+                                      fontSize: '0.85rem', 
+                                      fontWeight: '600',
+                                      background: 'white',
+                                      color: '#0f172a'
+                                    }}
                                     onChange={(e) => {
+                                      const val = e.target.value === '' ? 0 : parseInt(e.target.value);
                                       let newRads = [...env.radsArray];
-                                      newRads[idx] = parseInt(e.target.value) || 0;
+                                      newRads[idx] = isNaN(val) ? 0 : val;
                                       handleChoiceChange(env.id, 'customRads', newRads);
                                     }}
                                   />
-                                  <button 
-                                    onClick={() => {
-                                      let newRads = [...env.radsArray];
-                                      newRads.splice(idx, 1);
-                                      handleChoiceChange(env.id, 'customRads', newRads);
-                                    }}
-                                    style={{ background: '#f1f5f9', borderLeft: '1px solid #cbd5e1', borderRight: 'none', borderTop: 'none', borderBottom: 'none', padding: '0.25rem 0.4rem', color: '#64748b', cursor: 'pointer', fontSize: '0.75rem' }}
-                                    title="Quitar radiador"
-                                  >
-                                    ✕
-                                  </button>
+                                  <span style={{ fontSize: '0.72rem', color: '#64748b' }}>elem.</span>
                                 </div>
                               ))}
-                              
-                              <button 
-                                onClick={() => {
-                                  let newRads = [...env.radsArray, 7]; // Agregar un radiador genérico de 7 elementos
-                                  handleChoiceChange(env.id, 'customRads', newRads);
-                                }}
-                                style={{ background: '#e0f2fe', color: '#0284c7', border: '1px solid #bae6fd', borderRadius: '4px', padding: '0.2rem 0.5rem', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                                title="Agregar otro radiador"
-                              >
-                                +
-                              </button>
-                              
-                              <button
-                                onClick={() => handleChoiceChange(env.id, 'customRads', null)}
-                                style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '1rem', cursor: 'pointer', marginLeft: '0.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                                title="Restablecer auto-cálculo"
-                              >
-                                ⟲
-                              </button>
                             </div>
-                            
-                            {env.elementsNeeded !== env.baseElementsNeeded && (
-                              <span style={{ fontSize: '0.7rem', color: '#d97706', fontWeight: '500' }}>Req: {env.baseElementsNeeded} elem.</span>
-                            )}
+
+                            {/* Estado informativo */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.72rem' }}>
+                              {env.choice.customRads === null ? (
+                                <span style={{ color: '#166534', fontWeight: '500', background: '#dcfce7', padding: '0.1rem 0.35rem', borderRadius: '3px' }}>
+                                  ✓ Sugerido por sistema ({env.baseElementsNeeded} elem.)
+                                </span>
+                              ) : (
+                                <span style={{ 
+                                  color: env.elementsNeeded !== env.baseElementsNeeded ? '#b45309' : '#15803d', 
+                                  fontWeight: '500',
+                                  background: env.elementsNeeded !== env.baseElementsNeeded ? '#fef3c7' : '#dcfce7',
+                                  padding: '0.1rem 0.35rem',
+                                  borderRadius: '3px'
+                                }}>
+                                  Configurado: {env.elementsNeeded} elem. {env.elementsNeeded !== env.baseElementsNeeded ? `(Cálculo: ${env.baseElementsNeeded} elem.)` : '(coincide con cálculo)'}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         ) : (
-                          <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Pared</span>
+                          <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Instalación en pared</span>
                         )}
                       </td>
                       <td style={{ padding: '1rem 1.5rem', fontSize: '0.875rem', color: '#15803d', fontWeight: '600' }}>

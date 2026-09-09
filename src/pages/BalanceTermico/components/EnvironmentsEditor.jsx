@@ -12,14 +12,34 @@ const EnvironmentsEditor = ({ environments, setEnvironments }) => {
     setEnvironments(envs => envs.filter(env => env.id !== id));
   };
 
+  const handleDimensionChange = (id, field, value) => {
+    setEnvironments(envs => envs.map(env => {
+      if (env.id !== id) return env;
+      const nextLargo = field === 'largo' ? value : (env.largo ?? '');
+      const nextAncho = field === 'ancho' ? value : (env.ancho ?? '');
+      const l = parseFloat(nextLargo) || 0;
+      const a = parseFloat(nextAncho) || 0;
+      const sup = (l > 0 && a > 0) ? Math.round(l * a * 100) / 100 : (env.superficie || 0);
+      return {
+        ...env,
+        [field]: value,
+        superficie: sup
+      };
+    }));
+  };
+
   const addEnvironment = () => {
     const newId = Date.now().toString();
     setEnvironments([...environments, {
       id: newId,
       nombre: 'Nuevo Ambiente',
       planta: 'Baja',
+      modoCalculo: 'directa',
+      largo: '',
+      ancho: '',
       superficie: 10,
       altura: 2.8,
+      coefVolumetrico: '',
       orientacion: 'Norte',
       tipoVidrio: 'Simple',
       porcentajeVidrio: 15,
@@ -47,8 +67,8 @@ const EnvironmentsEditor = ({ environments, setEnvironments }) => {
             <div key={env.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', padding: '1rem', backgroundColor: 'var(--bg-surface-hover)', border: '1px solid var(--border-light)', borderRadius: '6px' }}>
               
               <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
-                  <div style={{ flex: '1 1 200px' }}>
+                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+                  <div style={{ flex: '1 1 180px' }}>
                     <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.25rem', display: 'block' }}>AMBIENTE</label>
                     <input 
                       className="input-field" 
@@ -57,19 +77,110 @@ const EnvironmentsEditor = ({ environments, setEnvironments }) => {
                       style={{ width: '100%' }}
                     />
                   </div>
-                  <div style={{ flex: '0 0 100px' }}>
+
+                  <div style={{ flex: '0 0 110px' }}>
+                    <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.25rem', display: 'block' }}>CÁLCULO SUP.</label>
+                    <div style={{ display: 'flex', borderRadius: '4px', border: '1px solid #cbd5e1', overflow: 'hidden' }}>
+                      <button
+                        type="button"
+                        onClick={() => updateEnvironment(env.id, 'modoCalculo', 'dimensiones')}
+                        style={{
+                          flex: 1,
+                          padding: '0.35rem 0.2rem',
+                          fontSize: '0.72rem',
+                          fontWeight: env.modoCalculo === 'dimensiones' ? '700' : '400',
+                          background: env.modoCalculo === 'dimensiones' ? '#2563eb' : '#f8fafc',
+                          color: env.modoCalculo === 'dimensiones' ? 'white' : '#64748b',
+                          border: 'none',
+                          cursor: 'pointer'
+                        }}
+                        title="Calcular por Largo × Ancho"
+                      >
+                        L × A
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => updateEnvironment(env.id, 'modoCalculo', 'directa')}
+                        style={{
+                          flex: 1,
+                          padding: '0.35rem 0.2rem',
+                          fontSize: '0.72rem',
+                          fontWeight: env.modoCalculo !== 'dimensiones' ? '700' : '400',
+                          background: env.modoCalculo !== 'dimensiones' ? '#2563eb' : '#f8fafc',
+                          color: env.modoCalculo !== 'dimensiones' ? 'white' : '#64748b',
+                          border: 'none',
+                          borderLeft: '1px solid #cbd5e1',
+                          cursor: 'pointer'
+                        }}
+                        title="Ingresar Superficie directa"
+                      >
+                        Directa
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={{ flex: '0 0 70px' }}>
+                    <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.25rem', display: 'block' }}>LARGO (M)</label>
+                    <input 
+                      type="number" 
+                      step="0.05"
+                      className="input-field" 
+                      disabled={env.modoCalculo !== 'dimensiones'}
+                      value={env.modoCalculo === 'dimensiones' ? (env.largo ?? '') : ''} 
+                      onChange={(e) => handleDimensionChange(env.id, 'largo', e.target.value)} 
+                      onFocus={e => e.target.select()}
+                      placeholder={env.modoCalculo === 'dimensiones' ? '0.0' : '—'}
+                      style={{ 
+                        width: '100%', 
+                        textAlign: 'center',
+                        backgroundColor: env.modoCalculo === 'dimensiones' ? 'white' : '#f1f5f9'
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ flex: '0 0 70px' }}>
+                    <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.25rem', display: 'block' }}>ANCHO (M)</label>
+                    <input 
+                      type="number" 
+                      step="0.05"
+                      className="input-field" 
+                      disabled={env.modoCalculo !== 'dimensiones'}
+                      value={env.modoCalculo === 'dimensiones' ? (env.ancho ?? '') : ''} 
+                      onChange={(e) => handleDimensionChange(env.id, 'ancho', e.target.value)} 
+                      onFocus={e => e.target.select()}
+                      placeholder={env.modoCalculo === 'dimensiones' ? '0.0' : '—'}
+                      style={{ 
+                        width: '100%', 
+                        textAlign: 'center',
+                        backgroundColor: env.modoCalculo === 'dimensiones' ? 'white' : '#f1f5f9'
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ flex: '0 0 90px' }}>
                     <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.25rem', display: 'block' }}>SUP. M²</label>
                     <input 
                       type="number" 
+                      readOnly={env.modoCalculo === 'dimensiones'}
                       className="input-field" 
                       value={env.superficie ?? ''} 
-                      onChange={(e) => updateEnvironment(env.id, 'superficie', e.target.value)} 
+                      onChange={(e) => {
+                        if (env.modoCalculo !== 'dimensiones') {
+                          updateEnvironment(env.id, 'superficie', e.target.value);
+                        }
+                      }} 
                       onFocus={e => e.target.select()}
                       placeholder="0.0"
-                      style={{ width: '100%' }}
+                      style={{ 
+                        width: '100%',
+                        backgroundColor: env.modoCalculo === 'dimensiones' ? '#eff6ff' : 'white',
+                        fontWeight: env.modoCalculo === 'dimensiones' ? '600' : 'normal',
+                        color: env.modoCalculo === 'dimensiones' ? '#1d4ed8' : 'inherit'
+                      }}
                     />
                   </div>
-                  <div style={{ flex: '0 0 100px' }}>
+
+                  <div style={{ flex: '0 0 75px' }}>
                     <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.25rem', display: 'block' }}>ALTURA M</label>
                     <input 
                       type="number" 
@@ -79,10 +190,32 @@ const EnvironmentsEditor = ({ environments, setEnvironments }) => {
                       onChange={(e) => updateEnvironment(env.id, 'altura', e.target.value)} 
                       onFocus={e => e.target.select()}
                       placeholder="2.8"
-                      style={{ width: '100%' }}
+                      style={{ width: '100%', textAlign: 'center' }}
                     />
                   </div>
-                  <div style={{ flex: '0 0 120px' }}>
+
+                  <div style={{ flex: '0 0 85px' }}>
+                    <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.25rem', display: 'block' }}>COEF. KCAL</label>
+                    <input 
+                      type="number" 
+                      step="1"
+                      className="input-field" 
+                      value={env.coefVolumetrico ?? ''} 
+                      onChange={(e) => updateEnvironment(env.id, 'coefVolumetrico', e.target.value)} 
+                      onFocus={e => e.target.select()}
+                      placeholder="Global"
+                      title="Coeficiente volumétrico para este ambiente. Si está vacío, usa el global."
+                      style={{ 
+                        width: '100%', 
+                        textAlign: 'center',
+                        fontWeight: env.coefVolumetrico ? '600' : 'normal',
+                        color: env.coefVolumetrico ? '#1e40af' : '#64748b',
+                        backgroundColor: env.coefVolumetrico ? '#eff6ff' : 'white'
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ flex: '0 0 100px' }}>
                     <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.25rem', display: 'block' }}>VIDRIO</label>
                     <select 
                       className="input-field" 
@@ -94,7 +227,8 @@ const EnvironmentsEditor = ({ environments, setEnvironments }) => {
                       <option value="DVH">DVH</option>
                     </select>
                   </div>
-                  <div style={{ flex: '0 0 80px' }}>
+
+                  <div style={{ flex: '0 0 70px' }}>
                     <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.25rem', display: 'block' }}>% VIDRIO</label>
                     <input 
                       type="number" 
@@ -106,7 +240,8 @@ const EnvironmentsEditor = ({ environments, setEnvironments }) => {
                       style={{ width: '100%' }}
                     />
                   </div>
-                  <div style={{ flex: '0 0 80px' }}>
+
+                  <div style={{ flex: '0 0 65px' }}>
                     <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.25rem', display: 'block' }}>CALEF.</label>
                     <select 
                       className="input-field" 
