@@ -339,6 +339,11 @@ const KanbanBoard = () => {
   const [isUploadingDocCliente, setIsUploadingDocCliente] = useState(false);
   const [uploadDocProgress, setUploadDocProgress] = useState(0);
 
+  // Kanban horizontal scroll sync
+  const kanbanContainerRef = useRef(null);
+  const topScrollbarRef = useRef(null);
+  const isSyncingScroll = useRef(false);
+
   // Lista de folletos disponibles (artículos con folletoUrl en lista_precios o folletos locales por palabra clave)
   const folletosDisponibles = useMemo(() => {
     const uniqueUrls = new Set();
@@ -1610,8 +1615,39 @@ const KanbanBoard = () => {
 
       <LabelsManagerModal isOpen={isLabelsModalOpen} onClose={() => setIsLabelsModalOpen(false)} />
 
+      {/* ── Top Scrollbar (synced with kanban) ── */}
+      {viewMode === 'kanban' && (
+        <div
+          ref={topScrollbarRef}
+          onScroll={() => {
+            if (isSyncingScroll.current) return;
+            isSyncingScroll.current = true;
+            if (kanbanContainerRef.current && topScrollbarRef.current) {
+              kanbanContainerRef.current.scrollLeft = topScrollbarRef.current.scrollLeft;
+            }
+            isSyncingScroll.current = false;
+          }}
+          style={{ overflowX: 'auto', overflowY: 'hidden', flexShrink: 0 }}
+        >
+          {/* Spacer that matches the total width of all kanban columns: 7 columns × 280px + 6 gaps × 16px = 2056px */}
+          <div style={{ height: '1px', width: `${data.columnOrder.length * 280 + (data.columnOrder.length - 1) * 16}px` }} />
+        </div>
+      )}
+
       {/* ── Kanban Board / Vistas ── */}
-      <div className={viewMode === 'kanban' ? "mobile-kanban-container" : ""} style={{ display: 'flex', gap: '1rem', overflowX: viewMode === 'kanban' ? 'scroll' : 'auto', overflowY: viewMode === 'kanban' ? 'hidden' : 'visible', paddingBottom: '0.25rem', flex: 1, minHeight: 0, height: viewMode === 'kanban' ? 'calc(100vh - 280px)' : 'auto', flexDirection: viewMode === 'kanban' ? 'row' : 'column' }}>
+      <div
+        ref={viewMode === 'kanban' ? kanbanContainerRef : undefined}
+        className={viewMode === 'kanban' ? "mobile-kanban-container kanban-hide-scrollbar" : ""}
+        onScroll={viewMode === 'kanban' ? () => {
+          if (isSyncingScroll.current) return;
+          isSyncingScroll.current = true;
+          if (topScrollbarRef.current && kanbanContainerRef.current) {
+            topScrollbarRef.current.scrollLeft = kanbanContainerRef.current.scrollLeft;
+          }
+          isSyncingScroll.current = false;
+        } : undefined}
+        style={{ display: 'flex', gap: '1rem', overflowX: 'auto', overflowY: viewMode === 'kanban' ? 'hidden' : 'visible', paddingBottom: '0.25rem', flex: 1, minHeight: 0, height: viewMode === 'kanban' ? 'calc(100vh - 280px)' : 'auto', flexDirection: viewMode === 'kanban' ? 'row' : 'column' }}
+      >
         
         {(() => {
           const filterAndSortItems = (itemsArray) => {

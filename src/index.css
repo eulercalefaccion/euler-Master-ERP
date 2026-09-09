@@ -188,6 +188,15 @@ button {
 .h-screen { height: 100vh; }
 .grid { display: grid; }
 
+/* Hide native bottom scrollbar on kanban (top scrollbar is used instead) */
+.kanban-hide-scrollbar {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+.kanban-hide-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
 /* Responsive Utilities (Mobile) */
 @media (max-width: 768px) {
   .mobile-hidden { display: none !important; }
