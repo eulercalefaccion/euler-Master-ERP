@@ -1,0 +1,131 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import {
+  isDecimalKeyEvent,
+  getLocaleDecimalSeparator,
+  handleNumpadDecimalKey,
+  initNumpadDecimalHandler,
+} from './numpadDecimalHelper';
+
+describe('numpadDecimalHelper', () => {
+  describe('isDecimalKeyEvent', () => {
+    it('detects NumpadDecimal by code', () => {
+      expect(isDecimalKeyEvent({ code: 'NumpadDecimal' })).toBe(true);
+    });
+
+    it('detects NumpadDecimal by keyCode 110', () => {
+      expect(isDecimalKeyEvent({ keyCode: 110 })).toBe(true);
+      expect(isDecimalKeyEvent({ which: 110 })).toBe(true);
+    });
+
+    it('detects NumpadDecimal by location 3 and dot or comma', () => {
+      expect(isDecimalKeyEvent({ location: 3, key: '.' })).toBe(true);
+      expect(isDecimalKeyEvent({ location: 3, key: ',' })).toBe(true);
+    });
+
+    it('returns false for non-decimal keys', () => {
+      expect(isDecimalKeyEvent({ code: 'KeyA', key: 'a' })).toBe(false);
+      expect(isDecimalKeyEvent({ code: 'Digit1', key: '1' })).toBe(false);
+      expect(isDecimalKeyEvent({ code: 'Enter', key: 'Enter' })).toBe(false);
+    });
+  });
+
+  describe('getLocaleDecimalSeparator', () => {
+    it('returns a comma or dot string', () => {
+      const sep = getLocaleDecimalSeparator();
+      expect([',', '.']).toContain(sep);
+    });
+  });
+
+  describe('handleNumpadDecimalKey', () => {
+    let mockExecCommand;
+
+    beforeEach(() => {
+      mockExecCommand = vi.fn().mockReturnValue(true);
+      document.execCommand = mockExecCommand;
+    });
+
+    it('ignores non-input elements', () => {
+      const div = document.createElement('div');
+      const preventDefault = vi.fn();
+      const event = { target: div, code: 'NumpadDecimal', preventDefault };
+
+      handleNumpadDecimalKey(event);
+      expect(preventDefault).not.toHaveBeenCalled();
+      expect(mockExecCommand).not.toHaveBeenCalled();
+    });
+
+    it('ignores disabled or readonly inputs', () => {
+      const input = document.createElement('input');
+      input.disabled = true;
+      const preventDefault = vi.fn();
+      const event = { target: input, code: 'NumpadDecimal', preventDefault };
+
+      handleNumpadDecimalKey(event);
+      expect(preventDefault).not.toHaveBeenCalled();
+    });
+
+    it('ignores email and url inputs', () => {
+      const input = document.createElement('input');
+      input.type = 'email';
+      const preventDefault = vi.fn();
+      const event = { target: input, code: 'NumpadDecimal', preventDefault };
+
+      handleNumpadDecimalKey(event);
+      expect(preventDefault).not.toHaveBeenCalled();
+    });
+
+    it('intercepts NumpadDecimal on number inputs and calls execCommand with separator', () => {
+      const input = document.createElement('input');
+      input.type = 'number';
+      const preventDefault = vi.fn();
+      const event = { target: input, code: 'NumpadDecimal', key: '.', preventDefault };
+
+      handleNumpadDecimalKey(event);
+      expect(preventDefault).toHaveBeenCalled();
+      expect(mockExecCommand).toHaveBeenCalledWith('insertText', false, expect.stringMatching(/[,.]/));
+    });
+
+    it('intercepts dot key on number inputs and converts it to decimal separator', () => {
+      const input = document.createElement('input');
+      input.type = 'number';
+      const preventDefault = vi.fn();
+      const event = { target: input, code: 'Period', key: '.', preventDefault };
+
+      handleNumpadDecimalKey(event);
+      expect(preventDefault).toHaveBeenCalled();
+      expect(mockExecCommand).toHaveBeenCalled();
+    });
+
+    it('uses selection fallback if execCommand fails on text input', () => {
+      mockExecCommand.mockReturnValue(false);
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = '100';
+      input.selectionStart = 3;
+      input.selectionEnd = 3;
+
+      const dispatchSpy = vi.spyOn(input, 'dispatchEvent');
+      const preventDefault = vi.fn();
+      const event = { target: input, code: 'NumpadDecimal', key: '.', preventDefault };
+
+      handleNumpadDecimalKey(event);
+      expect(preventDefault).toHaveBeenCalled();
+      expect(input.value).toBe('100,');
+      expect(dispatchSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('initNumpadDecimalHandler', () => {
+    it('attaches listener only once', () => {
+      const addSpy = vi.spyOn(window, 'addEventListener');
+      window.__numpadDecimalHandlerInitialized = false;
+
+      initNumpadDecimalHandler();
+      expect(addSpy).toHaveBeenCalledWith('keydown', expect.any(Function), true);
+
+      const countBefore = addSpy.mock.calls.length;
+      initNumpadDecimalHandler();
+      expect(addSpy.mock.calls.length).toBe(countBefore);
+    });
+  });
+});

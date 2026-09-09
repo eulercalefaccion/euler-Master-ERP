@@ -4,6 +4,9 @@ import App from './App.jsx'
 import './index.css'
 import { AuthProvider } from './context/AuthContext.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
+import { initNumpadDecimalHandler } from './utils/numpadDecimalHelper'
+
+initNumpadDecimalHandler();
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
