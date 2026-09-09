@@ -76,8 +76,9 @@ const CalculationParameters = ({ params, setParams }) => {
           <input 
             type="number" 
             className="input-field" 
-            value={params.tempExterior} 
-            onChange={e => updateParam('tempExterior', parseFloat(e.target.value))}
+            value={params.tempExterior ?? ''} 
+            onChange={e => updateParam('tempExterior', e.target.value === '' ? '' : (parseFloat(e.target.value) || 0))}
+            onFocus={e => e.target.select()}
             style={{ width: '100%', backgroundColor: 'white' }}
           />
         </div>
@@ -89,8 +90,9 @@ const CalculationParameters = ({ params, setParams }) => {
           <input 
             type="number" 
             className="input-field" 
-            value={params.tempInterior} 
-            onChange={e => updateParam('tempInterior', parseFloat(e.target.value))}
+            value={params.tempInterior ?? ''} 
+            onChange={e => updateParam('tempInterior', e.target.value === '' ? '' : (parseFloat(e.target.value) || 0))}
+            onFocus={e => e.target.select()}
             style={{ width: '100%', backgroundColor: 'white' }}
           />
         </div>
@@ -154,8 +156,10 @@ const CalculationParameters = ({ params, setParams }) => {
             <input 
               type="number" 
               className="input-field" 
-              value={params.coefVolumetrico ?? 45} 
-              onChange={e => updateParam('coefVolumetrico', parseFloat(e.target.value) || 45)}
+              value={params.coefVolumetrico ?? ''} 
+              onChange={e => updateParam('coefVolumetrico', e.target.value === '' ? '' : (parseFloat(e.target.value) || 0))}
+              onFocus={e => e.target.select()}
+              placeholder="45"
               style={{ width: '100px', backgroundColor: 'white', fontWeight: '700', fontSize: '1.1rem' }}
               step="1"
               min="10"
@@ -214,8 +218,10 @@ const CalculationParameters = ({ params, setParams }) => {
                 <input 
                   type="number" 
                   className="input-field" 
-                  value={params.rendimientoElemento ?? 145} 
-                  onChange={e => updateParam('rendimientoElemento', parseFloat(e.target.value) || 145)}
+                  value={params.rendimientoElemento ?? ''} 
+                  onChange={e => updateParam('rendimientoElemento', e.target.value === '' ? '' : (parseFloat(e.target.value) || 0))}
+                  onFocus={e => e.target.select()}
+                  placeholder="145"
                   style={{ width: '100px', backgroundColor: 'white', fontWeight: '700', fontSize: '1.1rem' }}
                   step="1" min="50" max="300"
                 />
@@ -233,8 +239,10 @@ const CalculationParameters = ({ params, setParams }) => {
                   <input 
                     type="number" 
                     className="input-field" 
-                    value={params.pasoTubo ?? 20} 
-                    onChange={e => updateParam('pasoTubo', parseFloat(e.target.value) || 20)}
+                    value={params.pasoTubo ?? ''} 
+                    onChange={e => updateParam('pasoTubo', e.target.value === '' ? '' : (parseFloat(e.target.value) || 0))}
+                    onFocus={e => e.target.select()}
+                    placeholder="20"
                     style={{ width: '80px', backgroundColor: 'white' }}
                   />
                   <span style={{ fontSize: '0.875rem', color: '#9a3412' }}>cm</span>
@@ -266,8 +274,10 @@ const CalculationParameters = ({ params, setParams }) => {
                   <input 
                     type="number" 
                     className="input-field" 
-                    value={params.longitudMaxTubo ?? 100} 
-                    onChange={e => updateParam('longitudMaxTubo', parseFloat(e.target.value) || 100)}
+                    value={params.longitudMaxTubo ?? ''} 
+                    onChange={e => updateParam('longitudMaxTubo', e.target.value === '' ? '' : (parseFloat(e.target.value) || 0))}
+                    onFocus={e => e.target.select()}
+                    placeholder="100"
                     style={{ width: '80px', backgroundColor: 'white' }}
                   />
                   <span style={{ fontSize: '0.875rem', color: '#9a3412' }}>mts</span>

@@ -39,7 +39,11 @@ export default function BalanceTermico({ selectedLead, setSelectedLead, db }) {
     setIsSaving(true);
     try {
       const balanceData = {
-        environments,
+        environments: environments.map(e => ({
+          ...e,
+          superficie: e.superficie === '' ? 0 : (parseFloat(e.superficie) || 0),
+          altura: e.altura === '' ? 2.8 : (parseFloat(e.altura) || 2.8)
+        })),
         params,
         emitterChoices,
         updatedAt: new Date().toISOString()
@@ -83,6 +87,8 @@ export default function BalanceTermico({ selectedLead, setSelectedLead, db }) {
 
   const envsWithChoices = environments.map(env => ({
     ...env,
+    superficie: env.superficie === '' ? 0 : (parseFloat(env.superficie) || 0),
+    altura: env.altura === '' ? 2.8 : (parseFloat(env.altura) || 2.8),
     choice: emitterChoices[env.id] || null
   }));
 
@@ -137,10 +143,26 @@ export default function BalanceTermico({ selectedLead, setSelectedLead, db }) {
                     </select>
                   </td>
                   <td style={{ padding: '0.4rem' }}>
-                    <input type="number" step="0.1" value={env.superficie} onChange={e => updateEnv(env.id, 'superficie', parseFloat(e.target.value)||0)} style={inps} />
+                    <input 
+                      type="number" 
+                      step="0.1" 
+                      value={env.superficie ?? ''} 
+                      onChange={e => updateEnv(env.id, 'superficie', e.target.value)} 
+                      onFocus={e => e.target.select()}
+                      placeholder="0.0"
+                      style={inps} 
+                    />
                   </td>
                   <td style={{ padding: '0.4rem' }}>
-                    <input type="number" step="0.1" value={env.altura} onChange={e => updateEnv(env.id, 'altura', parseFloat(e.target.value)||0)} style={inps} />
+                    <input 
+                      type="number" 
+                      step="0.1" 
+                      value={env.altura ?? ''} 
+                      onChange={e => updateEnv(env.id, 'altura', e.target.value)} 
+                      onFocus={e => e.target.select()}
+                      placeholder="2.8"
+                      style={inps} 
+                    />
                   </td>
                   <td style={{ padding: '0.4rem', textAlign: 'center' }}>
                     <input type="checkbox" checked={env.calefaccion !== false} onChange={e => updateEnv(env.id, 'calefaccion', e.target.checked)} />

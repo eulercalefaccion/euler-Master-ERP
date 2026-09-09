@@ -62,8 +62,10 @@ const EnvironmentsEditor = ({ environments, setEnvironments }) => {
                     <input 
                       type="number" 
                       className="input-field" 
-                      value={env.superficie} 
-                      onChange={(e) => updateEnvironment(env.id, 'superficie', parseFloat(e.target.value) || 0)} 
+                      value={env.superficie ?? ''} 
+                      onChange={(e) => updateEnvironment(env.id, 'superficie', e.target.value)} 
+                      onFocus={e => e.target.select()}
+                      placeholder="0.0"
                       style={{ width: '100%' }}
                     />
                   </div>
@@ -73,8 +75,10 @@ const EnvironmentsEditor = ({ environments, setEnvironments }) => {
                       type="number" 
                       step="0.1"
                       className="input-field" 
-                      value={env.altura} 
-                      onChange={(e) => updateEnvironment(env.id, 'altura', parseFloat(e.target.value) || 0)} 
+                      value={env.altura ?? ''} 
+                      onChange={(e) => updateEnvironment(env.id, 'altura', e.target.value)} 
+                      onFocus={e => e.target.select()}
+                      placeholder="2.8"
                       style={{ width: '100%' }}
                     />
                   </div>
@@ -95,8 +99,10 @@ const EnvironmentsEditor = ({ environments, setEnvironments }) => {
                     <input 
                       type="number" 
                       className="input-field" 
-                      value={env.porcentajeVidrio} 
-                      onChange={(e) => updateEnvironment(env.id, 'porcentajeVidrio', parseInt(e.target.value) || 0)} 
+                      value={env.porcentajeVidrio ?? ''} 
+                      onChange={(e) => updateEnvironment(env.id, 'porcentajeVidrio', e.target.value)} 
+                      onFocus={e => e.target.select()}
+                      placeholder="15"
                       style={{ width: '100%' }}
                     />
                   </div>
