@@ -4,6 +4,7 @@ import {
   getLocaleDecimalSeparator,
   handleNumpadDecimalKey,
   initNumpadDecimalHandler,
+  parseNumericValue,
 } from './numpadDecimalHelper';
 
 describe('numpadDecimalHelper', () => {
@@ -100,6 +101,7 @@ describe('numpadDecimalHelper', () => {
       mockExecCommand.mockReturnValue(false);
       const input = document.createElement('input');
       input.type = 'text';
+      input.inputMode = 'decimal';
       input.value = '100';
       input.selectionStart = 3;
       input.selectionEnd = 3;
@@ -112,6 +114,55 @@ describe('numpadDecimalHelper', () => {
       expect(preventDefault).toHaveBeenCalled();
       expect(input.value).toBe('100,');
       expect(dispatchSpy).toHaveBeenCalled();
+    });
+
+    it('clears "0" when Backspace or Delete is pressed on numeric input', () => {
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.inputMode = 'decimal';
+      input.value = '0';
+      const preventDefault = vi.fn();
+      const event = { target: input, key: 'Backspace', preventDefault };
+
+      handleNumpadDecimalKey(event);
+      expect(preventDefault).toHaveBeenCalled();
+      expect(input.value).toBe('');
+    });
+
+    it('replaces "0" with typed digit to prevent "033"', () => {
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.inputMode = 'decimal';
+      input.value = '0';
+      const preventDefault = vi.fn();
+      const event = { target: input, key: '3', preventDefault };
+
+      handleNumpadDecimalKey(event);
+      expect(preventDefault).toHaveBeenCalled();
+      expect(input.value).toBe('3');
+    });
+  });
+
+  describe('parseNumericValue', () => {
+    it('correctly parses numbers with comma as decimal separator', () => {
+      expect(parseNumericValue('10,5')).toBe(10.5);
+      expect(parseNumericValue('0,75')).toBe(0.75);
+    });
+
+    it('correctly parses numbers with dot as decimal separator', () => {
+      expect(parseNumericValue('10.5')).toBe(10.5);
+    });
+
+    it('returns fallback for empty string, null, undefined or NaN', () => {
+      expect(parseNumericValue('')).toBe(0);
+      expect(parseNumericValue(null)).toBe(0);
+      expect(parseNumericValue(undefined)).toBe(0);
+      expect(parseNumericValue('abc', 5)).toBe(5);
+    });
+
+    it('handles numeric numbers directly', () => {
+      expect(parseNumericValue(42)).toBe(42);
+      expect(parseNumericValue(0)).toBe(0);
     });
   });
 

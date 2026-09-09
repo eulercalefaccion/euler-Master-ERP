@@ -74,11 +74,21 @@ const CalculationParameters = ({ params, setParams }) => {
             T° exterior de diseño (°C) *
           </label>
           <input 
-            type="number" 
+            type="text" 
+            inputMode="decimal"
             className="input-field" 
-            value={params.tempExterior ?? ''} 
-            onChange={e => updateParam('tempExterior', e.target.value === '' ? '' : (parseFloat(e.target.value) || 0))}
+            value={params.tempExterior === 0 ? '' : (params.tempExterior ?? '')} 
+            onChange={e => {
+              const val = e.target.value;
+              if (val === '') {
+                updateParam('tempExterior', '');
+              } else {
+                const p = parseFloat(val.replace(',', '.'));
+                updateParam('tempExterior', isNaN(p) ? val : p);
+              }
+            }}
             onFocus={e => e.target.select()}
+            placeholder="0"
             style={{ width: '100%', backgroundColor: 'white' }}
           />
         </div>
@@ -88,11 +98,21 @@ const CalculationParameters = ({ params, setParams }) => {
             T° interior objetivo (°C)
           </label>
           <input 
-            type="number" 
+            type="text" 
+            inputMode="decimal"
             className="input-field" 
-            value={params.tempInterior ?? ''} 
-            onChange={e => updateParam('tempInterior', e.target.value === '' ? '' : (parseFloat(e.target.value) || 0))}
+            value={params.tempInterior === 0 ? '' : (params.tempInterior ?? '')} 
+            onChange={e => {
+              const val = e.target.value;
+              if (val === '') {
+                updateParam('tempInterior', '');
+              } else {
+                const p = parseFloat(val.replace(',', '.'));
+                updateParam('tempInterior', isNaN(p) ? val : p);
+              }
+            }}
             onFocus={e => e.target.select()}
+            placeholder="0"
             style={{ width: '100%', backgroundColor: 'white' }}
           />
         </div>
@@ -154,16 +174,22 @@ const CalculationParameters = ({ params, setParams }) => {
           </p>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <input 
-              type="number" 
+              type="text" 
+              inputMode="decimal"
               className="input-field" 
-              value={params.coefVolumetrico ?? ''} 
-              onChange={e => updateParam('coefVolumetrico', e.target.value === '' ? '' : (parseFloat(e.target.value) || 0))}
+              value={params.coefVolumetrico === 0 ? '' : (params.coefVolumetrico ?? '')} 
+              onChange={e => {
+                const val = e.target.value;
+                if (val === '') {
+                  updateParam('coefVolumetrico', '');
+                } else {
+                  const p = parseFloat(val.replace(',', '.'));
+                  updateParam('coefVolumetrico', isNaN(p) ? val : p);
+                }
+              }}
               onFocus={e => e.target.select()}
               placeholder="45"
               style={{ width: '100px', backgroundColor: 'white', fontWeight: '700', fontSize: '1.1rem' }}
-              step="1"
-              min="10"
-              max="150"
             />
             <span style={{ fontSize: '0.9rem', color: '#1e40af', fontWeight: '500' }}>Kcal/h·m³</span>
             <button 
@@ -216,14 +242,22 @@ const CalculationParameters = ({ params, setParams }) => {
               </p>
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <input 
-                  type="number" 
+                  type="text" 
+                  inputMode="decimal" 
                   className="input-field" 
-                  value={params.rendimientoElemento ?? ''} 
-                  onChange={e => updateParam('rendimientoElemento', e.target.value === '' ? '' : (parseFloat(e.target.value) || 0))}
+                  value={params.rendimientoElemento === 0 ? '' : (params.rendimientoElemento ?? '')} 
+                  onChange={e => {
+                    const val = e.target.value;
+                    if (val === '') {
+                      updateParam('rendimientoElemento', '');
+                    } else {
+                      const p = parseFloat(val.replace(',', '.'));
+                      updateParam('rendimientoElemento', isNaN(p) ? val : p);
+                    }
+                  }}
                   onFocus={e => e.target.select()}
                   placeholder="145"
                   style={{ width: '100px', backgroundColor: 'white', fontWeight: '700', fontSize: '1.1rem' }}
-                  step="1" min="50" max="300"
                 />
                 <span style={{ fontSize: '0.9rem', color: '#166534', fontWeight: '500' }}>Kcal/h</span>
               </div>
@@ -237,10 +271,19 @@ const CalculationParameters = ({ params, setParams }) => {
                 <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.25rem', color: '#9a3412' }}>Separación de tubo (Paso)</label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <input 
-                    type="number" 
+                    type="text" 
+                    inputMode="decimal" 
                     className="input-field" 
-                    value={params.pasoTubo ?? ''} 
-                    onChange={e => updateParam('pasoTubo', e.target.value === '' ? '' : (parseFloat(e.target.value) || 0))}
+                    value={params.pasoTubo === 0 ? '' : (params.pasoTubo ?? '')} 
+                    onChange={e => {
+                      const val = e.target.value;
+                      if (val === '') {
+                        updateParam('pasoTubo', '');
+                      } else {
+                        const p = parseFloat(val.replace(',', '.'));
+                        updateParam('pasoTubo', isNaN(p) ? val : p);
+                      }
+                    }}
                     onFocus={e => e.target.select()}
                     placeholder="20"
                     style={{ width: '80px', backgroundColor: 'white' }}
@@ -272,10 +315,19 @@ const CalculationParameters = ({ params, setParams }) => {
                 <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.25rem', color: '#9a3412' }}>Longitud general circuito</label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <input 
-                    type="number" 
+                    type="text" 
+                    inputMode="decimal" 
                     className="input-field" 
-                    value={params.longitudMaxTubo ?? ''} 
-                    onChange={e => updateParam('longitudMaxTubo', e.target.value === '' ? '' : (parseFloat(e.target.value) || 0))}
+                    value={params.longitudMaxTubo === 0 ? '' : (params.longitudMaxTubo ?? '')} 
+                    onChange={e => {
+                      const val = e.target.value;
+                      if (val === '') {
+                        updateParam('longitudMaxTubo', '');
+                      } else {
+                        const p = parseFloat(val.replace(',', '.'));
+                        updateParam('longitudMaxTubo', isNaN(p) ? val : p);
+                      }
+                    }}
                     onFocus={e => e.target.select()}
                     placeholder="100"
                     style={{ width: '80px', backgroundColor: 'white' }}

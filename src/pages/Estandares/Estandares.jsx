@@ -166,9 +166,8 @@ const Estandares = () => {
 
   const handleQtyChange = (index, value) => {
     if (!editingStandard) return;
-    const num = parseFloat(value);
     const newItems = [...editingStandard.items];
-    newItems[index] = { ...newItems[index], defaultQty: isNaN(num) ? 0 : num };
+    newItems[index] = { ...newItems[index], defaultQty: value };
     setEditingStandard({ ...editingStandard, items: newItems });
     setSaveSuccess(false);
   };
@@ -214,19 +213,30 @@ const Estandares = () => {
     setErrorMessage(null);
 
     try {
+      const sanitizedItems = (editingStandard.items || []).map(item => {
+        const raw = item.defaultQty;
+        const str = typeof raw === 'string' ? raw.replace(',', '.') : String(raw ?? 0);
+        const p = parseFloat(str);
+        return {
+          ...item,
+          defaultQty: isNaN(p) ? 0 : p
+        };
+      });
+      const dataToSaveRaw = { ...editingStandard, items: sanitizedItems };
+
       let savedId = editingStandard.id;
       if (editingStandard.id === 'new') {
-        const { id, ...dataToSave } = editingStandard;
+        const { id, ...dataToSave } = dataToSaveRaw;
         const docRef = await addDoc(collection(db, 'estandares'), dataToSave);
         savedId = docRef.id;
       } else {
         const docRef = doc(db, 'estandares', editingStandard.id);
-        const { id, ...dataToSave } = editingStandard;
+        const { id, ...dataToSave } = dataToSaveRaw;
         await setDoc(docRef, dataToSave, { merge: true });
       }
 
       // PERMANECER en el estándar actual con los cambios confirmados
-      const updated = { ...editingStandard, id: savedId };
+      const updated = { ...dataToSaveRaw, id: savedId };
       setSelectedStandard(JSON.parse(JSON.stringify(updated)));
       setEditingStandard(updated);
 
@@ -728,10 +738,12 @@ const Estandares = () => {
                             <td style={{ padding: '0.5rem' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                 <input 
-                                  type="number" 
-                                  min="0" step="0.01"
-                                  value={item.defaultQty}
+                                  type="text" 
+                                  inputMode="decimal"
+                                  placeholder="0"
+                                  value={item.defaultQty === 0 ? '' : (item.defaultQty ?? '')}
                                   onChange={(e) => handleQtyChange(idx, e.target.value)}
+                                  onFocus={(e) => e.target.select()}
                                   className="input"
                                   style={{ 
                                     padding: '0.4rem', width: '85px', textAlign: 'right',

@@ -1,29 +1,17 @@
 /**
- * Utilidad global para habilitar la coma del teclado numérico en todo el sistema.
+ * Utilidad global para habilitar la coma del teclado numérico y manejo óptimo
+ * de cuadros numéricos en todo el ERP.
  * 
- * Problema:
- * En Windows con teclados en español latinoamericano, la tecla decimal del teclado numérico
- * emite el código 'NumpadDecimal' y el caracter '.'. En navegadores basados en Chromium
- * (Chrome/Edge) configurados en español, los inputs de tipo numérico (<input type="number">)
- * esperan exclusivamente una coma (',') como separador decimal y descartan silenciosamente
- * la pulsación del punto. Esto impide ingresar decimales desde el teclado numérico a menos
- * que el usuario use la coma del teclado alfanumérico común.
- * 
- * Solución:
- * Este manejador intercepta globalmente la tecla decimal del teclado numérico (y el punto en inputs
- * numéricos) e inserta el separador decimal correcto de forma nativa mediante execCommand('insertText'),
- * garantizando compatibilidad con componentes controlados de React y disparando los eventos
- * correspondientes de input/change.
+ * Funcionalidades clave:
+ * 1. Mapeo de tecla decimal: Al presionar el punto en el pad numérico (o teclado común en inputs numéricos),
+ *    escribe la coma decimal ',' esperada por los usuarios.
+ * 2. Borrado de cero: Si el campo tiene '0' y el usuario presiona Backspace/Delete, deja el campo vacío ('').
+ * 3. Prevención de '033': Si el campo tiene '0' y el usuario escribe un dígito (1-9), sustituye el '0' por el dígito.
+ * 4. Selección automática al foco: Al hacer clic o tab en cualquier input numérico, selecciona todo el texto
+ *    para que al tipear se sobreescriba directamente sin concatenar ceros.
  */
 
 export function getLocaleDecimalSeparator() {
-  try {
-    const formatted = (1.1).toLocaleString();
-    if (formatted.includes(',')) return ',';
-    if (formatted.includes('.')) return '.';
-  } catch {
-    // Si falla la detección, en Argentina / ERP usamos coma
-  }
   return ',';
 }
 
@@ -36,6 +24,101 @@ export function isDecimalKeyEvent(e) {
   );
 }
 
+export function isNumericInput(target) {
+  if (!target || !(target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return false;
+  if (target.readOnly || target.disabled) return false;
+
+  const type = (target.type || '').toLowerCase();
+  const inputMode = (target.inputMode || '').toLowerCase();
+  const name = (target.name || '').toLowerCase();
+  const id = (target.id || '').toLowerCase();
+  const placeholder = (target.placeholder || '').toLowerCase();
+
+  return (
+    type === 'number' ||
+    inputMode === 'decimal' ||
+    inputMode === 'numeric' ||
+    target.classList?.contains('input-numeric') ||
+    target.step !== '' ||
+    target.min !== '' ||
+    name.includes('cant') ||
+    name.includes('precio') ||
+    name.includes('qty') ||
+    name.includes('amount') ||
+    id.includes('cant') ||
+    id.includes('precio') ||
+    id.includes('qty') ||
+    placeholder === '0' ||
+    placeholder === '0.0' ||
+    placeholder === '1'
+  );
+}
+
+export function parseNumericValue(val, fallback = 0) {
+  if (val === '' || val === null || val === undefined) return fallback;
+  const str = typeof val === 'string' ? val.replace(',', '.') : String(val);
+  const parsed = parseFloat(str);
+  return isNaN(parsed) ? fallback : parsed;
+}
+
+export function insertTextAtCursor(target, textToInsert) {
+  let inserted = false;
+  try {
+    inserted = document.execCommand('insertText', false, textToInsert);
+  } catch {
+    inserted = false;
+  }
+
+  if (inserted) {
+    target.dispatchEvent(new Event('input', { bubbles: true }));
+    target.dispatchEvent(new Event('change', { bubbles: true }));
+    return;
+  }
+
+  if (target.type === 'number') {
+    try {
+      target.type = 'text';
+      target.inputMode = 'decimal';
+    } catch {}
+  }
+
+  const val = target.value || '';
+  let start = target.selectionStart;
+  let end = target.selectionEnd;
+
+  if (typeof start !== 'number' || typeof end !== 'number') {
+    start = val.length;
+    end = val.length;
+  }
+
+  // Si se intenta insertar un separador decimal y ya existe uno
+  if ((textToInsert === ',' || textToInsert === '.') && (val.includes(',') || val.includes('.'))) {
+    const selected = val.slice(start, end);
+    if (!selected.includes(',') && !selected.includes('.')) {
+      return;
+    }
+  }
+
+  const nextVal = val.slice(0, start) + textToInsert + val.slice(end);
+
+  const proto = target.tagName === 'INPUT' ? window.HTMLInputElement.prototype : window.HTMLTextAreaElement.prototype;
+  const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
+
+  if (setter) {
+    setter.call(target, nextVal);
+  } else {
+    target.value = nextVal;
+  }
+
+  const newPos = start + textToInsert.length;
+  try {
+    target.setSelectionRange(newPos, newPos);
+  } catch {}
+
+  target.dispatchEvent(new Event('input', { bubbles: true }));
+  target.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
 export function handleNumpadDecimalKey(e) {
   const target = e.target;
   if (!target || !(target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
@@ -46,56 +129,66 @@ export function handleNumpadDecimalKey(e) {
     return;
   }
 
-  const isNumberInput = target.type === 'number';
   const isEmailOrUrl = target.type === 'email' || target.type === 'url' || target.type === 'password';
-
-  // No alterar campos de correo, enlaces o contraseñas donde el punto es un caracter literal
   if (isEmailOrUrl) {
     return;
   }
 
+  const isNumeric = isNumericInput(target);
+
+  // 1. Borrado de cero: si el valor es exactamente "0" y presiona Backspace o Delete, vaciar el campo
+  if (isNumeric && (e.key === 'Backspace' || e.key === 'Delete') && target.value === '0') {
+    e.preventDefault();
+    if (target.type === 'number') {
+      try {
+        target.type = 'text';
+        target.inputMode = 'decimal';
+      } catch {}
+    }
+    const proto = target.tagName === 'INPUT' ? window.HTMLInputElement.prototype : window.HTMLTextAreaElement.prototype;
+    const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
+    if (setter) {
+      setter.call(target, '');
+    } else {
+      target.value = '';
+    }
+    try {
+      target.setSelectionRange(0, 0);
+    } catch {}
+    target.dispatchEvent(new Event('input', { bubbles: true }));
+    target.dispatchEvent(new Event('change', { bubbles: true }));
+    return;
+  }
+
+  // 2. Prevención de "033": si el valor es "0" y escribe un dígito (1-9), sustituir el 0
+  if (isNumeric && target.value === '0' && /^[1-9]$/.test(e.key)) {
+    e.preventDefault();
+    if (target.type === 'number') {
+      try {
+        target.type = 'text';
+        target.inputMode = 'decimal';
+      } catch {}
+    }
+    const proto = target.tagName === 'INPUT' ? window.HTMLInputElement.prototype : window.HTMLTextAreaElement.prototype;
+    const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
+    if (setter) setter.call(target, e.key);
+    else target.value = e.key;
+    try { target.setSelectionRange(1, 1); } catch {}
+    target.dispatchEvent(new Event('input', { bubbles: true }));
+    target.dispatchEvent(new Event('change', { bubbles: true }));
+    return;
+  }
+
+  // 3. Tecla decimal del numpad o punto en campo numérico
   const isNumpad = isDecimalKeyEvent(e);
-  const isPeriodInNumber = isNumberInput && (e.key === '.' || e.key === ',');
+  const isPeriodInNumber = isNumeric && (e.key === '.' || e.key === ',');
 
   if (!isNumpad && !isPeriodInNumber) {
     return;
   }
 
-  // Prevenir la acción por defecto (el descarte del navegador o el punto no deseado)
   e.preventDefault();
-
-  const primarySep = isNumberInput ? getLocaleDecimalSeparator() : ',';
-
-  let inserted = false;
-  try {
-    inserted = document.execCommand('insertText', false, primarySep);
-    if (!inserted && isNumberInput) {
-      const altSep = primarySep === ',' ? '.' : ',';
-      inserted = document.execCommand('insertText', false, altSep);
-    }
-  } catch {
-    inserted = false;
-  }
-
-  // Fallback para inputs de texto o textareas donde execCommand pudiera fallar
-  if (!inserted && typeof target.selectionStart === 'number' && typeof target.selectionEnd === 'number') {
-    const start = target.selectionStart;
-    const end = target.selectionEnd;
-    const val = target.value || '';
-    const nextVal = val.slice(0, start) + primarySep + val.slice(end);
-
-    const proto = target.tagName === 'INPUT' ? window.HTMLInputElement.prototype : window.HTMLTextAreaElement.prototype;
-    const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
-
-    if (setter) {
-      setter.call(target, nextVal);
-    } else {
-      target.value = nextVal;
-    }
-
-    target.setSelectionRange(start + primarySep.length, start + primarySep.length);
-    target.dispatchEvent(new Event('input', { bubbles: true }));
-  }
+  insertTextAtCursor(target, ',');
 }
 
 export function initNumpadDecimalHandler() {
@@ -106,5 +199,30 @@ export function initNumpadDecimalHandler() {
   }
   window.__numpadDecimalHandlerInitialized = true;
 
+  // Interceptar teclas de numpad, decimal y borrado en captura para máxima prioridad
   window.addEventListener('keydown', handleNumpadDecimalKey, true);
+
+  // Auto-seleccionar todo el contenido en inputs numéricos al hacer foco
+  window.addEventListener('focusin', (e) => {
+    const target = e.target;
+    if (!target || target.tagName !== 'INPUT') return;
+    if (target.readOnly || target.disabled) return;
+
+    if (isNumericInput(target)) {
+      if (target.type === 'number') {
+        try {
+          target.type = 'text';
+          target.inputMode = 'decimal';
+        } catch {}
+      }
+
+      setTimeout(() => {
+        try {
+          if (document.activeElement === target && typeof target.select === 'function') {
+            target.select();
+          }
+        } catch {}
+      }, 10);
+    }
+  }, true);
 }

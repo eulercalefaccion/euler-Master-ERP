@@ -543,7 +543,7 @@ const KanbanBoard = () => {
     if (!listaItem || !tc) return;
 
     const unitPrice = calcPrecioItem(listaItem, canal, tc.valor);
-    const qty = Number(selectedItemQty) || 1;
+    const qty = parseFloat(typeof selectedItemQty === 'string' ? selectedItemQty.replace(',', '.') : selectedItemQty) || 1;
 
     const newItem = {
       id: Date.now().toString(),
@@ -628,17 +628,24 @@ const KanbanBoard = () => {
     
     setBuilderItems(prev => prev.map(item => {
       if (item.id !== id) return item;
+      const parseVal = (v) => {
+        if (v === '' || v === null || v === undefined) return 0;
+        const str = typeof v === 'string' ? v.replace(',', '.') : String(v);
+        const p = parseFloat(str);
+        return isNaN(p) ? 0 : p;
+      };
+      const q = parseVal(item.quantity);
       return {
         ...item,
         listaItemId:    catalogItem.id,
         descripcion:    catalogItem.descripcion,
-        tipo:           catalogItem.tipo || 'material',
+        tipo:           catalogItem.tipo || item.tipo,
         costoUSD:       catalogItem.costoUSD || null,
         markup:         catalogItem.markup || null,
         precioVentaUSD: catalogItem.precioVentaUSD || null,
-        unidad:         catalogItem.unidad || 'unidad',
+        unidad:         catalogItem.unidad || item.unidad,
         unitPrice,
-        subtotal:       Math.round(unitPrice * item.quantity),
+        subtotal:       Math.round(unitPrice * q),
       };
     }));
   };
@@ -646,11 +653,16 @@ const KanbanBoard = () => {
   const updateItem = (id, field, value) => {
     setBuilderItems(prev => prev.map(item => {
       if (item.id !== id) return item;
-      const num = Number(value) || 0;
-      const sub = field === 'quantity'
-        ? Math.round(num * item.unitPrice)
-        : Math.round(num * item.quantity);
-      return { ...item, [field]: num, subtotal: sub };
+      const parseVal = (v) => {
+        if (v === '' || v === null || v === undefined) return 0;
+        const str = typeof v === 'string' ? v.replace(',', '.') : String(v);
+        const p = parseFloat(str);
+        return isNaN(p) ? 0 : p;
+      };
+      const currentQty = field === 'quantity' ? parseVal(value) : parseVal(item.quantity);
+      const currentPrice = field === 'unitPrice' ? parseVal(value) : parseVal(item.unitPrice);
+      const sub = Math.round(currentQty * currentPrice);
+      return { ...item, [field]: value, subtotal: sub };
     }));
   };
 
@@ -735,37 +747,53 @@ const KanbanBoard = () => {
     if (!selectedLead || !editLeadFields) return;
     setIsSavingDetail(true);
     try {
-      const amount = calcTotal(builderItems);
-      const prevRev = selectedLead.revision || 0;
-      
-      let history = selectedLead.revisionsHistory || [];
-      let newRevision = prevRev;
-      
-      if (!isInitial) {
-        history = [...history, {
-          revisionNumber:   prevRev,
-          revisionTitle:    prevRev === 0 ? 'Rev0' : `Rev${prevRev}`,
-          quoteItems:       selectedLead.quoteItems || [],
-          amount:           selectedLead.amount || 0,
-          notas:            selectedLead.notas || '',
-          canal:            selectedLead.canal || 'iva',
-          cambiosRealizados: selectedLead.cambiosRealizados || (prevRev === 0 ? 'Presupuesto Inicial' : ''),
-          cambiosPublicos: selectedLead.cambiosPublicos || '',
-          savedAt:          selectedLead.revisionSavedAt || new Date().toISOString(),
-        }];
-        newRevision = prevRev + 1;
-      } else {
-        newRevision = 0;
-      }
-      
-      const baseNum = (selectedLead.presupuestoNumber || '').split('_Rev')[0].split('_V')[0];
-      const newPresupuestoNumber = `${baseNum}_Rev${newRevision}`;
-      
-      const now = new Date();
-      const updatedFields = {
-        notas: detailNotes,
-        amount,
-        quoteItems: builderItems,
+      const parseVal = (v) => {
+      if (v === '' || v === null || v === undefined) return 0;
+      const str = typeof v === 'string' ? v.replace(',', '.') : String(v);
+      const p = parseFloat(str);
+      return isNaN(p) ? 0 : p;
+    };
+    const sanitizedQuoteItems = builderItems.map(item => {
+      const q = parseVal(item.quantity);
+      const p = parseVal(item.unitPrice);
+      return {
+        ...item,
+        quantity: q,
+        unitPrice: p,
+        subtotal: Math.round(q * p)
+      };
+    });
+    const amount = calcTotal(sanitizedQuoteItems);
+    const prevRev = selectedLead.revision || 0;
+    
+    let history = selectedLead.revisionsHistory || [];
+    let newRevision = prevRev;
+    
+    if (!isInitial) {
+      history = [...history, {
+        revisionNumber:   prevRev,
+        revisionTitle:    prevRev === 0 ? 'Rev0' : `Rev${prevRev}`,
+        quoteItems:       selectedLead.quoteItems || [],
+        amount:           selectedLead.amount || 0,
+        notas:            selectedLead.notas || '',
+        canal:            selectedLead.canal || 'iva',
+        cambiosRealizados: selectedLead.cambiosRealizados || (prevRev === 0 ? 'Presupuesto Inicial' : ''),
+        cambiosPublicos: selectedLead.cambiosPublicos || '',
+        savedAt:          selectedLead.revisionSavedAt || new Date().toISOString(),
+      }];
+      newRevision = prevRev + 1;
+    } else {
+      newRevision = 0;
+    }
+    
+    const baseNum = (selectedLead.presupuestoNumber || '').split('_Rev')[0].split('_V')[0];
+    const newPresupuestoNumber = `${baseNum}_Rev${newRevision}`;
+    
+    const now = new Date();
+    const updatedFields = {
+      notas: detailNotes,
+      amount,
+      quoteItems: sanitizedQuoteItems,
         canal,
         revision: newRevision,
         presupuestoNumber: newPresupuestoNumber,
@@ -1185,7 +1213,7 @@ const KanbanBoard = () => {
       await updateDoc(doc(db, 'presupuestos', draggableId), {
         status: 'aprobado',
         paymentStatus: paymentStatus,
-        amount: paymentAmount ? parseInt(paymentAmount) : (item.amount || 0),
+        amount: paymentAmount ? Math.round(parseFloat(String(paymentAmount).replace(',', '.')) || 0) : (item.amount || 0),
         statusHistory: arrayUnion(moveEvent),
         bitacora: arrayUnion(bitacoraAprobado),
       });
@@ -1728,7 +1756,15 @@ const KanbanBoard = () => {
             {paymentStatus !== 'Pendiente' && (
               <div className="form-group">
                 <label className="form-label">Monto Abonado ($)</label>
-                <input type="number" className="input-field" placeholder="Ej: 500000" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} />
+                <input 
+                  type="text" 
+                  inputMode="decimal" 
+                  className="input-field" 
+                  placeholder="Ej: 500000" 
+                  value={paymentAmount} 
+                  onChange={e => setPaymentAmount(e.target.value)} 
+                  onFocus={e => e.target.select()} 
+                />
               </div>
             )}
             <div style={{ display:'flex',justifyContent:'flex-end',gap:'0.5rem' }}>
@@ -2544,7 +2580,15 @@ const KanbanBoard = () => {
                       </div>
                       <div style={{ width:'80px' }}>
                         <label className="form-label" style={{ fontSize:'0.75rem' }}>Cant.</label>
-                        <input type="number" min="1" className="input-field" value={selectedItemQty} onChange={e => setSelectedItemQty(e.target.value)} />
+                        <input 
+                          type="text" 
+                          inputMode="decimal" 
+                          className="input-field" 
+                          value={selectedItemQty === 0 ? '' : (selectedItemQty ?? '')} 
+                          onChange={e => setSelectedItemQty(e.target.value)} 
+                          onFocus={e => e.target.select()}
+                          placeholder="1"
+                        />
                       </div>
                       <button
                         className="btn btn-secondary"
@@ -2702,10 +2746,26 @@ const KanbanBoard = () => {
                                 </span>
                               </td>
                               <td style={{ padding:'0.35rem 0.5rem' }}>
-                                <input type="number" value={item.quantity} onChange={e => updateItem(item.id, 'quantity', e.target.value)} style={{ width:'100%',padding:'0.15rem 0.25rem',fontSize:'0.8rem',border:'1px solid #cbd5e1',borderRadius:'4px',textAlign:'center' }} />
+                                <input 
+                                  type="text" 
+                                  inputMode="decimal"
+                                  value={item.quantity === 0 ? '' : (item.quantity ?? '')} 
+                                  onChange={e => updateItem(item.id, 'quantity', e.target.value)} 
+                                  onFocus={e => e.target.select()}
+                                  placeholder="0"
+                                  style={{ width:'100%',padding:'0.15rem 0.25rem',fontSize:'0.8rem',border:'1px solid #cbd5e1',borderRadius:'4px',textAlign:'center' }} 
+                                />
                               </td>
                               <td style={{ padding:'0.35rem 0.5rem' }}>
-                                <input type="number" value={item.unitPrice} onChange={e => updateItem(item.id, 'unitPrice', e.target.value)} style={{ width:'100%',padding:'0.15rem 0.25rem',fontSize:'0.8rem',border:'1px solid #cbd5e1',borderRadius:'4px',textAlign:'right' }} />
+                                <input 
+                                  type="text" 
+                                  inputMode="decimal"
+                                  value={item.unitPrice === 0 ? '' : (item.unitPrice ?? '')} 
+                                  onChange={e => updateItem(item.id, 'unitPrice', e.target.value)} 
+                                  onFocus={e => e.target.select()}
+                                  placeholder="0"
+                                  style={{ width:'100%',padding:'0.15rem 0.25rem',fontSize:'0.8rem',border:'1px solid #cbd5e1',borderRadius:'4px',textAlign:'right' }} 
+                                />
                               </td>
                               <td style={{ padding:'0.35rem 0.5rem',textAlign:'right',fontWeight:'600' }}>
                                 $ {item.subtotal.toLocaleString('es-AR')}

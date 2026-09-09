@@ -17,8 +17,8 @@ const EnvironmentsEditor = ({ environments, setEnvironments }) => {
       if (env.id !== id) return env;
       const nextLargo = field === 'largo' ? value : (env.largo ?? '');
       const nextAncho = field === 'ancho' ? value : (env.ancho ?? '');
-      const l = parseFloat(nextLargo) || 0;
-      const a = parseFloat(nextAncho) || 0;
+      const l = parseFloat(String(nextLargo).replace(',', '.')) || 0;
+      const a = parseFloat(String(nextAncho).replace(',', '.')) || 0;
       const sup = (l > 0 && a > 0) ? Math.round(l * a * 100) / 100 : (env.superficie || 0);
       return {
         ...env,
@@ -122,11 +122,11 @@ const EnvironmentsEditor = ({ environments, setEnvironments }) => {
                   <div style={{ flex: '0 0 70px' }}>
                     <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.25rem', display: 'block' }}>LARGO (M)</label>
                     <input 
-                      type="number" 
-                      step="0.05"
+                      type="text" 
+                      inputMode="decimal"
                       className="input-field" 
                       disabled={env.modoCalculo !== 'dimensiones'}
-                      value={env.modoCalculo === 'dimensiones' ? (env.largo ?? '') : ''} 
+                      value={env.modoCalculo === 'dimensiones' ? (env.largo === 0 ? '' : (env.largo ?? '')) : ''} 
                       onChange={(e) => handleDimensionChange(env.id, 'largo', e.target.value)} 
                       onFocus={e => e.target.select()}
                       placeholder={env.modoCalculo === 'dimensiones' ? '0.0' : '—'}
@@ -141,11 +141,11 @@ const EnvironmentsEditor = ({ environments, setEnvironments }) => {
                   <div style={{ flex: '0 0 70px' }}>
                     <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.25rem', display: 'block' }}>ANCHO (M)</label>
                     <input 
-                      type="number" 
-                      step="0.05"
+                      type="text" 
+                      inputMode="decimal"
                       className="input-field" 
                       disabled={env.modoCalculo !== 'dimensiones'}
-                      value={env.modoCalculo === 'dimensiones' ? (env.ancho ?? '') : ''} 
+                      value={env.modoCalculo === 'dimensiones' ? (env.ancho === 0 ? '' : (env.ancho ?? '')) : ''} 
                       onChange={(e) => handleDimensionChange(env.id, 'ancho', e.target.value)} 
                       onFocus={e => e.target.select()}
                       placeholder={env.modoCalculo === 'dimensiones' ? '0.0' : '—'}
@@ -160,10 +160,11 @@ const EnvironmentsEditor = ({ environments, setEnvironments }) => {
                   <div style={{ flex: '0 0 90px' }}>
                     <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.25rem', display: 'block' }}>SUP. M²</label>
                     <input 
-                      type="number" 
+                      type="text" 
+                      inputMode="decimal"
                       readOnly={env.modoCalculo === 'dimensiones'}
                       className="input-field" 
-                      value={env.superficie ?? ''} 
+                      value={env.superficie === 0 ? '' : (env.superficie ?? '')} 
                       onChange={(e) => {
                         if (env.modoCalculo !== 'dimensiones') {
                           updateEnvironment(env.id, 'superficie', e.target.value);
@@ -183,10 +184,10 @@ const EnvironmentsEditor = ({ environments, setEnvironments }) => {
                   <div style={{ flex: '0 0 75px' }}>
                     <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.25rem', display: 'block' }}>ALTURA M</label>
                     <input 
-                      type="number" 
-                      step="0.1"
+                      type="text" 
+                      inputMode="decimal"
                       className="input-field" 
-                      value={env.altura ?? ''} 
+                      value={env.altura === 0 ? '' : (env.altura ?? '')} 
                       onChange={(e) => updateEnvironment(env.id, 'altura', e.target.value)} 
                       onFocus={e => e.target.select()}
                       placeholder="2.8"
@@ -197,10 +198,10 @@ const EnvironmentsEditor = ({ environments, setEnvironments }) => {
                   <div style={{ flex: '0 0 85px' }}>
                     <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.25rem', display: 'block' }}>COEF. KCAL</label>
                     <input 
-                      type="number" 
-                      step="1"
+                      type="text" 
+                      inputMode="decimal"
                       className="input-field" 
-                      value={env.coefVolumetrico ?? ''} 
+                      value={env.coefVolumetrico === 0 ? '' : (env.coefVolumetrico ?? '')} 
                       onChange={(e) => updateEnvironment(env.id, 'coefVolumetrico', e.target.value)} 
                       onFocus={e => e.target.select()}
                       placeholder="Global"
@@ -231,9 +232,10 @@ const EnvironmentsEditor = ({ environments, setEnvironments }) => {
                   <div style={{ flex: '0 0 70px' }}>
                     <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.25rem', display: 'block' }}>% VIDRIO</label>
                     <input 
-                      type="number" 
+                      type="text" 
+                      inputMode="decimal"
                       className="input-field" 
-                      value={env.porcentajeVidrio ?? ''} 
+                      value={env.porcentajeVidrio === 0 ? '' : (env.porcentajeVidrio ?? '')} 
                       onChange={(e) => updateEnvironment(env.id, 'porcentajeVidrio', e.target.value)} 
                       onFocus={e => e.target.select()}
                       placeholder="15"

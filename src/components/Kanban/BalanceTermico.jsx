@@ -40,23 +40,21 @@ export default function BalanceTermico({ selectedLead, setSelectedLead, db }) {
     try {
       const balanceData = {
         environments: environments.map(e => {
-          let sup = 0;
-          if (e.modoCalculo === 'dimensiones') {
-            const l = parseFloat(e.largo) || 0;
-            const a = parseFloat(e.ancho) || 0;
-            sup = (l > 0 && a > 0) ? Math.round(l * a * 100) / 100 : (parseFloat(e.superficie) || 0);
-          } else {
-            sup = e.superficie === '' ? 0 : (parseFloat(e.superficie) || 0);
+          const l = e.largo !== '' && e.largo !== null && e.largo !== undefined ? (parseFloat(String(e.largo).replace(',', '.')) || null) : null;
+          const a = e.ancho !== '' && e.ancho !== null && e.ancho !== undefined ? (parseFloat(String(e.ancho).replace(',', '.')) || null) : null;
+          let sup = e.superficie === '' ? 0 : (parseFloat(String(e.superficie).replace(',', '.')) || 0);
+          if (e.modoCalculo === 'dimensiones' && l && a) {
+            sup = Math.round(l * a * 100) / 100;
           }
           return {
             ...e,
             modoCalculo: e.modoCalculo || 'directa',
-            largo: e.largo === '' || e.largo === null || e.largo === undefined ? null : (parseFloat(e.largo) || null),
-            ancho: e.ancho === '' || e.ancho === null || e.ancho === undefined ? null : (parseFloat(e.ancho) || null),
+            largo: l,
+            ancho: a,
             superficie: sup,
-            altura: e.altura === '' ? 2.8 : (parseFloat(e.altura) || 2.8),
+            altura: e.altura === '' ? 2.8 : (parseFloat(String(e.altura).replace(',', '.')) || 2.8),
             coefVolumetrico: (e.coefVolumetrico !== '' && e.coefVolumetrico !== null && e.coefVolumetrico !== undefined)
-              ? (parseFloat(e.coefVolumetrico) || null)
+              ? (parseFloat(String(e.coefVolumetrico).replace(',', '.')) || null)
               : null
           };
         }),
@@ -97,8 +95,8 @@ export default function BalanceTermico({ selectedLead, setSelectedLead, db }) {
       if (e.id !== id) return e;
       const nextLargo = field === 'largo' ? value : (e.largo ?? '');
       const nextAncho = field === 'ancho' ? value : (e.ancho ?? '');
-      const l = parseFloat(nextLargo) || 0;
-      const a = parseFloat(nextAncho) || 0;
+      const l = parseFloat(String(nextLargo).replace(',', '.')) || 0;
+      const a = parseFloat(String(nextAncho).replace(',', '.')) || 0;
       const sup = (l > 0 && a > 0) ? Math.round(l * a * 100) / 100 : (e.superficie || 0);
       return {
         ...e,
@@ -123,10 +121,10 @@ export default function BalanceTermico({ selectedLead, setSelectedLead, db }) {
 
   const envsWithChoices = environments.map(env => ({
     ...env,
-    superficie: env.superficie === '' ? 0 : (parseFloat(env.superficie) || 0),
-    altura: env.altura === '' ? 2.8 : (parseFloat(env.altura) || 2.8),
+    superficie: env.superficie === '' ? 0 : (parseFloat(String(env.superficie).replace(',', '.')) || 0),
+    altura: env.altura === '' ? 2.8 : (parseFloat(String(env.altura).replace(',', '.')) || 2.8),
     coefVolumetrico: (env.coefVolumetrico !== '' && env.coefVolumetrico !== null && env.coefVolumetrico !== undefined)
-      ? (parseFloat(env.coefVolumetrico) || null)
+      ? (parseFloat(String(env.coefVolumetrico).replace(',', '.')) || null)
       : null,
     choice: emitterChoices[env.id] || null
   }));
@@ -228,10 +226,10 @@ export default function BalanceTermico({ selectedLead, setSelectedLead, db }) {
                   </td>
                   <td style={{ padding: '0.4rem' }}>
                     <input 
-                      type="number" 
-                      step="0.05" 
+                      type="text" 
+                      inputMode="decimal"
                       disabled={env.modoCalculo !== 'dimensiones'}
-                      value={env.modoCalculo === 'dimensiones' ? (env.largo ?? '') : ''} 
+                      value={env.modoCalculo === 'dimensiones' ? (env.largo === 0 ? '' : (env.largo ?? '')) : ''} 
                       onChange={e => handleDimensionChange(env.id, 'largo', e.target.value)} 
                       onFocus={e => e.target.select()}
                       placeholder={env.modoCalculo === 'dimensiones' ? '0.0' : '—'}
@@ -246,10 +244,10 @@ export default function BalanceTermico({ selectedLead, setSelectedLead, db }) {
                   </td>
                   <td style={{ padding: '0.4rem' }}>
                     <input 
-                      type="number" 
-                      step="0.05" 
+                      type="text" 
+                      inputMode="decimal"
                       disabled={env.modoCalculo !== 'dimensiones'}
-                      value={env.modoCalculo === 'dimensiones' ? (env.ancho ?? '') : ''} 
+                      value={env.modoCalculo === 'dimensiones' ? (env.ancho === 0 ? '' : (env.ancho ?? '')) : ''} 
                       onChange={e => handleDimensionChange(env.id, 'ancho', e.target.value)} 
                       onFocus={e => e.target.select()}
                       placeholder={env.modoCalculo === 'dimensiones' ? '0.0' : '—'}
@@ -265,10 +263,10 @@ export default function BalanceTermico({ selectedLead, setSelectedLead, db }) {
                   <td style={{ padding: '0.4rem' }}>
                     <div style={{ position: 'relative' }}>
                       <input 
-                        type="number" 
-                        step="0.1" 
+                        type="text" 
+                        inputMode="decimal"
                         readOnly={env.modoCalculo === 'dimensiones'}
-                        value={env.superficie ?? ''} 
+                        value={env.superficie === 0 ? '' : (env.superficie ?? '')} 
                         onChange={e => {
                           if (env.modoCalculo !== 'dimensiones') {
                             updateEnv(env.id, 'superficie', e.target.value);
@@ -293,9 +291,9 @@ export default function BalanceTermico({ selectedLead, setSelectedLead, db }) {
                   </td>
                   <td style={{ padding: '0.4rem' }}>
                     <input 
-                      type="number" 
-                      step="0.1" 
-                      value={env.altura ?? ''} 
+                      type="text" 
+                      inputMode="decimal"
+                      value={env.altura === 0 ? '' : (env.altura ?? '')} 
                       onChange={e => updateEnv(env.id, 'altura', e.target.value)} 
                       onFocus={e => e.target.select()}
                       placeholder="2.8"
@@ -304,9 +302,9 @@ export default function BalanceTermico({ selectedLead, setSelectedLead, db }) {
                   </td>
                   <td style={{ padding: '0.4rem' }}>
                     <input 
-                      type="number" 
-                      step="1" 
-                      value={env.coefVolumetrico ?? ''} 
+                      type="text" 
+                      inputMode="decimal"
+                      value={env.coefVolumetrico === 0 ? '' : (env.coefVolumetrico ?? '')} 
                       onChange={e => updateEnv(env.id, 'coefVolumetrico', e.target.value)} 
                       onFocus={e => e.target.select()}
                       placeholder={params.coefVolumetrico ? `${params.coefVolumetrico}` : '45'}
