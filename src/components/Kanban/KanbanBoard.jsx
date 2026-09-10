@@ -337,6 +337,7 @@ const KanbanBoard = () => {
   const [selectedFolletos, setSelectedFolletos] = useState([]);
   const [isFolletosManagerOpen, setIsFolletosManagerOpen] = useState(false);
   const [folletosAdicionales, setFolletosAdicionales] = useState([]);
+  const [folletosConfig, setFolletosConfig]           = useState({ deletedUrls: [], renamedUrls: {} });
 
   // Documento para el Cliente
   const docClienteInputRef = useRef(null);
@@ -352,15 +353,19 @@ const KanbanBoard = () => {
   const folletosDisponibles = useMemo(() => {
     const uniqueUrls = new Set();
     const result = [];
+    const deletedSet = new Set(folletosConfig.deletedUrls || []);
+    const renamedMap = folletosConfig.renamedUrls || {};
     
     listaItems.forEach(i => {
       if (i.activo === false) return;
       const url = i.folletoUrl || getAutoFolletoUrl(i);
-      if (url && !uniqueUrls.has(url)) {
+      if (url && !uniqueUrls.has(url) && !deletedSet.has(url)) {
         uniqueUrls.add(url);
+        const defaultName = getBrochureNameFromUrl(url, i.descripcion);
         result.push({
           id: i.id,
-          descripcion: getBrochureNameFromUrl(url, i.descripcion),
+          descripcion: renamedMap[url] || defaultName,
+          originalName: defaultName,
           folletoUrl: url,
           isCustom: false
         });
@@ -368,11 +373,12 @@ const KanbanBoard = () => {
     });
 
     folletosAdicionales.forEach(f => {
-      if (!uniqueUrls.has(f.url)) {
+      if (!uniqueUrls.has(f.url) && !deletedSet.has(f.url)) {
         uniqueUrls.add(f.url);
         result.push({
           id: f.id,
-          descripcion: f.nombre,
+          descripcion: renamedMap[f.url] || f.nombre,
+          originalName: f.nombre,
           folletoUrl: f.url,
           isCustom: true,
           storagePath: f.storagePath
@@ -381,7 +387,7 @@ const KanbanBoard = () => {
     });
     
     return result;
-  }, [listaItems, folletosAdicionales]);
+  }, [listaItems, folletosAdicionales, folletosConfig]);
 
   // Quote builder add-item selectors
   const [selectedItemId, setSelectedItemId]   = useState('');
@@ -448,9 +454,23 @@ const KanbanBoard = () => {
       setData(prev => ({ ...prev, items: newItems, columns: newCols }));
     });
 
-    // Folletos Generales
+    // Folletos Generales y Configuración
     const unsubFolletos = onSnapshot(collection(db, 'folletos'), snap => {
-      setFolletosAdicionales(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      let config = { deletedUrls: [], renamedUrls: {} };
+      const customList = [];
+      snap.docs.forEach(d => {
+        if (d.id === '_config') {
+          const data = d.data();
+          config = {
+            deletedUrls: data.deletedUrls || [],
+            renamedUrls: data.renamedUrls || {}
+          };
+        } else {
+          customList.push({ id: d.id, ...d.data() });
+        }
+      });
+      setFolletosConfig(config);
+      setFolletosAdicionales(customList);
     });
 
     // CRM Labels
@@ -3897,6 +3917,7 @@ const KanbanBoard = () => {
       {isFolletosManagerOpen && (
         <FolletosManagerModal 
           folletos={folletosDisponibles} 
+          folletosConfig={folletosConfig}
           onClose={() => setIsFolletosManagerOpen(false)} 
         />
       )}
