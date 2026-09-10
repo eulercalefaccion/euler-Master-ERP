@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { DragDropContext } from '@hello-pangea/dnd';
 import {
   Plus, X, Save, MessageSquare, DollarSign, MapPin, Calendar, Tag,
-  Trash2, ListPlus, Target, History, FileText, RefreshCw, Receipt, Download, Upload, Loader, Search, Settings, AlertCircle, LayoutGrid, List, Map as MapIcon, CheckCircle
+  Trash2, ListPlus, Target, History, FileText, RefreshCw, Receipt, Download, Upload, Loader, Search, Settings, AlertCircle, LayoutGrid, List, Map as MapIcon, CheckCircle, Shield, AlertTriangle
 } from 'lucide-react';
 import KanbanColumn from './KanbanColumn';
 import LabelsManagerModal from './LabelsManagerModal';
@@ -325,6 +325,10 @@ const KanbanBoard = () => {
   // Revision modal
   const [revChangeNote, setRevChangeNote] = useState('');
   const [revChangeNotePDF, setRevChangeNotePDF] = useState('');
+
+  // Confirmación de guardado con historial (Opción 3)
+  const [isConfirmSaveModalOpen, setIsConfirmSaveModalOpen] = useState(false);
+  const [pendingChangesForSave, setPendingChangesForSave]   = useState({ budgetChanges: [], clientChanges: [] });
 
   // PDF
   const [isPDFModalOpen, setIsPDFModalOpen]   = useState(false);
@@ -678,11 +682,129 @@ const KanbanBoard = () => {
     } catch (e) { alert('Error: ' + e.message); }
   };
 
-  // ─── Save detail (without new revision) ─────────────────────────────────────
-  const saveDetail = async () => {
+  // ─── Change Detection Helpers ───────────────────────────────────────────────
+  const getDetectedBudgetChanges = () => {
+    if (!selectedLead) return { changes: [], publicChanges: [], hasChanges: false };
+    const prevItems = selectedLead.quoteItems || [];
+    const prevCanal = selectedLead.canal || 'iva';
+    const prevNotas = selectedLead.notas || '';
+
+    const changes = [];
+    const publicChanges = [];
+
+    if (canal !== prevCanal) {
+      const msg = `Se cambió el modo de venta de "${prevCanal === 'iva' ? 'Con IVA' : 'Canal 2'}" a "${canal === 'iva' ? 'Con IVA' : 'Canal 2'}".`;
+      changes.push(msg);
+      publicChanges.push(msg);
+    }
+
+    if (detailNotes !== prevNotas) {
+      changes.push('Se modificaron los comentarios/condiciones.');
+    }
+    
+    const prevMap = new Map();
+    prevItems.forEach(item => prevMap.set(item.id, item));
+    
+    const currentMap = new Map();
+    builderItems.forEach(item => currentMap.set(item.id, item));
+    
+    // Check for removed items
+    prevItems.forEach(prev => {
+      if (!currentMap.has(prev.id)) {
+        const msg = `Se eliminó: ${prev.descripcion}`;
+        changes.push(msg);
+        publicChanges.push(msg);
+      }
+    });
+    
+    // Check for added or modified items
+    builderItems.forEach(current => {
+      if (!prevMap.has(current.id)) {
+        const msg = `Se agregó: ${current.descripcion} (Cant: ${current.quantity})`;
+        changes.push(msg);
+        publicChanges.push(msg);
+      } else {
+        const prev = prevMap.get(current.id);
+        const itemChanges = [];
+        const itemChangesPublic = [];
+        
+        if ((Number(current.quantity) || 0) !== (Number(prev.quantity) || 0)) {
+          const m = `cantidad de ${prev.quantity} a ${current.quantity}`;
+          itemChanges.push(m);
+          itemChangesPublic.push(m);
+        }
+        if ((Number(current.unitPrice) || 0) !== (Number(prev.unitPrice) || 0)) {
+          itemChanges.push(`precio de $${(Number(prev.unitPrice) || 0).toLocaleString('es-AR')} a $${(Number(current.unitPrice) || 0).toLocaleString('es-AR')}`);
+        }
+        if (current.descripcion !== prev.descripcion) {
+          itemChanges.push(`artículo cambiado a "${current.descripcion}"`);
+        }
+        
+        if (itemChanges.length > 0) {
+          changes.push(`Se modificó [${current.descripcion}]: ${itemChanges.join(', ')}.`);
+        }
+        if (itemChangesPublic.length > 0) {
+          publicChanges.push(`Se modificó [${current.descripcion}]: ${itemChangesPublic.join(', ')}.`);
+        }
+      }
+    });
+
+    return { changes, publicChanges, hasChanges: changes.length > 0 };
+  };
+
+  const getDetectedClientChanges = () => {
+    if (!selectedLead || !editLeadFields) return [];
+    const clientChanges = [];
+    if (editLeadFields.name && editLeadFields.name !== (selectedLead.name || '')) clientChanges.push(`Nombre de cliente: "${editLeadFields.name}"`);
+    if (editLeadFields.telefono !== (selectedLead.telefono || '')) clientChanges.push(`Teléfono: "${editLeadFields.telefono}"`);
+    if (editLeadFields.email !== (selectedLead.email || '')) clientChanges.push(`Email: "${editLeadFields.email}"`);
+    if (editLeadFields.direccionObra !== (selectedLead.direccionObra || '')) clientChanges.push(`Dirección obra: "${editLeadFields.direccionObra}"`);
+    if (editLeadFields.direccionCliente !== (selectedLead.direccionCliente || '')) clientChanges.push(`Dirección cliente: "${editLeadFields.direccionCliente}"`);
+    if (editLeadFields.paramSistema !== (selectedLead.paramSistema || '')) clientChanges.push(`Sistema: "${editLeadFields.paramSistema}"`);
+    return clientChanges;
+  };
+
+  // ─── Direct Save (without new revision) ──────────────────────────────────────
+  const executeDirectSave = async (budgetChanges = [], clientChanges = []) => {
     if (!selectedLead || !editLeadFields) return;
     setIsSavingDetail(true);
     try {
+      const parseVal = (v) => {
+        if (v === '' || v === null || v === undefined) return 0;
+        const str = typeof v === 'string' ? v.replace(',', '.') : String(v);
+        const p = parseFloat(str);
+        return isNaN(p) ? 0 : p;
+      };
+      const sanitizedQuoteItems = builderItems.map(item => {
+        const q = parseVal(item.quantity);
+        const p = parseVal(item.unitPrice);
+        return {
+          ...item,
+          quantity: q,
+          unitPrice: p,
+          subtotal: Math.round(q * p)
+        };
+      });
+      const amount = calcTotal(sanitizedQuoteItems);
+
+      const allChanges = [...budgetChanges, ...clientChanges];
+      let updatedAuditLog = selectedLead.internalAuditLog || [];
+      if (allChanges.length > 0) {
+        const userName = currentUser?.name || currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Usuario';
+        const newAuditEntry = {
+          id: `audit_${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          userName,
+          userEmail: currentUser?.email || '',
+          revision: selectedLead.revision || 0,
+          tipo: 'guardado_parcial',
+          changes: allChanges,
+          amount,
+          canal,
+        };
+        updatedAuditLog = [newAuditEntry, ...updatedAuditLog];
+      }
+
       const updatedFields = {
         name: editLeadFields.name,
         tipoCliente: editLeadFields.tipoCliente,
@@ -710,37 +832,40 @@ const KanbanBoard = () => {
         facturacionDireccion: editLeadFields.facturacionIgualCliente ? editLeadFields.direccionCliente : editLeadFields.facturacionDireccion,
         fechaSeguimiento: editLeadFields.fechaSeguimiento || '',
         notaSeguimiento: editLeadFields.notaSeguimiento || '',
+
+        // Quote & Budget Fields
+        notas: detailNotes,
+        amount,
+        quoteItems: sanitizedQuoteItems,
+        canal,
+        internalAuditLog: updatedAuditLog,
       };
 
       await updateDoc(doc(db, 'presupuestos', selectedLead.id), updatedFields);
       setSelectedLead(prev => ({ ...prev, ...updatedFields }));
-      
-      let changedBudget = false;
-      const prevCanal = selectedLead.canal || 'iva';
-      const prevNotas = selectedLead.notas || '';
-      const prevItems = selectedLead.quoteItems || [];
-      if (canal !== prevCanal || detailNotes !== prevNotas || prevItems.length !== builderItems.length) {
-        changedBudget = true;
-      } else {
-        const prevMap = new Map();
-        prevItems.forEach(item => prevMap.set(item.id, item));
-        for (const current of builderItems) {
-          if (!prevMap.has(current.id)) { changedBudget = true; break; }
-          const prev = prevMap.get(current.id);
-          if (current.quantity !== prev.quantity || current.unitPrice !== prev.unitPrice || current.descripcion !== prev.descripcion) {
-            changedBudget = true;
-            break;
-          }
-        }
-      }
-
-      if (changedBudget) {
-        alert('Se guardaron los datos del cliente.\n\nATENCIÓN: Detectamos modificaciones en los artículos, precios o comentarios del cotizador. Para guardar esos cambios, debés usar el botón "Guardar Nueva Revisión".');
-      } else {
-        alert('Datos del cliente guardados con éxito.');
-      }
-    } catch (err) { alert('Error: ' + err.message); }
+      alert('Cambios guardados con éxito en la cotización.');
+    } catch (err) {
+      alert('Error al guardar cambios: ' + err.message);
+    }
     setIsSavingDetail(false);
+  };
+
+  // ─── Save detail handler (with Option 3 check) ──────────────────────────────
+  const saveDetail = async () => {
+    if (!selectedLead || !editLeadFields) return;
+    const budgetDiff = getDetectedBudgetChanges();
+    const clientChanges = getDetectedClientChanges();
+
+    // Opción 3: Si ya tiene revisiones anteriores en el historial Y hay cambios en artículos/precios
+    const hasHistory = (selectedLead.revisionsHistory?.length || 0) > 0;
+    if (hasHistory && budgetDiff.hasChanges) {
+      setPendingChangesForSave({ budgetChanges: budgetDiff.changes, clientChanges });
+      setIsConfirmSaveModalOpen(true);
+      return;
+    }
+
+    // Guardado directo sin interrupción para borradores o cambios estándar
+    await executeDirectSave(budgetDiff.changes, clientChanges);
   };
 
   const executeRevisionSave = async (isInitial, changeNoteInternal, changeNotePublic) => {
@@ -748,52 +873,66 @@ const KanbanBoard = () => {
     setIsSavingDetail(true);
     try {
       const parseVal = (v) => {
-      if (v === '' || v === null || v === undefined) return 0;
-      const str = typeof v === 'string' ? v.replace(',', '.') : String(v);
-      const p = parseFloat(str);
-      return isNaN(p) ? 0 : p;
-    };
-    const sanitizedQuoteItems = builderItems.map(item => {
-      const q = parseVal(item.quantity);
-      const p = parseVal(item.unitPrice);
-      return {
-        ...item,
-        quantity: q,
-        unitPrice: p,
-        subtotal: Math.round(q * p)
+        if (v === '' || v === null || v === undefined) return 0;
+        const str = typeof v === 'string' ? v.replace(',', '.') : String(v);
+        const p = parseFloat(str);
+        return isNaN(p) ? 0 : p;
       };
-    });
-    const amount = calcTotal(sanitizedQuoteItems);
-    const prevRev = selectedLead.revision || 0;
-    
-    let history = selectedLead.revisionsHistory || [];
-    let newRevision = prevRev;
-    
-    if (!isInitial) {
-      history = [...history, {
-        revisionNumber:   prevRev,
-        revisionTitle:    prevRev === 0 ? 'Rev0' : `Rev${prevRev}`,
-        quoteItems:       selectedLead.quoteItems || [],
-        amount:           selectedLead.amount || 0,
-        notas:            selectedLead.notas || '',
-        canal:            selectedLead.canal || 'iva',
-        cambiosRealizados: selectedLead.cambiosRealizados || (prevRev === 0 ? 'Presupuesto Inicial' : ''),
-        cambiosPublicos: selectedLead.cambiosPublicos || '',
-        savedAt:          selectedLead.revisionSavedAt || new Date().toISOString(),
-      }];
-      newRevision = prevRev + 1;
-    } else {
-      newRevision = 0;
-    }
-    
-    const baseNum = (selectedLead.presupuestoNumber || '').split('_Rev')[0].split('_V')[0];
-    const newPresupuestoNumber = `${baseNum}_Rev${newRevision}`;
-    
-    const now = new Date();
-    const updatedFields = {
-      notas: detailNotes,
-      amount,
-      quoteItems: sanitizedQuoteItems,
+      const sanitizedQuoteItems = builderItems.map(item => {
+        const q = parseVal(item.quantity);
+        const p = parseVal(item.unitPrice);
+        return {
+          ...item,
+          quantity: q,
+          unitPrice: p,
+          subtotal: Math.round(q * p)
+        };
+      });
+      const amount = calcTotal(sanitizedQuoteItems);
+      const prevRev = selectedLead.revision || 0;
+      
+      let history = selectedLead.revisionsHistory || [];
+      let newRevision = prevRev;
+      
+      if (!isInitial) {
+        history = [...history, {
+          revisionNumber:   prevRev,
+          revisionTitle:    prevRev === 0 ? 'Rev0' : `Rev${prevRev}`,
+          quoteItems:       selectedLead.quoteItems || [],
+          amount:           selectedLead.amount || 0,
+          notas:            selectedLead.notas || '',
+          canal:            selectedLead.canal || 'iva',
+          cambiosRealizados: selectedLead.cambiosRealizados || (prevRev === 0 ? 'Presupuesto Inicial' : ''),
+          cambiosPublicos: selectedLead.cambiosPublicos || '',
+          savedAt:          selectedLead.revisionSavedAt || new Date().toISOString(),
+        }];
+        newRevision = prevRev + 1;
+      } else {
+        newRevision = 0;
+      }
+      
+      const baseNum = (selectedLead.presupuestoNumber || '').split('_Rev')[0].split('_V')[0];
+      const newPresupuestoNumber = `${baseNum}_Rev${newRevision}`;
+      
+      const now = new Date();
+      const userName = currentUser?.name || currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Usuario';
+      const newAuditEntry = {
+        id: `audit_${Date.now()}`,
+        timestamp: now.toISOString(),
+        userName,
+        userEmail: currentUser?.email || '',
+        revision: newRevision,
+        tipo: isInitial ? 'presupuesto_inicial' : 'nueva_revision',
+        changes: isInitial ? ['Creación de Presupuesto Inicial (Rev0)'] : [changeNoteInternal.trim()],
+        amount,
+        canal,
+      };
+      const updatedAuditLog = [newAuditEntry, ...(selectedLead.internalAuditLog || [])];
+
+      const updatedFields = {
+        notas: detailNotes,
+        amount,
+        quoteItems: sanitizedQuoteItems,
         canal,
         revision: newRevision,
         presupuestoNumber: newPresupuestoNumber,
@@ -802,6 +941,7 @@ const KanbanBoard = () => {
         revisionSavedAt: now.toISOString(),
         date: now.toLocaleDateString('es-AR'),
         revisionsHistory: history,
+        internalAuditLog: updatedAuditLog,
         
         name: editLeadFields.name,
         tipoCliente: editLeadFields.tipoCliente,
@@ -856,77 +996,15 @@ const KanbanBoard = () => {
       return;
     }
 
-    const prevItems = selectedLead.quoteItems || [];
-    const prevCanal = selectedLead.canal || 'iva';
-    const prevNotas = selectedLead.notas || '';
+    const budgetDiff = getDetectedBudgetChanges();
 
-    const changes = [];
-    const publicChanges = [];
-
-    if (canal !== prevCanal) {
-      const msg = `Se cambió el modo de venta de "${prevCanal === 'iva' ? 'Con IVA' : 'Canal 2'}" a "${canal === 'iva' ? 'Con IVA' : 'Canal 2'}".`;
-      changes.push(msg);
-      publicChanges.push(msg);
-    }
-
-    if (detailNotes !== prevNotas) {
-      changes.push('Se modificaron los comentarios/condiciones.');
-    }
-    
-    const prevMap = new Map();
-    prevItems.forEach(item => prevMap.set(item.id, item));
-    
-    const currentMap = new Map();
-    builderItems.forEach(item => currentMap.set(item.id, item));
-    
-    // Check for removed items
-    prevItems.forEach(prev => {
-      if (!currentMap.has(prev.id)) {
-        const msg = `Se eliminó: ${prev.descripcion}`;
-        changes.push(msg);
-        publicChanges.push(msg);
-      }
-    });
-    
-    // Check for added or modified items
-    builderItems.forEach(current => {
-      if (!prevMap.has(current.id)) {
-        const msg = `Se agregó: ${current.descripcion} (Cant: ${current.quantity})`;
-        changes.push(msg);
-        publicChanges.push(msg);
-      } else {
-        const prev = prevMap.get(current.id);
-        const itemChanges = [];
-        const itemChangesPublic = [];
-        
-        if ((Number(current.quantity) || 0) !== (Number(prev.quantity) || 0)) {
-          const m = `cantidad de ${prev.quantity} a ${current.quantity}`;
-          itemChanges.push(m);
-          itemChangesPublic.push(m);
-        }
-        if ((Number(current.unitPrice) || 0) !== (Number(prev.unitPrice) || 0)) {
-          itemChanges.push(`precio modificado`);
-        }
-        if (current.descripcion !== prev.descripcion) {
-          itemChanges.push(`artículo cambiado a "${current.descripcion}"`);
-        }
-        
-        if (itemChanges.length > 0) {
-          changes.push(`Se modificó [${current.descripcion}]: ${itemChanges.join(', ')}.`);
-        }
-        if (itemChangesPublic.length > 0) {
-          publicChanges.push(`Se modificó [${current.descripcion}]: ${itemChangesPublic.join(', ')}.`);
-        }
-      }
-    });
-
-    if (changes.length === 0) {
+    if (budgetDiff.changes.length === 0) {
       alert('NO HUBO CAMBIOS, SE MANTIENE LA REVISIÓN ACTUAL.\nPara crear una nueva revisión, debés realizar algún cambio en el cotizador.');
       return;
     }
 
-    setRevChangeNote(changes.join('\n'));
-    setRevChangeNotePDF(publicChanges.join('\n'));
+    setRevChangeNote(budgetDiff.changes.join('\n'));
+    setRevChangeNotePDF(budgetDiff.publicChanges.join('\n'));
     setIsRevModalOpen(true);
   };
 
@@ -2297,6 +2375,74 @@ const KanbanBoard = () => {
       )}
 
       {/* ──────────────────────────────────────────────────────────────────────
+          MODAL: Confirmación de Guardado (Opción 3 - Presupuesto con Historial)
+      ────────────────────────────────────────────────────────────────────── */}
+      {isConfirmSaveModalOpen && selectedLead && (
+        <div style={{ position:'fixed',top:0,left:0,right:0,bottom:0,backgroundColor:'rgba(0,0,0,0.6)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2100 }}>
+          <div className="card" style={{ width:'560px',display:'flex',flexDirection:'column',gap:'1rem',boxShadow:'0 10px 30px rgba(0,0,0,0.25)' }}>
+            <div style={{ display:'flex',alignItems:'center',gap:'0.5rem',color:'#d97706' }}>
+              <AlertTriangle size={22} color="#d97706" />
+              <h3 style={{ margin:0,fontSize:'1.1rem',fontWeight:'700',color:'#92400e' }}>
+                Modificaciones en cotización con historial
+              </h3>
+            </div>
+            <p style={{ margin:0,fontSize:'0.875rem',color:'var(--text-secondary)',lineHeight:'1.4' }}>
+              Este presupuesto ya cuenta con revisiones anteriores registradas (<strong>Rev {selectedLead.revision || 0}</strong>). Detectamos los siguientes cambios en la cotización:
+            </p>
+            <div style={{ maxHeight:'150px',overflowY:'auto',backgroundColor:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'6px',padding:'0.6rem 0.8rem',fontSize:'0.8rem' }}>
+              {(pendingChangesForSave.budgetChanges || []).map((c, i) => (
+                <div key={i} style={{ marginBottom:'0.25rem',color:'#334155' }}>• {c}</div>
+              ))}
+              {(pendingChangesForSave.clientChanges || []).map((c, i) => (
+                <div key={`client-${i}`} style={{ marginBottom:'0.25rem',color:'#64748b' }}>• {c}</div>
+              ))}
+            </div>
+            <p style={{ margin:0,fontSize:'0.875rem',fontWeight:'600',color:'var(--text-primary)' }}>
+              ¿Cómo deseas registrar estos cambios?
+            </p>
+            <div style={{ display:'flex',flexDirection:'column',gap:'0.5rem' }}>
+              <button 
+                className="btn btn-secondary"
+                disabled={isSavingDetail}
+                onClick={async () => {
+                  setIsConfirmSaveModalOpen(false);
+                  await executeDirectSave(pendingChangesForSave.budgetChanges, pendingChangesForSave.clientChanges);
+                }}
+                style={{ justifyContent:'center',padding:'0.65rem 1rem',textAlign:'left' }}
+              >
+                <div style={{ display:'flex',flexDirection:'column',alignItems:'flex-start' }}>
+                  <span style={{ fontWeight:'700',color:'var(--text-primary)' }}>💾 Guardar en la revisión actual (Rev {selectedLead.revision || 0})</span>
+                  <span style={{ fontSize:'0.75rem',color:'var(--text-secondary)' }}>Mantiene el número de versión y registra los cambios en la bitácora interna de Euler.</span>
+                </div>
+              </button>
+              <button 
+                className="btn btn-primary"
+                disabled={isSavingDetail}
+                onClick={() => {
+                  setIsConfirmSaveModalOpen(false);
+                  handleOpenRevModal();
+                }}
+                style={{ justifyContent:'center',padding:'0.65rem 1rem',textAlign:'left' }}
+              >
+                <div style={{ display:'flex',flexDirection:'column',alignItems:'flex-start' }}>
+                  <span style={{ fontWeight:'700' }}>✨ Crear Nueva Revisión (Rev {(selectedLead.revision || 0) + 1})</span>
+                  <span style={{ fontSize:'0.75rem',color:'#bfdbfe' }}>Congela la versión previa en el historial y carga notas de carátula para el cliente.</span>
+                </div>
+              </button>
+              <div style={{ display:'flex',justifyContent:'flex-end',marginTop:'0.25rem' }}>
+                <button 
+                  style={{ background:'none',border:'none',color:'var(--text-tertiary)',cursor:'pointer',fontSize:'0.8rem',padding:'0.3rem 0.6rem' }}
+                  onClick={() => setIsConfirmSaveModalOpen(false)}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ──────────────────────────────────────────────────────────────────────
           PANEL LATERAL: Detalle del Lead
       ────────────────────────────────────────────────────────────────────── */}
       {selectedLead && (
@@ -3438,6 +3584,62 @@ const KanbanBoard = () => {
                     )}
                   </div>
 
+                  {/* ── BITÁCORA INTERNA DE MODIFICACIONES (SOLO EULER) ── */}
+                  <div style={{ border:'1px solid #cbd5e1',borderRadius:'8px',overflow:'hidden',backgroundColor:'#fff' }}>
+                    <div style={{ padding:'0.75rem 1rem',background:'#f8fafc',borderBottom:'1px solid #e2e8f0',display:'flex',justifyContent:'space-between',alignItems:'center' }}>
+                      <div style={{ display:'flex',alignItems:'center',gap:'0.5rem',fontWeight:'700',fontSize:'0.875rem',color:'#1e293b' }}>
+                        <Shield size={16} color="#0284c7" /> Bitácora Interna de Modificaciones del Cotizador
+                      </div>
+                      <span style={{ fontSize:'0.7rem',fontWeight:'700',backgroundColor:'#e0f2fe',color:'#0369a1',padding:'0.2rem 0.6rem',borderRadius:'12px',border:'1px solid #bae6fd' }}>
+                        🔒 Uso Exclusivo Euler (Privado)
+                      </span>
+                    </div>
+
+                    <div style={{ padding:'0.75rem 1rem' }}>
+                      {(!selectedLead.internalAuditLog || selectedLead.internalAuditLog.length === 0) ? (
+                        <div style={{ padding:'1rem',textAlign:'center',color:'#94a3b8',fontSize:'0.825rem',fontStyle:'italic' }}>
+                          Aún no hay registros de modificaciones en la bitácora interna.
+                          <br/><span style={{ fontSize:'0.75rem' }}>Cada vez que un proyectista guarde cambios parciales o genere revisiones, quedará registrado aquí.</span>
+                        </div>
+                      ) : (
+                        <div style={{ display:'flex',flexDirection:'column',gap:'0.75rem' }}>
+                          {selectedLead.internalAuditLog.map((entry, idx) => (
+                            <div key={entry.id || idx} style={{ border:'1px solid #e2e8f0',borderRadius:'6px',padding:'0.65rem 0.85rem',backgroundColor:'#fafafa',fontSize:'0.825rem' }}>
+                              <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.35rem',flexWrap:'wrap',gap:'0.35rem' }}>
+                                <div style={{ display:'flex',alignItems:'center',gap:'0.5rem' }}>
+                                  <span style={{ fontWeight:'700',color:'#0f172a' }}>👤 {entry.userName || 'Usuario'}</span>
+                                  <span style={{ fontSize:'0.75rem',color:'#64748b' }}>
+                                    {new Date(entry.timestamp).toLocaleString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })} hs
+                                  </span>
+                                  <span style={{ 
+                                    fontSize:'0.7rem',
+                                    fontWeight:'600',
+                                    padding:'0.1rem 0.45rem',
+                                    borderRadius:'6px',
+                                    backgroundColor: entry.tipo === 'nueva_revision' ? '#dcfce7' : '#f1f5f9',
+                                    color: entry.tipo === 'nueva_revision' ? '#15803d' : '#475569'
+                                  }}>
+                                    {entry.tipo === 'nueva_revision' ? `✨ Rev ${entry.revision}` : `💾 Rev ${entry.revision || 0} (guardado parcial)`}
+                                  </span>
+                                </div>
+                                <span style={{ fontWeight:'700',color:'#0369a1' }}>
+                                  $ {(entry.amount || 0).toLocaleString('es-AR')}
+                                </span>
+                              </div>
+                              <div style={{ marginTop:'0.25rem',paddingLeft:'0.5rem',borderLeft:'2px solid #cbd5e1' }}>
+                                {(entry.changes || []).map((chg, chgIdx) => (
+                                  <div key={chgIdx} style={{ color:'#334155',fontSize:'0.775rem',lineHeight:'1.4' }}>
+                                    • {chg}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                   {/* ── OTRAS OBRAS DEL CLIENTE ── */}
                   {(() => {
                     const otherWorks = Object.values(data.items || {}).filter(l => 
@@ -3552,11 +3754,23 @@ const KanbanBoard = () => {
                   >
                     <FileText size={15}/> Generar PDF
                   </button>
-                  <button className="btn btn-secondary" onClick={saveDetail} disabled={isSavingDetail} title="Solo guarda la información y metadatos del cliente (nombre, teléfono, etc)">
-                    Guardar Datos Cliente
+                  <button 
+                    className="btn btn-secondary" 
+                    onClick={saveDetail} 
+                    disabled={isSavingDetail} 
+                    title="Guarda los datos del cliente y los artículos del cotizador en la revisión actual sin subir versión"
+                    style={{ display:'flex',alignItems:'center',gap:'0.35rem' }}
+                  >
+                    <Save size={15}/> {isSavingDetail ? 'Guardando...' : 'Guardar Cambios'}
                   </button>
-                  <button className="btn btn-primary" onClick={handleOpenRevModal} disabled={isSavingDetail} style={{ display:'flex',alignItems:'center',gap:'0.35rem' }}>
-                    <Save size={16}/> {isSavingDetail ? 'Guardando...' : 'Guardar Nueva Revisión'}
+                  <button 
+                    className="btn btn-primary" 
+                    onClick={handleOpenRevModal} 
+                    disabled={isSavingDetail} 
+                    title="Crea una nueva versión formal (Rev +1) y solicita las notas de cambios para la carátula y el CRM"
+                    style={{ display:'flex',alignItems:'center',gap:'0.35rem' }}
+                  >
+                    <History size={16}/> {isSavingDetail ? 'Guardando...' : 'Guardar Nueva Revisión'}
                   </button>
                 </div>
               </div>
