@@ -19,32 +19,15 @@ import {
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { getTipoCambio, calcularPrecios, calcularPrecioManoDeObra, IVA } from '../../services/tipoCambioService';
 import { generarPDFPresupuesto } from '../../services/pdfPresupuesto';
+import { calcularDescuentosPresupuesto, getItemCategory } from '../../services/descuentosService';
 import { getNextSequenceValue, formatPresupuestoNumber, formatObraNumber } from '../../utils/sequenceGenerator';
 import { useAuth } from '../../context/AuthContext';
 
-// ─── Constantes ───────────────────────────────────────────────────────────────
-const COEF_CANAL2 = 1.105;
-
-const getCanalFactor = (item, canal) => {
-  let factor = 1.0;
-  if (canal === 'canal2') {
-    const isMoOrServ = item.tipo === 'mano_de_obra' || item.tipo === 'servicio';
-    const desc = (item.descripcion || '').toLowerCase();
-    if (desc.includes('pressfitting')) {
-      factor = 1.0525;
-    } else if (isMoOrServ) {
-      factor = 1.0;
-    } else {
-      factor = COEF_CANAL2; // 1.105
-    }
-  }
-  return factor;
-};
-
+// ─── Cálculo de precio base por ítem (Neto sin IVA) ─────────────────────────
 const calcPrecioItem = (item, canal, tcValor) => {
   if (!tcValor) return 0;
   
-  // 1. Obtener precio base sin IVA
+  // Obtener precio base sin IVA
   let basePrice = 0;
   const isMoOrServ = item.tipo === 'mano_de_obra' || item.tipo === 'servicio';
   if (isMoOrServ) {
@@ -54,8 +37,7 @@ const calcPrecioItem = (item, canal, tcValor) => {
     basePrice = (item.costoUSD || 0) * markup * tcValor;
   }
   
-  // 2. Aplicar factor
-  return Math.round(basePrice * getCanalFactor(item, canal));
+  return Math.round(basePrice);
 };
 
 const getAutoFolletoUrl = (item) => {

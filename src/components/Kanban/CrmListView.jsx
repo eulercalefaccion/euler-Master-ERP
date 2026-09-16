@@ -45,8 +45,8 @@ const CrmListView = ({ items, onCardClick, globalLabels = {}, columns, columnOrd
                           {item.presupuestoNumber || 'S/N'}{hasRevisions ? `-V${item.revision}` : ''}
                         </div>
                         {isCanal2 && (
-                          <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem', backgroundColor: '#fef3c7', color: '#92400e', borderRadius: '4px', fontWeight: '700', marginTop: '0.2rem', display: 'inline-block' }}>
-                            Ch2
+                          <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem', backgroundColor: '#ecfdf5', color: '#065f46', borderRadius: '4px', fontWeight: '700', marginTop: '0.2rem', display: 'inline-block' }}>
+                            🏷️ Desc. Comercial
                           </span>
                         )}
                       </td>

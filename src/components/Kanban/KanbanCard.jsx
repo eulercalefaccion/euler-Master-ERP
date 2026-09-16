@@ -75,8 +75,8 @@ const KanbanCard = ({ item, index, onCardClick, globalLabels = {} }) => {
               {item.presupuestoNumber || 'S/N'}{hasRevisions ? `-V${item.revision}` : ''}
             </span>
             {isCanal2 && (
-              <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem', backgroundColor: '#fef3c7', color: '#92400e', borderRadius: '8px', fontWeight: '700' }}>
-                💵 Ch2
+              <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem', backgroundColor: '#ecfdf5', color: '#065f46', borderRadius: '8px', fontWeight: '700' }}>
+                🏷️ Desc. Comercial
               </span>
             )}
           </div>
