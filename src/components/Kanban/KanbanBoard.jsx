@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { DragDropContext } from '@hello-pangea/dnd';
 import {
   Plus, X, Save, MessageSquare, DollarSign, MapPin, Calendar, Tag,
-  Trash2, ListPlus, Target, History, FileText, RefreshCw, Receipt, Download, Upload, Loader, Search, Settings, AlertCircle, LayoutGrid, List, Map as MapIcon, CheckCircle, Shield, AlertTriangle
+  Trash2, ListPlus, Target, History, FileText, RefreshCw, Receipt, Download, Upload, Loader, Search, Settings, AlertCircle, LayoutGrid, List, Map as MapIcon, CheckCircle, Shield, AlertTriangle,
+  ChevronDown, ChevronUp, Eye
 } from 'lucide-react';
 import KanbanColumn from './KanbanColumn';
 import LabelsManagerModal from './LabelsManagerModal';
@@ -323,6 +324,8 @@ const KanbanBoard = () => {
   const [isPDFModalOpen, setIsPDFModalOpen]   = useState(false);
   const [pdfProgress, setPdfProgress]         = useState(0);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [downloadingRevId, setDownloadingRevId] = useState(null); // null | 'current' | number
+  const [expandedRevIndex, setExpandedRevIndex] = useState(null); // null | 'current' | number
   const [selectedFolletos, setSelectedFolletos] = useState([]);
   const [isFolletosManagerOpen, setIsFolletosManagerOpen] = useState(false);
   const [folletosAdicionales, setFolletosAdicionales] = useState([]);
@@ -915,6 +918,7 @@ const KanbanBoard = () => {
           cambiosRealizados: selectedLead.cambiosRealizados || (prevRev === 0 ? 'Presupuesto Inicial' : ''),
           cambiosPublicos: selectedLead.cambiosPublicos || '',
           savedAt:          selectedLead.revisionSavedAt || new Date().toISOString(),
+          documentoCliente: selectedLead.documentoCliente || null,
         }];
         newRevision = prevRev + 1;
       } else {
@@ -1076,24 +1080,28 @@ const KanbanBoard = () => {
   };
 
   const handleDownloadHistoricalPDF = async (rev) => {
+    const revNum = rev.revisionNumber !== undefined ? rev.revisionNumber : 0;
+    setDownloadingRevId(revNum);
     setIsGeneratingPDF(true);
     setPdfProgress(0);
     try {
-      const baseNum = (selectedLead.presupuestoNumber || '').split('_V')[0];
-      const historicalPresupuestoNumber = `${baseNum}_V${rev.revisionNumber || 0}`;
+      const baseNum = (selectedLead.presupuestoNumber || '').split('_Rev')[0].split('_V')[0];
+      const historicalPresupuestoNumber = `${baseNum}_Rev${revNum}`;
       
       const historicalPresupuestoData = {
         ...selectedLead,
+        clientName: selectedLead.clientName || selectedLead.name,
         presupuestoNumber: historicalPresupuestoNumber,
         quoteItems: rev.quoteItems || [],
         canal: rev.canal || 'iva',
         notas: rev.notas || '',
         cambiosRealizados: rev.cambiosRealizados || '',
         cambiosPublicos: rev.cambiosPublicos || '',
-        revision: rev.revisionNumber || 0,
+        revision: revNum,
         amount: rev.amount || 0,
         revisionSavedAt: rev.savedAt,
-        date: rev.savedAt ? new Date(rev.savedAt).toLocaleDateString('es-AR') : selectedLead.date
+        date: rev.savedAt ? new Date(rev.savedAt).toLocaleDateString('es-AR') : selectedLead.date,
+        revisionsHistory: (selectedLead.revisionsHistory || []).filter(h => (h.revisionNumber || 0) < revNum)
       };
       
       const autoSelectedUrls = [];
@@ -1111,9 +1119,10 @@ const KanbanBoard = () => {
       await generarPDFPresupuesto(historicalPresupuestoData, folletoUrls, (p) => setPdfProgress(p));
     } catch (err) {
       console.error(err);
-      alert('Error al generar PDF: ' + err.message);
+      alert('Error al generar PDF de la versión histórica: ' + err.message);
     } finally {
       setIsGeneratingPDF(false);
+      setDownloadingRevId(null);
       setPdfProgress(0);
     }
   };
@@ -3660,33 +3669,111 @@ const KanbanBoard = () => {
 
                     {/* Versión actual (siempre al tope) */}
                     <div style={{ padding:'1rem',borderTop:'1px solid var(--border-light)',fontSize:'0.875rem',background:'#f0f9ff' }}>
-                      <div style={{ display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'0.5rem' }}>
+                      <div style={{ display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'0.5rem',flexWrap:'wrap',gap:'0.5rem' }}>
                         <div>
-                          <span style={{ fontWeight:'700',color:'#0369a1' }}>✏️ Versión actual (en edición)</span>
-                          <span style={{ marginLeft:'0.75rem',color:'var(--text-secondary)',fontSize:'0.75rem' }}>Rev {selectedLead.revision || 0}</span>
-                          {canal === 'canal2' && <span style={{ marginLeft:'0.5rem',fontSize:'0.7rem',backgroundColor:'#ecfdf5',color:'#065f46',padding:'0.1rem 0.4rem',borderRadius:'8px' }}>Desc. Comercial</span>}
+                          <div style={{ display:'flex',alignItems:'center',gap:'0.5rem',flexWrap:'wrap' }}>
+                            <span style={{ fontWeight:'700',color:'#0369a1',fontSize:'0.95rem' }}>✏️ Versión actual (en edición)</span>
+                            <span style={{ fontWeight:'700',color:'#0369a1',backgroundColor:'#e0f2fe',padding:'0.15rem 0.5rem',borderRadius:'6px',fontSize:'0.75rem' }}>
+                              Rev {selectedLead.revision || 0}
+                            </span>
+                            {canal === 'canal2' ? (
+                              <span style={{ fontSize:'0.75rem',backgroundColor:'#ecfdf5',color:'#065f46',fontWeight:'700',padding:'0.15rem 0.5rem',borderRadius:'6px',border:'1px solid #a7f3d0' }}>
+                                🏷️ Descuento Comercial (Sin Factura)
+                              </span>
+                            ) : (
+                              <span style={{ fontSize:'0.75rem',backgroundColor:'#eff6ff',color:'#1e40af',fontWeight:'700',padding:'0.15rem 0.5rem',borderRadius:'6px',border:'1px solid #bfdbfe' }}>
+                                🧾 Lista Oficial (Con Factura / IVA)
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ fontSize:'0.75rem',color:'#64748b',marginTop:'0.25rem' }}>
+                            {selectedLead.date ? `Fecha: ${selectedLead.date}` : 'Fecha actual'}
+                          </div>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                          <span style={{ fontWeight:'700',color:'#0369a1' }}>
-                            $ {quoteMetrics.montoFinalPresupuesto.toLocaleString('es-AR')}
-                          </span>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap:'wrap' }}>
+                          <div style={{ textAlign:'right' }}>
+                            <div style={{ fontSize:'0.75rem', color:'#64748b' }}>Total cotizado:</div>
+                            <div style={{ fontWeight:'800',color:'#0369a1',fontSize:'1.05rem' }}>
+                              $ {quoteMetrics.montoFinalPresupuesto.toLocaleString('es-AR')}
+                            </div>
+                          </div>
                           <button 
                             onClick={handleOpenPDFModal}
                             title="Descargar PDF de la versión actual"
                             disabled={isGeneratingPDF}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#0369a1', display: 'flex', alignItems: 'center', opacity: isGeneratingPDF ? 0.5 : 1 }}
+                            style={{
+                              display:'flex',
+                              alignItems:'center',
+                              gap:'0.4rem',
+                              padding:'0.45rem 0.85rem',
+                              backgroundColor:'#0284c7',
+                              color:'white',
+                              border:'none',
+                              borderRadius:'6px',
+                              cursor:'pointer',
+                              fontWeight:'600',
+                              fontSize:'0.8rem',
+                              boxShadow:'0 1px 2px rgba(0,0,0,0.05)',
+                              opacity: isGeneratingPDF ? 0.7 : 1
+                            }}
                           >
-                            {isGeneratingPDF ? <Loader size={16} className="spin" /> : <Download size={16} />}
+                            {isGeneratingPDF && downloadingRevId === 'current' ? <Loader size={14} className="spin" /> : <Download size={14} />}
+                            <span>Descargar PDF Actual</span>
                           </button>
                         </div>
                       </div>
-                      <div style={{ fontSize:'0.75rem',color:'var(--text-secondary)' }}>
-                        {builderItems.length} ítems
-                        {builderItems.length > 0 && ': ' + builderItems.slice(0,3).map(i => `${i.descripcion} (×${i.quantity})`).join(' · ')}
-                        {builderItems.length > 3 && ` ... +${builderItems.length - 3} más`}
+
+                      <div style={{ fontSize:'0.75rem',color:'var(--text-secondary)',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:'0.5rem' }}>
+                        <span>
+                          <strong>{builderItems.length} ítems</strong>
+                          {builderItems.length > 0 && ': ' + builderItems.slice(0,3).map(i => `${i.descripcion} (×${i.quantity})`).join(' · ')}
+                          {builderItems.length > 3 && ` ... +${builderItems.length - 3} más`}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setExpandedRevIndex(expandedRevIndex === 'current' ? null : 'current')}
+                          style={{ background:'none',border:'none',color:'#0369a1',cursor:'pointer',fontSize:'0.75rem',fontWeight:'600',display:'flex',alignItems:'center',gap:'0.25rem',textDecoration:'underline' }}
+                        >
+                          {expandedRevIndex === 'current' ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
+                          {expandedRevIndex === 'current' ? 'Ocultar ítems de versión actual' : 'Ver detalle de ítems actuales'}
+                        </button>
                       </div>
+
+                      {expandedRevIndex === 'current' && (
+                        <div style={{ marginTop:'0.75rem',backgroundColor:'#ffffff',border:'1px solid #bfdbfe',borderRadius:'6px',overflow:'hidden' }}>
+                          <div style={{ padding:'0.5rem 0.75rem',backgroundColor:'#e0f2fe',fontWeight:'700',fontSize:'0.75rem',color:'#0369a1' }}>
+                            Ítems incluidos en Versión Actual (Rev {selectedLead.revision || 0})
+                          </div>
+                          <div style={{ maxHeight:'220px',overflowY:'auto' }}>
+                            <table style={{ width:'100%',fontSize:'0.75rem',borderCollapse:'collapse' }}>
+                              <thead>
+                                <tr style={{ backgroundColor:'#f8fafc',borderBottom:'1px solid #e2e8f0',textAlign:'left' }}>
+                                  <th style={{ padding:'0.35rem 0.6rem' }}>#</th>
+                                  <th style={{ padding:'0.35rem 0.6rem' }}>Descripción</th>
+                                  <th style={{ padding:'0.35rem 0.6rem',textAlign:'center' }}>Cant.</th>
+                                  <th style={{ padding:'0.35rem 0.6rem',textAlign:'right' }}>Precio Unit. (s/IVA)</th>
+                                  <th style={{ padding:'0.35rem 0.6rem',textAlign:'right' }}>Subtotal</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {builderItems.map((item, i) => (
+                                  <tr key={i} style={{ borderBottom:'1px solid #f1f5f9' }}>
+                                    <td style={{ padding:'0.35rem 0.6rem',color:'#94a3b8' }}>{i + 1}</td>
+                                    <td style={{ padding:'0.35rem 0.6rem',fontWeight:'600' }}>{item.descripcion}</td>
+                                    <td style={{ padding:'0.35rem 0.6rem',textAlign:'center' }}>{item.quantity}</td>
+                                    <td style={{ padding:'0.35rem 0.6rem',textAlign:'right' }}>${(item.unitPrice || 0).toLocaleString('es-AR')}</td>
+                                    <td style={{ padding:'0.35rem 0.6rem',textAlign:'right',fontWeight:'700' }}>${(item.subtotal || 0).toLocaleString('es-AR')}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+
                       {selectedLead.cambiosRealizados && selectedLead.revision > 0 && (
-                        <div style={{ background:'#fefce8',border:'1px solid #fde68a',borderRadius:'6px',padding:'0.5rem 0.75rem',fontSize:'0.8rem',color:'#92400e',marginBottom:'0.5rem', marginTop: '0.5rem' }}>
+                        <div style={{ background:'#fefce8',border:'1px solid #fde68a',borderRadius:'6px',padding:'0.5rem 0.75rem',fontSize:'0.8rem',color:'#92400e',marginBottom:'0.5rem',marginTop:'0.5rem' }}>
                           <strong>Cambios desde la revisión anterior:</strong> {selectedLead.cambiosRealizados}
                         </div>
                       )}
@@ -3702,42 +3789,167 @@ const KanbanBoard = () => {
                         <br/><span style={{ fontSize:'0.75rem' }}>Usá "Guardar Nueva Revisión" para crear una nueva versión.</span>
                       </div>
                     ) : (
-                      selectedLead.revisionsHistory.slice().reverse().map((rev, idx) => (
-                        <div key={idx} style={{ padding:'1rem',borderTop:'1px solid var(--border-light)',fontSize:'0.875rem' }}>
-                          <div style={{ display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'0.5rem' }}>
-                            <div>
-                              <span style={{ fontWeight:'700',color:'var(--primary-700)' }}>{rev.revisionTitle}</span>
-                              <span style={{ marginLeft:'0.75rem',color:'var(--text-secondary)',fontSize:'0.75rem' }}>
-                                {new Date(rev.savedAt).toLocaleString('es-AR')}
-                              </span>
-                              {rev.canal === 'canal2' && <span style={{ marginLeft:'0.5rem',fontSize:'0.7rem',backgroundColor:'#ecfdf5',color:'#065f46',padding:'0.1rem 0.4rem',borderRadius:'8px' }}>Desc. Comercial</span>}
+                      selectedLead.revisionsHistory.slice().reverse().map((rev, idx) => {
+                        const revNum = rev.revisionNumber !== undefined ? rev.revisionNumber : 0;
+                        const isDownloadingThis = isGeneratingPDF && downloadingRevId === revNum;
+                        const isExpanded = expandedRevIndex === idx;
+                        const currentAmount = quoteMetrics.montoFinalPresupuesto || selectedLead.amount || 0;
+                        const diffAmount = (rev.amount || 0) - currentAmount;
+
+                        return (
+                          <div key={idx} style={{ padding:'1rem',borderTop:'1px solid var(--border-light)',fontSize:'0.875rem',backgroundColor: isExpanded ? '#fafafa' : '#ffffff',transition:'background 0.2s' }}>
+                            <div style={{ display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'0.5rem',flexWrap:'wrap',gap:'0.5rem' }}>
+                              <div>
+                                <div style={{ display:'flex',alignItems:'center',gap:'0.5rem',flexWrap:'wrap' }}>
+                                  <span style={{ fontWeight:'700',color:'var(--primary-700)',fontSize:'0.95rem' }}>
+                                    📁 {rev.revisionTitle || `Rev${revNum}`}
+                                  </span>
+                                  <span style={{ color:'var(--text-secondary)',fontSize:'0.75rem' }}>
+                                    {new Date(rev.savedAt).toLocaleString('es-AR')}
+                                  </span>
+                                  {rev.canal === 'canal2' ? (
+                                    <span style={{ fontSize:'0.7rem',backgroundColor:'#ecfdf5',color:'#065f46',fontWeight:'700',padding:'0.15rem 0.45rem',borderRadius:'6px',border:'1px solid #a7f3d0' }}>
+                                      🏷️ Descuento Comercial (Sin Factura)
+                                    </span>
+                                  ) : (
+                                    <span style={{ fontSize:'0.7rem',backgroundColor:'#eff6ff',color:'#1e40af',fontWeight:'700',padding:'0.15rem 0.45rem',borderRadius:'6px',border:'1px solid #bfdbfe' }}>
+                                      🧾 Lista Oficial (Con Factura / IVA)
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap:'wrap' }}>
+                                <div style={{ textAlign:'right' }}>
+                                  <div style={{ fontSize:'0.75rem', color:'#64748b' }}>Total versión:</div>
+                                  <span style={{ fontWeight:'800',color:'var(--primary-700)',fontSize:'1.05rem' }}>
+                                    $ {(rev.amount || 0).toLocaleString('es-AR')}
+                                  </span>
+                                </div>
+                                <div style={{ display:'flex',gap:'0.4rem',alignItems:'center' }}>
+                                  <button 
+                                    onClick={() => handleDownloadHistoricalPDF(rev)}
+                                    title={`Descargar archivo PDF oficial de ${rev.revisionTitle || `Rev${revNum}`}`}
+                                    disabled={isGeneratingPDF}
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '0.35rem',
+                                      padding: '0.45rem 0.85rem',
+                                      backgroundColor: '#f8fafc',
+                                      border: '1px solid #cbd5e1',
+                                      borderRadius: '6px',
+                                      cursor: isGeneratingPDF ? 'not-allowed' : 'pointer',
+                                      color: '#0f172a',
+                                      fontWeight: '600',
+                                      fontSize: '0.8rem',
+                                      transition: 'all 0.2s',
+                                      opacity: isGeneratingPDF && !isDownloadingThis ? 0.6 : 1
+                                    }}
+                                  >
+                                    {isDownloadingThis ? (
+                                      <>
+                                        <Loader size={14} className="spin" color="#0284c7" />
+                                        <span style={{ color: '#0284c7' }}>Generando PDF ({Math.round(pdfProgress * 100)}%)...</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Download size={14} color="#0284c7" />
+                                        <span>Descargar PDF ({rev.revisionTitle || `Rev${revNum}`})</span>
+                                      </>
+                                    )}
+                                  </button>
+                                  {rev.documentoCliente?.url && (
+                                    <a
+                                      href={rev.documentoCliente.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      download={rev.documentoCliente.nombre || `Adjunto_${rev.revisionTitle}`}
+                                      title="Descargar documento adicional adjunto a esta revisión"
+                                      style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.35rem',
+                                        padding: '0.45rem 0.75rem',
+                                        backgroundColor: '#f0fdf4',
+                                        border: '1px solid #bbf7d0',
+                                        borderRadius: '6px',
+                                        color: '#166534',
+                                        fontWeight: '600',
+                                        fontSize: '0.8rem',
+                                        textDecoration: 'none'
+                                      }}
+                                    >
+                                      <FileText size={14} /> Adjunto
+                                    </a>
+                                  )}
+                                </div>
+                              </div>
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                              <span style={{ fontWeight:'700',color:'var(--primary-600)' }}>
-                                $ {(rev.amount || 0).toLocaleString('es-AR')}
+
+                            {rev.cambiosRealizados && (
+                              <div style={{ background:'#fefce8',border:'1px solid #fde68a',borderRadius:'6px',padding:'0.45rem 0.75rem',fontSize:'0.8rem',color:'#92400e',marginBottom:'0.5rem' }}>
+                                <strong>Cambios registrados:</strong> {rev.cambiosRealizados}
+                              </div>
+                            )}
+
+                            <div style={{ fontSize:'0.75rem',color:'var(--text-secondary)',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:'0.5rem' }}>
+                              <span>
+                                <strong>{(rev.quoteItems || []).length} ítems</strong>
+                                {rev.quoteItems?.length > 0 && ': ' + rev.quoteItems.slice(0,3).map(i => `${i.descripcion} (×${i.quantity})`).join(' · ')}
+                                {rev.quoteItems?.length > 3 && ` ... +${rev.quoteItems.length - 3} más`}
                               </span>
-                              <button 
-                                onClick={() => handleDownloadHistoricalPDF(rev)}
-                                title="Descargar PDF de esta versión"
-                                disabled={isGeneratingPDF}
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary-600)', display: 'flex', alignItems: 'center', opacity: isGeneratingPDF ? 0.5 : 1 }}
+                              <button
+                                type="button"
+                                onClick={() => setExpandedRevIndex(isExpanded ? null : idx)}
+                                style={{ background:'none',border:'none',color:'#0284c7',cursor:'pointer',fontSize:'0.75rem',fontWeight:'600',display:'flex',alignItems:'center',gap:'0.25rem',textDecoration:'underline' }}
                               >
-                                {isGeneratingPDF ? <Loader size={16} className="spin" /> : <Download size={16} />}
+                                {isExpanded ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
+                                {isExpanded ? 'Ocultar desglose de ítems' : 'Ver y comparar ítems de esta versión'}
                               </button>
                             </div>
+
+                            {/* Desglose expandible para comparar con versión actual */}
+                            {isExpanded && (
+                              <div style={{ marginTop:'0.75rem',backgroundColor:'#ffffff',border:'1px solid #e2e8f0',borderRadius:'6px',overflow:'hidden' }}>
+                                <div style={{ padding:'0.5rem 0.75rem',backgroundColor:'#f1f5f9',display:'flex',justifyContent:'space-between',alignItems:'center',fontSize:'0.75rem',fontWeight:'700',color:'#334155',flexWrap:'wrap',gap:'0.5rem' }}>
+                                  <span>Desglose de ítems cotizados en {rev.revisionTitle || `Rev${revNum}`}</span>
+                                  <span>
+                                    Diferencia con versión actual: {' '}
+                                    <span style={{ color: diffAmount === 0 ? '#64748b' : diffAmount > 0 ? '#16a34a' : '#dc2626' }}>
+                                      {diffAmount === 0 ? 'Sin diferencia de monto' : `${diffAmount > 0 ? '+' : ''}$ ${diffAmount.toLocaleString('es-AR')}`}
+                                    </span>
+                                  </span>
+                                </div>
+                                <div style={{ maxHeight:'240px',overflowY:'auto' }}>
+                                  <table style={{ width:'100%',fontSize:'0.75rem',borderCollapse:'collapse' }}>
+                                    <thead>
+                                      <tr style={{ backgroundColor:'#f8fafc',borderBottom:'1px solid #e2e8f0',textAlign:'left' }}>
+                                        <th style={{ padding:'0.35rem 0.6rem' }}>#</th>
+                                        <th style={{ padding:'0.35rem 0.6rem' }}>Descripción</th>
+                                        <th style={{ padding:'0.35rem 0.6rem',textAlign:'center' }}>Cant.</th>
+                                        <th style={{ padding:'0.35rem 0.6rem',textAlign:'right' }}>Precio Unit. (s/IVA)</th>
+                                        <th style={{ padding:'0.35rem 0.6rem',textAlign:'right' }}>Subtotal</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {(rev.quoteItems || []).map((item, i) => (
+                                        <tr key={i} style={{ borderBottom:'1px solid #f1f5f9' }}>
+                                          <td style={{ padding:'0.35rem 0.6rem',color:'#94a3b8' }}>{i + 1}</td>
+                                          <td style={{ padding:'0.35rem 0.6rem',fontWeight:'600' }}>{item.descripcion}</td>
+                                          <td style={{ padding:'0.35rem 0.6rem',textAlign:'center' }}>{item.quantity}</td>
+                                          <td style={{ padding:'0.35rem 0.6rem',textAlign:'right' }}>${(item.unitPrice || 0).toLocaleString('es-AR')}</td>
+                                          <td style={{ padding:'0.35rem 0.6rem',textAlign:'right',fontWeight:'700' }}>${(item.subtotal || 0).toLocaleString('es-AR')}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+                            )}
                           </div>
-                          {rev.cambiosRealizados && (
-                            <div style={{ background:'#fefce8',border:'1px solid #fde68a',borderRadius:'6px',padding:'0.5rem 0.75rem',fontSize:'0.8rem',color:'#92400e',marginBottom:'0.5rem' }}>
-                              <strong>Cambios:</strong> {rev.cambiosRealizados}
-                            </div>
-                          )}
-                          <div style={{ fontSize:'0.75rem',color:'var(--text-secondary)' }}>
-                            {(rev.quoteItems || []).length} ítems cotizados
-                            {rev.quoteItems?.length > 0 && ': ' + rev.quoteItems.slice(0,3).map(i => `${i.descripcion} (×${i.quantity})`).join(' · ')}
-                            {rev.quoteItems?.length > 3 && ` ... +${rev.quoteItems.length - 3} más`}
-                          </div>
-                        </div>
-                      ))
+                        );
+                      })
                     )}
                   </div>
 

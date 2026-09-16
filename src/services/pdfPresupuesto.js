@@ -283,7 +283,10 @@ const buildTablaItems = (doc, presupuesto) => {
   doc.setFontSize(8);
   doc.setFont('helvetica', 'italic');
   doc.setTextColor(...EULER_MID);
-  doc.text(`EULER Calefacción por Agua  |  ${presupuesto.presupuestoNumber || ''}  V${presupuesto.revision || 0}`, W - 14, 14, { align: 'right' });
+  const revHeader = (presupuesto.presupuestoNumber || '').includes('_Rev')
+    ? (presupuesto.presupuestoNumber || '')
+    : `${presupuesto.presupuestoNumber || ''}  Rev${presupuesto.revision !== undefined ? presupuesto.revision : 0}`;
+  doc.text(`EULER Calefacción por Agua  |  ${revHeader}`, W - 14, 14, { align: 'right' });
 
   // Título de sección
   doc.setFontSize(16);
