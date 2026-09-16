@@ -305,6 +305,7 @@ const KanbanBoard = () => {
   const [detailNotes, setDetailNotes]       = useState('');
   const [builderItems, setBuilderItems]     = useState([]);
   const [canal, setCanal]                   = useState('iva');   // 'iva' | 'canal2'
+  const [showDesgloseDescuentos, setShowDesgloseDescuentos] = useState(false);
   const [isSavingDetail, setIsSavingDetail] = useState(false);
   const [detailTab, setDetailTab]           = useState('cotizador'); // 'cotizador' | 'datos' | 'historial'
   const [editLeadFields, setEditLeadFields] = useState(null);
@@ -482,11 +483,17 @@ const KanbanBoard = () => {
   // ─── Helpers ────────────────────────────────────────────────────────────────
   const calcTotal = items => items.reduce((s, i) => s + (i.subtotal || 0), 0);
 
+  const quoteMetrics = useMemo(() => {
+    const isDesc = canal === 'canal2' || canal === 'descuento';
+    return calcularDescuentosPresupuesto(builderItems, isDesc);
+  }, [builderItems, canal]);
+
   const openDetail = item => {
     setSelectedLead(item);
     setDetailNotes(item.notas || '');
     setBuilderItems(item.quoteItems || []);
     setCanal(item.canal || 'iva');
+    setShowDesgloseDescuentos(false);
     setDetailTab('cotizador');
     setEditLeadFields({
       name: item.name || '',
@@ -516,31 +523,11 @@ const KanbanBoard = () => {
     });
   };
 
-  // ─── Canal 2 toggle ─────────────────────────────────────────────────────────
+  // ─── Descuento Comercial toggle ─────────────────────────────────────────────
   const handleToggleCanal = async () => {
     if (!selectedLead) return;
     const newCanal = canal === 'iva' ? 'canal2' : 'iva';
     setCanal(newCanal);
-    // Recalculate all items
-    if (tc) {
-      const recalc = builderItems.map(item => {
-        const calcOldPrice = calcPrecioItem(item, canal, tc.valor);
-        let newPrice;
-        
-        // Si el precio actual es distinto al calculado, significa que fue editado manualmente o no tiene costoUSD
-        if (item.unitPrice !== calcOldPrice && item.unitPrice > 0) {
-          const oldFactor = getCanalFactor(item, canal);
-          const newFactor = getCanalFactor(item, newCanal);
-          const baseManualPrice = item.unitPrice / oldFactor;
-          newPrice = Math.round(baseManualPrice * newFactor);
-        } else {
-          newPrice = calcPrecioItem(item, newCanal, tc.valor);
-        }
-        
-        return { ...item, unitPrice: newPrice, subtotal: Math.round(newPrice * item.quantity) };
-      });
-      setBuilderItems(recalc);
-    }
     // Persist canal
     try {
       await updateDoc(doc(db, 'presupuestos', selectedLead.id), { canal: newCanal });
@@ -700,7 +687,7 @@ const KanbanBoard = () => {
     const publicChanges = [];
 
     if (canal !== prevCanal) {
-      const msg = `Se cambió el modo de venta de "${prevCanal === 'iva' ? 'Con IVA' : 'Canal 2'}" a "${canal === 'iva' ? 'Con IVA' : 'Canal 2'}".`;
+      const msg = `Se cambió la modalidad de precios de "${prevCanal === 'iva' ? 'Lista Oficial (Con IVA)' : 'Descuento Comercial'}" a "${canal === 'iva' ? 'Lista Oficial (Con IVA)' : 'Descuento Comercial'}".`;
       changes.push(msg);
       publicChanges.push(msg);
     }
@@ -792,7 +779,9 @@ const KanbanBoard = () => {
           subtotal: Math.round(q * p)
         };
       });
-      const amount = calcTotal(sanitizedQuoteItems);
+      const isDesc = canal === 'canal2' || canal === 'descuento';
+      const calcMetrics = calcularDescuentosPresupuesto(sanitizedQuoteItems, isDesc);
+      const amount = calcMetrics.montoFinalPresupuesto;
 
       const allChanges = [...budgetChanges, ...clientChanges];
       let updatedAuditLog = selectedLead.internalAuditLog || [];
@@ -845,6 +834,16 @@ const KanbanBoard = () => {
         amount,
         quoteItems: sanitizedQuoteItems,
         canal,
+        descuentoComercial: {
+          activo: isDesc,
+          subtotalNeto: calcMetrics.subtotalNeto,
+          ivaOriginal: calcMetrics.ivaOriginal,
+          totalOriginalConIVA: calcMetrics.totalOriginalConIVA,
+          descuentoTotalARS: calcMetrics.descuentoTotalARS,
+          descuentoPorcentaje: calcMetrics.descuentoPorcentaje,
+          totalFinalConDescuento: calcMetrics.totalFinalConDescuento,
+          montoFinalPresupuesto: calcMetrics.montoFinalPresupuesto,
+        },
         internalAuditLog: updatedAuditLog,
       };
 
@@ -895,7 +894,9 @@ const KanbanBoard = () => {
           subtotal: Math.round(q * p)
         };
       });
-      const amount = calcTotal(sanitizedQuoteItems);
+      const isDesc = canal === 'canal2' || canal === 'descuento';
+      const calcMetrics = calcularDescuentosPresupuesto(sanitizedQuoteItems, isDesc);
+      const amount = calcMetrics.montoFinalPresupuesto;
       const prevRev = selectedLead.revision || 0;
       
       let history = selectedLead.revisionsHistory || [];
@@ -909,6 +910,7 @@ const KanbanBoard = () => {
           amount:           selectedLead.amount || 0,
           notas:            selectedLead.notas || '',
           canal:            selectedLead.canal || 'iva',
+          descuentoComercial: selectedLead.descuentoComercial || null,
           cambiosRealizados: selectedLead.cambiosRealizados || (prevRev === 0 ? 'Presupuesto Inicial' : ''),
           cambiosPublicos: selectedLead.cambiosPublicos || '',
           savedAt:          selectedLead.revisionSavedAt || new Date().toISOString(),
@@ -941,6 +943,16 @@ const KanbanBoard = () => {
         amount,
         quoteItems: sanitizedQuoteItems,
         canal,
+        descuentoComercial: {
+          activo: isDesc,
+          subtotalNeto: calcMetrics.subtotalNeto,
+          ivaOriginal: calcMetrics.ivaOriginal,
+          totalOriginalConIVA: calcMetrics.totalOriginalConIVA,
+          descuentoTotalARS: calcMetrics.descuentoTotalARS,
+          descuentoPorcentaje: calcMetrics.descuentoPorcentaje,
+          totalFinalConDescuento: calcMetrics.totalFinalConDescuento,
+          montoFinalPresupuesto: calcMetrics.montoFinalPresupuesto,
+        },
         revision: newRevision,
         presupuestoNumber: newPresupuestoNumber,
         cambiosRealizados: isInitial ? 'Presupuesto Inicial' : changeNoteInternal.trim(),
@@ -2570,8 +2582,8 @@ const KanbanBoard = () => {
                     Rev {selectedLead.revision || 0}
                   </span>
                   {(selectedLead.canal || 'iva') === 'canal2' && (
-                    <span style={{ fontSize:'0.7rem',padding:'0.15rem 0.5rem',backgroundColor:'#fef3c7',color:'#92400e',borderRadius:'12px',fontWeight:'700' }}>
-                      💵 Canal 2
+                    <span style={{ fontSize:'0.7rem',padding:'0.15rem 0.5rem',backgroundColor:'#ecfdf5',color:'#065f46',borderRadius:'12px',fontWeight:'700' }}>
+                      🏷️ Descuento Comercial
                     </span>
                   )}
                 </h3>
@@ -2600,11 +2612,11 @@ const KanbanBoard = () => {
 
               {detailTab === 'cotizador' && (
                 <>
-                  {/* ── Canal 2 toggle ── */}
+                  {/* ── Descuento Comercial toggle ── */}
                   <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',background:'var(--bg-surface)',border:'1px solid var(--border-light)',borderRadius:'8px',padding:'0.4rem 0.75rem' }}>
                     <div>
                       <div style={{ fontWeight:'600',fontSize:'0.8rem' }}>
-                        Modo: <span style={{ color: canal === 'iva' ? '#1d4ed8' : '#d97706' }}>{canal === 'iva' ? 'Con IVA 21% discriminado' : 'Canal 2 (Sin IVA)'}</span>
+                        Modalidad: <span style={{ color: canal === 'iva' ? '#1d4ed8' : '#059669' }}>{canal === 'iva' ? 'Con IVA 21% (Lista Oficial)' : 'Con Descuento Comercial'}</span>
                       </div>
                     </div>
                     <button
@@ -2612,11 +2624,11 @@ const KanbanBoard = () => {
                       style={{
                         padding:'0.25rem 0.75rem',borderRadius:'6px',fontWeight:'700',fontSize:'0.75rem',
                         cursor:'pointer',border:'none',transition:'all 0.2s',
-                        background: canal === 'iva' ? '#1d4ed8' : '#d97706',
+                        background: canal === 'iva' ? '#1d4ed8' : '#059669',
                         color: 'white',
                       }}
                     >
-                      {canal === 'iva' ? '🧾 Con IVA' : '💵 Sin Factura'}
+                      {canal === 'iva' ? '🧾 Lista Oficial (Con IVA)' : '🏷️ Descuento Comercial'}
                     </button>
                   </div>
 
@@ -2624,7 +2636,7 @@ const KanbanBoard = () => {
                   <div style={{ border:'1px solid var(--primary-100)',borderRadius:'8px' }}>
                     <div style={{ backgroundColor:'var(--primary-50)',padding:'0.5rem 0.75rem',borderBottom:'1px solid var(--primary-100)', display:'flex', justifyContent:'space-between', alignItems:'center', borderTopLeftRadius:'7px', borderTopRightRadius:'7px' }}>
                       <h4 style={{ margin:0,display:'flex',alignItems:'center',gap:'0.5rem',color:'var(--primary-700)', fontSize:'0.875rem' }}>
-                        <ListPlus size={16}/> Cotizador — {canal === 'iva' ? 'Precios c/IVA' : 'Canal 2 (sin IVA)'}
+                        <ListPlus size={16}/> Cotizador — {canal === 'iva' ? 'Precios de Lista' : 'Con Descuento Comercial'}
                       </h4>
                       <button
                         onClick={handleLoadStandard}
@@ -3620,11 +3632,11 @@ const KanbanBoard = () => {
                         <div>
                           <span style={{ fontWeight:'700',color:'#0369a1' }}>✏️ Versión actual (en edición)</span>
                           <span style={{ marginLeft:'0.75rem',color:'var(--text-secondary)',fontSize:'0.75rem' }}>Rev {selectedLead.revision || 0}</span>
-                          {canal === 'canal2' && <span style={{ marginLeft:'0.5rem',fontSize:'0.7rem',backgroundColor:'#fef3c7',color:'#92400e',padding:'0.1rem 0.4rem',borderRadius:'8px' }}>Canal 2</span>}
+                          {canal === 'canal2' && <span style={{ marginLeft:'0.5rem',fontSize:'0.7rem',backgroundColor:'#ecfdf5',color:'#065f46',padding:'0.1rem 0.4rem',borderRadius:'8px' }}>Desc. Comercial</span>}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                           <span style={{ fontWeight:'700',color:'#0369a1' }}>
-                            $ {calcTotal(builderItems || []).toLocaleString('es-AR')}
+                            $ {quoteMetrics.montoFinalPresupuesto.toLocaleString('es-AR')}
                           </span>
                           <button 
                             onClick={handleOpenPDFModal}
@@ -3666,7 +3678,7 @@ const KanbanBoard = () => {
                               <span style={{ marginLeft:'0.75rem',color:'var(--text-secondary)',fontSize:'0.75rem' }}>
                                 {new Date(rev.savedAt).toLocaleString('es-AR')}
                               </span>
-                              {rev.canal === 'canal2' && <span style={{ marginLeft:'0.5rem',fontSize:'0.7rem',backgroundColor:'#fef3c7',color:'#92400e',padding:'0.1rem 0.4rem',borderRadius:'8px' }}>Canal 2</span>}
+                              {rev.canal === 'canal2' && <span style={{ marginLeft:'0.5rem',fontSize:'0.7rem',backgroundColor:'#ecfdf5',color:'#065f46',padding:'0.1rem 0.4rem',borderRadius:'8px' }}>Desc. Comercial</span>}
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                               <span style={{ fontWeight:'700',color:'var(--primary-600)' }}>
@@ -3819,26 +3831,79 @@ const KanbanBoard = () => {
                 {/* Totals */}
                 <div style={{ backgroundColor: '#f8fafc', border: '1px solid var(--border-light)', borderRadius: '8px', padding: '0.75rem 1rem', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                   {canal === 'iva' ? (
-                    <div style={{ display: 'flex', width: '100%', justifyContent: 'space-around', alignItems: 'center', gap: '1rem' }}>
+                    <div style={{ display: 'flex', width: '100%', justifyContent: 'space-around', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
                       <div style={{ display: 'flex', gap: '0.35rem' }}>
-                        <span style={{ fontWeight: '500', color: 'var(--text-secondary)' }}>Subtotal:</span>
-                        <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>$ {calcTotal(builderItems).toLocaleString('es-AR')}</span>
+                        <span style={{ fontWeight: '500', color: 'var(--text-secondary)' }}>Subtotal Neto:</span>
+                        <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>$ {quoteMetrics.subtotalNeto.toLocaleString('es-AR')}</span>
                       </div>
                       <div style={{ width: '1px', height: '14px', backgroundColor: 'var(--border-light)' }}></div>
                       <div style={{ display: 'flex', gap: '0.35rem' }}>
                         <span style={{ fontWeight: '500', color: 'var(--text-secondary)' }}>IVA (21%):</span>
-                        <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>$ {Math.round(calcTotal(builderItems) * 0.21).toLocaleString('es-AR')}</span>
+                        <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>$ {quoteMetrics.ivaOriginal.toLocaleString('es-AR')}</span>
                       </div>
                       <div style={{ width: '1px', height: '14px', backgroundColor: 'var(--border-light)' }}></div>
                       <div style={{ display: 'flex', gap: '0.35rem' }}>
                         <span style={{ fontWeight: '800', color: 'var(--primary-800)' }}>TOTAL:</span>
-                        <span style={{ fontWeight: '800', color: 'var(--primary-700)' }}>$ {Math.round(calcTotal(builderItems) * 1.21).toLocaleString('es-AR')}</span>
+                        <span style={{ fontWeight: '800', color: 'var(--primary-700)' }}>$ {quoteMetrics.totalOriginalConIVA.toLocaleString('es-AR')}</span>
                       </div>
                     </div>
                   ) : (
-                    <div style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontWeight: '800', color: 'var(--primary-800)' }}>TOTAL PRESUPUESTO (Canal 2 sin factura):</span>
-                      <span style={{ fontWeight: '800', color: 'var(--primary-700)', fontSize: '0.95rem' }}>$ {calcTotal(builderItems).toLocaleString('es-AR')}</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%' }}>
+                      <div style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+                        <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                          <div style={{ display: 'flex', gap: '0.35rem', fontSize: '0.825rem' }}>
+                            <span style={{ color: 'var(--text-secondary)' }}>Total Lista c/IVA:</span>
+                            <span style={{ fontWeight: '600', color: '#94a3b8', textDecoration: 'line-through' }}>
+                              $ {quoteMetrics.totalOriginalConIVA.toLocaleString('es-AR')}
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', gap: '0.35rem', fontSize: '0.825rem', alignItems: 'center' }}>
+                            <span style={{ color: '#059669', fontWeight: '600' }}>Bonificación Comercial:</span>
+                            <span style={{ fontWeight: '700', color: '#047857', backgroundColor: '#ecfdf5', border: '1px solid #a7f3d0', padding: '0.15rem 0.45rem', borderRadius: '6px' }}>
+                              -${quoteMetrics.descuentoTotalARS.toLocaleString('es-AR')} ({quoteMetrics.descuentoPorcentaje}%)
+                            </span>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <span style={{ fontWeight: '800', color: 'var(--primary-800)', fontSize: '0.85rem' }}>TOTAL CON DESCUENTO:</span>
+                          <span style={{ fontWeight: '900', color: 'var(--primary-700)', fontSize: '1.15rem' }}>
+                            $ {quoteMetrics.totalFinalConDescuento.toLocaleString('es-AR')}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setShowDesgloseDescuentos(!showDesgloseDescuentos)}
+                            style={{ background: 'none', border: 'none', color: '#0284c7', cursor: 'pointer', fontSize: '0.75rem', textDecoration: 'underline', fontWeight: '600' }}
+                          >
+                            {showDesgloseDescuentos ? 'Ocultar desglose ▲' : 'Ver desglose ▼'}
+                          </button>
+                        </div>
+                      </div>
+
+                      {showDesgloseDescuentos && (
+                        <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '0.6rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '0.6rem', fontSize: '0.75rem' }}>
+                          <div style={{ background: '#ffffff', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                            <div style={{ fontWeight: '700', color: '#0f172a', marginBottom: '0.25rem' }}>📦 Materiales (-10,5% c/IVA)</div>
+                            <div style={{ color: '#64748b' }}>Lista c/IVA: ${quoteMetrics.desglose.materiales.conIVA.toLocaleString('es-AR')}</div>
+                            <div style={{ color: '#059669', fontWeight: '600' }}>Desc: -${quoteMetrics.desglose.materiales.descuento.toLocaleString('es-AR')}</div>
+                            <div style={{ fontWeight: '700', color: '#0f172a', marginTop: '0.15rem' }}>Final: ${quoteMetrics.desglose.materiales.totalFinal.toLocaleString('es-AR')}</div>
+                          </div>
+                          <div style={{ background: '#ffffff', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                            <div style={{ fontWeight: '700', color: '#0f172a', marginBottom: '0.25rem' }}>🛠️ Mano de Obra (-21,0% c/IVA)</div>
+                            <div style={{ color: '#64748b' }}>Lista c/IVA: ${quoteMetrics.desglose.manoDeObra.conIVA.toLocaleString('es-AR')}</div>
+                            <div style={{ color: '#059669', fontWeight: '600' }}>Desc: -${quoteMetrics.desglose.manoDeObra.descuento.toLocaleString('es-AR')}</div>
+                            <div style={{ fontWeight: '700', color: '#0f172a', marginTop: '0.15rem' }}>Final: ${quoteMetrics.desglose.manoDeObra.totalFinal.toLocaleString('es-AR')}</div>
+                          </div>
+                          {quoteMetrics.desglose.mixto.itemsCount > 0 && (
+                            <div style={{ background: '#ffffff', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                              <div style={{ fontWeight: '700', color: '#0f172a', marginBottom: '0.25rem' }}>🔗 Cañería Mixta (50% Mat / 50% MO)</div>
+                              <div style={{ color: '#64748b' }}>Lista c/IVA: ${quoteMetrics.desglose.mixto.conIVA.toLocaleString('es-AR')}</div>
+                              <div style={{ color: '#64748b' }}>50% Mat: ${quoteMetrics.desglose.mixto.parteMatFinal.toLocaleString('es-AR')} | 50% MO: ${quoteMetrics.desglose.mixto.parteMoFinal.toLocaleString('es-AR')}</div>
+                              <div style={{ color: '#059669', fontWeight: '600' }}>Desc: -${quoteMetrics.desglose.mixto.descuento.toLocaleString('es-AR')}</div>
+                              <div style={{ fontWeight: '700', color: '#0f172a', marginTop: '0.15rem' }}>Final: ${quoteMetrics.desglose.mixto.totalFinal.toLocaleString('es-AR')}</div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -3911,8 +3976,8 @@ const KanbanBoard = () => {
               <div style={{ fontWeight:'700',color:'#0369a1',marginBottom:'0.25rem' }}>{selectedLead.name}</div>
               <div style={{ color:'#475569',display:'flex',gap:'1rem',flexWrap:'wrap' }}>
                 <span>Rev {selectedLead.revision || 0}</span>
-                <span>{selectedLead.canal === 'canal2' ? '💵 Canal 2 (sin IVA)' : '🧾 Con IVA 21%'}</span>
-                <span style={{ fontWeight:'700' }}>Total: $ {(calcTotal(builderItems) || selectedLead.amount || 0).toLocaleString('es-AR')}</span>
+                <span>{selectedLead.canal === 'canal2' ? '🏷️ Descuento Comercial' : '🧾 Con IVA 21%'}</span>
+                <span style={{ fontWeight:'700' }}>Total: $ {(quoteMetrics.montoFinalPresupuesto || selectedLead.amount || 0).toLocaleString('es-AR')}</span>
               </div>
             </div>
 
