@@ -863,13 +863,6 @@ const KanbanBoard = () => {
     const budgetDiff = getDetectedBudgetChanges();
     const clientChanges = getDetectedClientChanges();
 
-    // Si cambió la modalidad entre formal y canal 2, se debe crear una nueva revisión obligatoriamente
-    const prevCanal = initialCanal || selectedLead.canal || 'iva';
-    if (canal !== prevCanal) {
-      handleOpenRevModal();
-      return;
-    }
-
     // Opción 3: Si ya tiene revisiones anteriores en el historial Y hay cambios en artículos/precios
     const hasHistory = (selectedLead.revisionsHistory?.length || 0) > 0;
     if (hasHistory && budgetDiff.hasChanges) {
