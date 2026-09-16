@@ -100,7 +100,7 @@ const buildPortada = (doc, presupuesto, logoBase64) => {
     ['Revisión:',          presupuesto.revision !== undefined ? `Rev${presupuesto.revision}` : 'Rev0'],
     ['Dirección de obra:', presupuesto.location || '—'],
     ['Fecha:',             getPresupuestoFecha(presupuesto)],
-    ['Modo de precios:',   presupuesto.canal === 'canal2' ? 'Sin Factura (Canal 2)' : 'Con IVA 21% discriminado'],
+    ['Modo de precios:',   (presupuesto.canal === 'canal2' || presupuesto.canal === 'descuento') ? 'Con Descuento Comercial' : 'Con IVA 21% discriminado'],
   ];
 
   const labelColor = [106, 159, 192];
@@ -356,22 +356,23 @@ const buildTablaItems = (doc, presupuesto) => {
   startY = buildSection(manoDeObra, 'MANO DE OBRA E INSTALACIÓN', startY + 2);
 
   // Total
-  const total = quoteItems.reduce((s, i) => s + (i.subtotal || 0), 0);
+  const isDescuentoComercial = presupuesto.canal === 'canal2' || presupuesto.canal === 'descuento';
+  const calcRes = calcularDescuentosPresupuesto(quoteItems, isDescuentoComercial);
 
-  if (presupuesto.canal === 'canal2') {
+  if (isDescuentoComercial) {
     doc.setFillColor(...EULER_LIGHT);
     doc.roundedRect(14, startY, W - 28, 14, 2, 2, 'F');
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...EULER_DARK);
-    doc.text('TOTAL — Precios sin Factura (Canal 2)', 20, startY + 9.5);
+    doc.text('TOTAL — Precios con Descuento Comercial', 20, startY + 9.5);
     doc.setTextColor(...EULER_MID);
-    doc.text(formatARS(total), W - 14, startY + 9.5, { align: 'right' });
+    doc.text(formatARS(calcRes.montoFinalPresupuesto), W - 14, startY + 9.5, { align: 'right' });
     startY += 20;
   } else {
-    const subtotalSinIva = total;
-    const iva = Math.round(total * 0.21);
-    const totalConIva = subtotalSinIva + iva;
+    const subtotalSinIva = calcRes.subtotalNeto;
+    const iva = calcRes.ivaOriginal;
+    const totalConIva = calcRes.totalOriginalConIVA;
 
     doc.setFillColor(...EULER_LIGHT);
     doc.roundedRect(14, startY, W - 28, 28, 2, 2, 'F');
@@ -545,15 +546,14 @@ const buildGarantiasYCierre = (doc, presupuesto) => {
   doc.text('PROYECTO', 14, y);
 
   const quoteItems = presupuesto.quoteItems || [];
-  const total = quoteItems.reduce((s, i) => s + (i.subtotal || 0), 0);
+  const isDescuentoComercial = presupuesto.canal === 'canal2' || presupuesto.canal === 'descuento';
+  const calcRes = calcularDescuentosPresupuesto(quoteItems, isDescuentoComercial);
   
   let totalText = '';
-  if (presupuesto.canal === 'canal2') {
-    totalText = `${formatARS(total)} (sin factura)`;
+  if (isDescuentoComercial) {
+    totalText = `${formatARS(calcRes.montoFinalPresupuesto)} (con Descuento Comercial)`;
   } else {
-    const subtotalSinIva = Math.round(total / 1.21);
-    const iva = total - subtotalSinIva;
-    totalText = `${formatARS(subtotalSinIva)} + IVA = ${formatARS(total)}`;
+    totalText = `${formatARS(calcRes.subtotalNeto)} + IVA = ${formatARS(calcRes.totalOriginalConIVA)}`;
   }
 
   const projFields = [
