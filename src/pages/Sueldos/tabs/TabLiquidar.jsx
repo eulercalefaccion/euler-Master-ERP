@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../../../services/firebaseConfig';
-import { collection, onSnapshot, getDoc, doc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { getDoc, doc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { useJornadas } from '../../../context/JornadasContext';
 
 const TabLiquidar = ({ onNavigate }) => {
-  const [colaboradores, setColaboradores] = useState([]);
+  const { empleados: colaboradores, jornadas } = useJornadas();
   const [paritarias, setParitarias] = useState({});
   const [selectedColabId, setSelectedColabId] = useState('');
   
@@ -28,16 +29,67 @@ const TabLiquidar = ({ onNavigate }) => {
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    const unsubC = onSnapshot(collection(db, 'colaboradores'), snap => {
-      setColaboradores(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
     const fetchP = async () => {
       const d = await getDoc(doc(db, 'configuracion', 'paritarias'));
       if (d.exists()) setParitarias(d.data());
     };
     fetchP();
-    return () => unsubC();
   }, []);
+
+  // Calcular fechas de la semana seleccionada
+  function getWeekDates(semanaNum, anio) {
+    const simple = new Date(anio, 0, 1 + (semanaNum - 1) * 7);
+    const dow = simple.getDay();
+    const ISOweekStart = simple;
+    if (dow <= 4) ISOweekStart.setDate(simple.getDate() - simple.getDay() + 1);
+    else ISOweekStart.setDate(simple.getDate() + 8 - simple.getDay());
+    
+    const dates = {};
+    const dias = ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo'];
+    for (let i = 0; i < 7; i++) {
+      const cur = new Date(ISOweekStart);
+      cur.setDate(cur.getDate() + i);
+      dates[dias[i]] = cur.toISOString().slice(0, 10);
+    }
+    return dates;
+  }
+
+  // Importar automáticamente las horas y bocas registradas en Euler Jornadas
+  function importarHorasJornadas() {
+    if (!selectedColabId) return alert('Por favor selecciona un colaborador primero');
+    const weekMap = getWeekDates(Number(semana.numero), Number(semana.anio));
+    const nuevasHoras = { Lunes: 0, Martes: 0, Miercoles: 0, Jueves: 0, Viernes: 0, Sabado: 0, Domingo: 0 };
+    let bocasContadas = 0;
+    let diasConFichaje = 0;
+
+    Object.entries(weekMap).forEach(([dia, fStr]) => {
+      const jsDia = jornadas.filter(j => j.empleadoId === selectedColabId && j.fechaIngreso === fStr && !j.eliminada);
+      let minDia = 0;
+      jsDia.forEach(j => {
+        if (j.horaIngreso && j.horaSalida) {
+          const [hi, mi] = j.horaIngreso.split(':').map(Number);
+          const [hs, ms] = j.horaSalida.split(':').map(Number);
+          let m = (hs * 60 + ms) - (hi * 60 + mi);
+          if (m < 0) m += 1440;
+          if (m > 0) minDia += m;
+        }
+        if (j.metodoPago === 'produccion' && j.cantidadBocas) {
+          bocasContadas += Number(j.cantidadBocas) || 0;
+        }
+      });
+      if (minDia > 0) diasConFichaje++;
+      nuevasHoras[dia] = Number((minDia / 60).toFixed(2));
+    });
+
+    setHoras(nuevasHoras);
+    if (bocasContadas > 0) {
+      setBocas(prev => ({
+        ...prev,
+        obraNueva2p: { cant: bocasContadas, detalle: 'Importado de Euler Jornadas' }
+      }));
+    }
+    alert(`✅ Se importaron ${diasConFichaje} días de jornada con un total de ${Object.values(nuevasHoras).reduce((a,b)=>a+b,0).toFixed(1)} horas`);
+  }
 
   const selectedColab = colaboradores.find(c => c.id === selectedColabId);
   
@@ -129,12 +181,28 @@ const TabLiquidar = ({ onNavigate }) => {
       
       {/* Settings Panel */}
       <div className="card">
-         <h4 style={{ margin: '0 0 1rem 0' }}>Liquidar Sueldo Semanal</h4>
+         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '10px' }}>
+           <h4 style={{ margin: 0 }}>Liquidar Sueldo Semanal</h4>
+           {selectedColabId && (
+             <button
+               type="button"
+               onClick={importarHorasJornadas}
+               className="btn btn-primary"
+               style={{ fontSize: '0.8rem', padding: '6px 14px', display: 'flex', alignItems: 'center', gap: '6px' }}
+             >
+               ⚡ Importar Horas y Bocas de Jornadas
+             </button>
+           )}
+         </div>
          <div className="form-group" style={{ marginBottom: '1rem' }}>
            <label>Colaborador</label>
            <select className="input-field" value={selectedColabId} onChange={e=>setSelectedColabId(e.target.value)}>
              <option value="">Seleccionar colaborador...</option>
-             {colaboradores.map(c => <option key={c.id} value={c.id}>{c.nombre} ({c.categoriaBase})</option>)}
+             {colaboradores.filter(c => c.activo !== false).map(c => (
+               <option key={c.id} value={c.id}>
+                 {c.nombre} {c.apellido || ''} — {c.puesto || 'Instalador'} ({c.categoriaBase || 'Oficial'})
+               </option>
+             ))}
            </select>
          </div>
          <div className="grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
@@ -151,16 +219,16 @@ const TabLiquidar = ({ onNavigate }) => {
                <input type="number" className="input-field" value={semana.anio} onChange={e=>setSemana({...semana, anio: e.target.value})}/>
             </div>
          </div>
-         <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: '#e0e7ff', color: '#4338ca', textAlign: 'center', borderRadius: '8px', fontWeight: '600' }}>
-           Semana {semana.numero} - Año {semana.anio}
+         <div style={{ marginTop: '1rem', padding: '0.75rem 1rem', backgroundColor: '#e0e7ff', color: '#4338ca', textAlign: 'center', borderRadius: '8px', fontWeight: '600', fontSize: '0.875rem' }}>
+           Semana {semana.numero} - Año {semana.anio} {selectedColab ? `— Liquidando a ${selectedColab.nombre} ${selectedColab.apellido || ''}` : ''}
          </div>
       </div>
 
       {/* Horas Grid */}
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-           <h4 style={{ margin: 0 }}>Horas Trabajadas masculinas</h4>
-           <span style={{ fontWeight: '600' }}>Total: {totalHoras.toFixed(1)} hs</span>
+           <h4 style={{ margin: 0 }}>Horas Trabajadas de la Semana</h4>
+           <span style={{ fontWeight: '700', color: 'var(--primary-600)' }}>Total: {totalHoras.toFixed(1)} hs</span>
         </div>
         {['Lunes','Martes','Miercoles','Jueves','Viernes','Sabado','Domingo'].map(dia => (
           <div key={dia} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.5rem 0', borderBottom: '1px solid var(--border-light)' }}>

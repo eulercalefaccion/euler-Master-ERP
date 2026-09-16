@@ -34,7 +34,7 @@ const Sidebar = ({ className = '', isMobile, onClose }) => {
     {
       label: 'RRHH & FINANZAS',
       items: [
-        { name: 'Personas', icon: <ClipboardList size={20} />, path: '/personas' },
+        { name: 'Colaboradores', icon: <Users size={20} />, path: '/colaboradores' },
         { name: 'Sueldos', icon: <Receipt size={20} />, path: '/sueldos' },
         { name: 'Balance', icon: <Wallet size={20} />, path: '/balance' },
       ]

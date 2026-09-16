@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Users } from 'lucide-react';
 import { db } from '../../../services/firebaseConfig';
-import { collection, onSnapshot, getDoc, doc } from 'firebase/firestore';
+import { getDoc, doc } from 'firebase/firestore';
+import { useJornadas } from '../../../context/JornadasContext';
 
 const TabInicio = () => {
-  const [totalColabs, setTotalColabs] = useState(0);
+  const { empleados } = useJornadas();
+  const totalColabs = empleados.filter(e => e.activo !== false).length;
   const [paritarias, setParitarias] = useState({
     mesVigente: '-',
     especializado: 0,
@@ -13,17 +15,11 @@ const TabInicio = () => {
   });
 
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'colaboradores'), (snap) => {
-      setTotalColabs(snap.docs.length);
-    });
-
     const fetchConfig = async () => {
       const d = await getDoc(doc(db, 'configuracion', 'paritarias'));
       if (d.exists()) setParitarias(d.data());
     };
     fetchConfig();
-
-    return () => unsub();
   }, []);
 
   return (

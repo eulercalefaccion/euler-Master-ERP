@@ -7,8 +7,11 @@ import { Trash2 } from 'lucide-react';
 import { useSueldos } from './SueldosContext';
 import { getISOWeek, getWeeksInYear, getCustomWeekDates, getMonthName, formatDF, calcH, getEmpName } from './sueldosUtils';
 
+import { useJornadas } from '../../context/JornadasContext';
+
 export default function SueldosLiquidar() {
   const { employees, rates, liquidations, setLiquidations, saveData } = useSueldos();
+  const { jornadas } = useJornadas();
   const yr = new Date().getFullYear();
   const wk = getISOWeek(new Date());
   const diasEstandar = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
@@ -24,7 +27,7 @@ export default function SueldosLiquidar() {
   };
 
   const [f, setF] = useState({
-    empId: '', week: wk, year: yr, weekType: 'estandar', horarios: { ...initH },
+    empId: '', week: wk, year: yr, weekType: 'estandar', tipoHora: 'Especializado', horarios: { ...initH },
     bon2p: 0, bon2pObra: '', bon3p: 0, bon3pObra: '',
     bref2p: 0, bref2pObra: '', bref3p: 0, bref3pObra: '',
     vac: 0, vacO: '', bono: 0, bonoO: '', agui: 0, aguiO: '', retro: 0, retroO: '',
@@ -41,10 +44,10 @@ export default function SueldosLiquidar() {
   const hpd = dias.map(d => calcH(f.horarios[d]?.e || '08:00', f.horarios[d]?.s || '16:00'));
   const th = hpd.reduce((s, h) => s + h, 0);
   const getEffectiveRate = () => {
-    if (!emp || !emp.categoriaUocra) return rates.hourlyRate;
-    if (emp.categoriaUocra === 'Medio Oficial') return rates.hourlyRateMedio || rates.hourlyRate;
-    if (emp.categoriaUocra === 'Oficial') return rates.hourlyRateOficial || rates.hourlyRate;
-    return rates.hourlyRate;
+    if (f.tipoHora === 'DIF') return rates.hourlyRateDif || rates.hourlyRate;
+    if (f.tipoHora === 'Medio') return rates.hourlyRateMedio || rates.hourlyRate;
+    if (f.tipoHora === 'Oficial') return rates.hourlyRateOficial || rates.hourlyRate;
+    return rates.hourlyRate; // Default / Oficial Especializado
   };
   const effectiveRate = getEffectiveRate();
   const vs = th * effectiveRate;
@@ -56,6 +59,41 @@ export default function SueldosLiquidar() {
   const tg = f.gastos.reduce((s, g) => s + (parseFloat(g.v) || 0), 0);
   const ts = sub + adic + (f.vac || 0) + (f.bono || 0) + (f.agui || 0) + (f.retro || 0) - (f.adel || 0);
   const tt = ts + tg;
+
+  const importarHorasJornadas = () => {
+    if (!f.empId) return alert('Por favor selecciona un colaborador primero');
+    const newHorarios = { ...f.horarios };
+    let diasImportados = 0;
+    let bocasContadas = 0;
+
+    dias.forEach((d, i) => {
+      if (wd[i]) {
+        const dObj = new Date(wd[i]);
+        const yStr = dObj.getFullYear();
+        const mStr = String(dObj.getMonth() + 1).padStart(2, '0');
+        const dayStr = String(dObj.getDate()).padStart(2, '0');
+        const fStr = `${yStr}-${mStr}-${dayStr}`;
+
+        const jMatch = jornadas.find(j => j.empleadoId === f.empId && j.fechaIngreso === fStr && !j.eliminada);
+        if (jMatch && jMatch.horaIngreso && jMatch.horaSalida) {
+          newHorarios[d] = { e: jMatch.horaIngreso, s: jMatch.horaSalida };
+          diasImportados++;
+        }
+        if (jMatch && jMatch.metodoPago === 'produccion' && jMatch.cantidadBocas) {
+          bocasContadas += Number(jMatch.cantidadBocas) || 0;
+        }
+      }
+    });
+
+    setF(prev => ({
+      ...prev,
+      horarios: newHorarios,
+      bon2p: bocasContadas > 0 ? bocasContadas : prev.bon2p,
+      bon2pObra: bocasContadas > 0 ? 'Euler Jornadas' : prev.bon2pObra
+    }));
+
+    alert(`✅ Se importaron horarios de Euler Jornadas para ${diasImportados} días de la semana.`);
+  };
 
   const upH = (d, c, v) => setF({ ...f, horarios: { ...f.horarios, [d]: { ...f.horarios[d], [c]: v } } });
   const addG = () => setF({ ...f, gastos: [...f.gastos, { n: '', v: 0 }] });
@@ -99,13 +137,65 @@ export default function SueldosLiquidar() {
 
       {/* Colaborador + Fechas */}
       <div style={cs.card}>
-        <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', marginBottom: '8px' }}>Colaborador</label>
-        <select value={f.empId} onChange={e => setF({ ...f, empId: e.target.value })} style={{ ...cs.inp, padding: '0.75rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+          <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', margin: 0 }}>Colaborador</label>
+          {f.empId && (
+            <button
+              type="button"
+              onClick={importarHorasJornadas}
+              style={{
+                background: '#eff6ff',
+                color: '#2563eb',
+                border: '1px solid #bfdbfe',
+                borderRadius: '6px',
+                padding: '4px 10px',
+                fontSize: '0.75rem',
+                fontWeight: '700',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}
+            >
+              ⚡ Importar Horas y Bocas de Jornadas
+            </button>
+          )}
+        </div>
+        <select
+          value={f.empId}
+          onChange={e => {
+            const selectedEmp = employees.find(x => x.id === e.target.value);
+            let defaultTipo = 'Especializado';
+            const cat = selectedEmp?.categoriaUocra || selectedEmp?.categoriaBase;
+            if (cat === 'Medio Oficial') defaultTipo = 'Medio';
+            else if (cat === 'Oficial') defaultTipo = 'Oficial';
+            else if (cat === 'DIF' || cat === 'Hora Hombre DIF') defaultTipo = 'DIF';
+            setF({ ...f, empId: e.target.value, tipoHora: defaultTipo });
+          }}
+          style={{ ...cs.inp, padding: '0.75rem' }}
+        >
           <option value="">Seleccionar colaborador...</option>
-          {employees.map(emp => <option key={emp.id} value={emp.id}>{getEmpName(emp)} {emp.percentage > 0 ? `(+${emp.percentage}%)` : ''}</option>)}
+          {employees.map(emp => (
+            <option key={emp.id} value={emp.id}>
+              {getEmpName(emp)} {emp.percentage > 0 ? `(+${emp.percentage}%)` : ''}
+            </option>
+          ))}
         </select>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', marginBottom: '6px' }}>Tipo de Hora</label>
+            <select
+              value={f.tipoHora}
+              onChange={e => setF({ ...f, tipoHora: e.target.value })}
+              style={{ ...cs.inp, textAlign: 'center', background: '#f9fafb' }}
+            >
+              <option value="Especializado">Oficial Especializado (${rates.hourlyRate || 0})</option>
+              <option value="Oficial">Oficial (${rates.hourlyRateOficial || rates.hourlyRate || 0})</option>
+              <option value="Medio">Medio Oficial (${rates.hourlyRateMedio || rates.hourlyRate || 0})</option>
+              <option value="DIF">Hora Hombre DIF (${rates.hourlyRateDif || rates.hourlyRate || 0})</option>
+            </select>
+          </div>
           <div>
             <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', marginBottom: '6px' }}>Tipo Sem.</label>
             <select value={f.weekType} onChange={e => setF({ ...f, weekType: e.target.value })} style={{ ...cs.inp, textAlign: 'center' }}>

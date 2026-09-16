@@ -12,7 +12,7 @@ import Dashboard from './pages/Dashboard/Dashboard';
 import Obras from './pages/Obras/Obras';
 import Stock from './pages/Stock/Stock';
 import Jornadas from './pages/Jornadas/Jornadas';
-import Personas from './pages/Personas/Personas';
+import Colaboradores from './pages/Colaboradores/Colaboradores';
 import Balance from './pages/Balance/Balance';
 import Sueldos from './pages/Sueldos/Sueldos';
 import ListaPrecios from './pages/ListaPrecios/ListaPrecios';
@@ -82,7 +82,8 @@ function App() {
         <Route path="/lista-precios" element={<PrivateRoute><ListaPrecios /></PrivateRoute>} />
         <Route path="/estandares" element={<PrivateRoute><Estandares /></PrivateRoute>} />
         <Route path="/jornadas" element={<PrivateRoute><Jornadas /></PrivateRoute>} />
-        <Route path="/personas" element={<PrivateRoute><Personas /></PrivateRoute>} />
+        <Route path="/colaboradores" element={<PrivateRoute><Colaboradores /></PrivateRoute>} />
+        <Route path="/personas" element={<Navigate to="/colaboradores" replace />} />
         <Route path="/balance" element={<PrivateRoute><Balance /></PrivateRoute>} />
         <Route path="/balance-termico" element={<PrivateRoute><BalanceTermico /></PrivateRoute>} />
         <Route path="/sueldos" element={<PrivateRoute><Sueldos /></PrivateRoute>} />

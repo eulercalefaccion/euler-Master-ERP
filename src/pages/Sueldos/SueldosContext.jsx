@@ -1,17 +1,16 @@
-/**
- * SueldosContext — Carga datos desde Firebase "eulersueldos" (doc eulerData/mainData)
- */
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useMemo } from 'react';
 import { dbSueldos } from '../../services/firebaseSueldos';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { useJornadas } from '../../context/JornadasContext';
 
 const SueldosContext = createContext();
 
 export function SueldosProvider({ children }) {
+  const { empleados: jorEmpleados } = useJornadas();
   const [loading, setLoading] = useState(true);
   const [employees, setEmployees] = useState([]);
   const [rates, setRates] = useState({
-    hourlyRate: 0, hourlyRateOficial: 0, hourlyRateMedio: 0,
+    hourlyRate: 0, hourlyRateOficial: 0, hourlyRateMedio: 0, hourlyRateDif: 0,
     bocaObraNueva2p: 0, bocaObraNueva3p: 0,
     bocaRefaccion2p: 0, bocaRefaccion3p: 0,
     mesVigente: '', paritariaFecha: ''
@@ -58,9 +57,38 @@ export function SueldosProvider({ children }) {
     }
   };
 
+  // Unificar colaboradores de Jornadas en la lista de empleados
+  const unifiedEmployees = useMemo(() => {
+    const list = [...employees];
+    jorEmpleados.forEach(je => {
+      const index = list.findIndex(x => x.id === je.id || (x.dni && je.dni && x.dni === je.dni));
+      if (index === -1) {
+        list.push({
+          id: je.id,
+          name: `${je.nombre} ${je.apellido || ''}`.trim(),
+          dni: je.dni || '',
+          cat: je.categoriaBase || 'Oficial',
+          active: je.activo !== false,
+          puesto: je.puesto || 'Instalador'
+        });
+      } else {
+        // Enriquecer con datos actualizados de Jornadas
+        list[index] = {
+          ...list[index],
+          name: `${je.nombre} ${je.apellido || ''}`.trim(),
+          dni: je.dni || list[index].dni,
+          cat: je.categoriaBase || list[index].cat || 'Oficial',
+          active: je.activo !== false,
+          puesto: je.puesto || list[index].puesto || 'Instalador'
+        };
+      }
+    });
+    return list;
+  }, [employees, jorEmpleados]);
+
   return (
     <SueldosContext.Provider value={{
-      loading, employees, setEmployees, rates, setRates,
+      loading, employees: unifiedEmployees, setEmployees, rates, setRates,
       liquidations, setLiquidations, paritarias, setParitarias, saveData
     }}>
       {children}
@@ -71,3 +99,4 @@ export function SueldosProvider({ children }) {
 export function useSueldos() {
   return useContext(SueldosContext);
 }
+

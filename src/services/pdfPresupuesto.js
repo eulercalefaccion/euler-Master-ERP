@@ -11,6 +11,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { PDFDocument } from 'pdf-lib';
+import { calcularDescuentosPresupuesto } from './descuentosService';
 
 // ─── Constantes de marca ─────────────────────────────────────────────────────
 const EULER_DARK  = [13,  42, 78];    // #0D2A4E

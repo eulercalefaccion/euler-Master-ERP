@@ -119,6 +119,60 @@ export function JornadasProvider({ children }) {
     await deleteDoc(doc(dbJornadas, 'jornadas', jorId));
   }
 
+  // Gastos CRUD
+  async function addGasto(gasto) {
+    const newItem = { ...gasto, id: `gst_${Date.now()}`, creadoEn: Date.now() };
+    await setDoc(doc(dbJornadas, 'gastos', newItem.id), newItem);
+  }
+  async function updateGasto(id, data) {
+    await updateDoc(doc(dbJornadas, 'gastos', id), data);
+  }
+  async function deleteGasto(id) {
+    await deleteDoc(doc(dbJornadas, 'gastos', id));
+  }
+
+  // Toasts
+  const [toasts, setToasts] = useState([]);
+  function showToast(msg, type = 'success') {
+    const id = Date.now();
+    setToasts(t => [...t, { id, msg, type }]);
+    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 4000);
+  }
+  function dismissToast(id) {
+    setToasts(t => t.filter(x => x.id !== id));
+  }
+
+  // Session & ViewMode
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const d = localStorage.getItem('euler_user');
+      return d ? JSON.parse(d) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [viewMode, setViewMode] = useState('admin');
+
+  useEffect(() => {
+    if (currentUser) localStorage.setItem('euler_user', JSON.stringify(currentUser));
+    else localStorage.removeItem('euler_user');
+  }, [currentUser]);
+
+  function login(u, p) {
+    const user = empleados.find(e => e.usuario === u && e.password === p && e.activo);
+    if (user) {
+      setCurrentUser(user);
+      setViewMode(user.rol === 'admin' ? 'admin' : 'empleado');
+      showToast(`¡Bienvenido ${user.nombre}!`);
+      return user;
+    }
+    return null;
+  }
+  function logout() {
+    setCurrentUser(null);
+    showToast('Sesión cerrada');
+  }
+
   return (
     <JornadasContext.Provider value={{
       loading,
@@ -129,6 +183,9 @@ export function JornadasProvider({ children }) {
       addObra, updateObra, deleteObra,
       updateConfig,
       updateJornada, deleteJornada, restoreJornada, hardDeleteJornada,
+      addGasto, updateGasto, deleteGasto,
+      toasts, showToast, dismissToast,
+      currentUser, setCurrentUser, viewMode, setViewMode, login, logout
     }}>
       {children}
     </JornadasContext.Provider>
@@ -138,3 +195,4 @@ export function JornadasProvider({ children }) {
 export function useJornadas() {
   return useContext(JornadasContext);
 }
+

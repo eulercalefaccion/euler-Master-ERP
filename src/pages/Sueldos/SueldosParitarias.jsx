@@ -16,6 +16,7 @@ export default function SueldosParitarias() {
     if (type === 'Especializado') newTemp.hourlyRate = nr;
     if (type === 'Oficial') newTemp.hourlyRateOficial = nr;
     if (type === 'Medio') newTemp.hourlyRateMedio = nr;
+    if (type === 'Dif') newTemp.hourlyRateDif = nr;
     if (paritarias.length > 0 && type === 'Especializado' && nr > 0) {
       const l = paritarias[0];
       const p = (nr - l.hourlyRate) / l.hourlyRate;
@@ -30,8 +31,8 @@ export default function SueldosParitarias() {
   };
 
   const savePar = async () => {
-    if (!temp.paritariaFecha || !temp.mesVigente || !temp.hourlyRate || !temp.hourlyRateOficial || !temp.hourlyRateMedio) {
-      alert('Completá todos los campos'); return;
+    if (!temp.paritariaFecha || !temp.mesVigente || !temp.hourlyRate || !temp.hourlyRateOficial || !temp.hourlyRateMedio || temp.hourlyRateDif === undefined) {
+      alert('Completá todos los campos (incluyendo los 4 valores de hora)'); return;
     }
     const nh = [{ ...temp, id: Date.now().toString(), createdAt: new Date().toISOString() }, ...paritarias];
     setRates(temp); setParitarias(nh);
@@ -72,17 +73,18 @@ export default function SueldosParitarias() {
 
         <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-light)' }}>
           <label style={{ display: 'block', fontWeight: '600', marginBottom: '12px' }}>Valores Hora ($)</label>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
             {[
               { label: 'Oficial Especializado', key: 'hourlyRate', type: 'Especializado' },
               { label: 'Oficial', key: 'hourlyRateOficial', type: 'Oficial' },
-              { label: 'Medio Oficial', key: 'hourlyRateMedio', type: 'Medio' }
+              { label: 'Medio Oficial', key: 'hourlyRateMedio', type: 'Medio' },
+              { label: 'Hora Hombre DIF', key: 'hourlyRateDif', type: 'Dif' }
             ].map(item => (
               <div key={item.key} style={{ background: '#f9fafb', padding: '12px', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
                 <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)', marginBottom: '6px' }}>{item.label}</label>
                 <div style={{ position: 'relative' }}>
                   <span style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--text-secondary)' }}>$</span>
-                  <input type="number" value={temp[item.key] || ''} onChange={e => handleH(e.target.value, item.type)} style={{ ...cs.inp, paddingLeft: '24px', fontWeight: '700', fontSize: '1.1rem' }} onFocus={e => e.target.select()} />
+                  <input type="number" value={temp[item.key] ?? ''} onChange={e => handleH(e.target.value, item.type)} style={{ ...cs.inp, paddingLeft: '24px', fontWeight: '700', fontSize: '1.1rem' }} onFocus={e => e.target.select()} />
                 </div>
                 {item.type === 'Especializado' && paritarias.length > 0 && temp.hourlyRate > 0 && (
                   <div style={{ fontSize: '0.75rem', color: '#16a34a', marginTop: '4px', fontWeight: '600', background: '#f0fdf4', display: 'inline-block', padding: '2px 8px', borderRadius: '4px' }}>
@@ -132,8 +134,13 @@ export default function SueldosParitarias() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '8px', background: 'rgba(255,255,255,0.5)', padding: '8px', borderRadius: '8px', fontSize: '0.875rem' }}>
             <div>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Valores Hora</span>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
-                {[['Especializado', p.hourlyRate], ['Oficial', p.hourlyRateOficial || p.hourlyRate], ['Medio Oficial', p.hourlyRateMedio || p.hourlyRate]].map(([l, v]) => (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
+                {[
+                  ['Especializado', p.hourlyRate],
+                  ['Oficial', p.hourlyRateOficial || p.hourlyRate],
+                  ['Medio Oficial', p.hourlyRateMedio || p.hourlyRate],
+                  ['DIF', p.hourlyRateDif || p.hourlyRate]
+                ].map(([l, v]) => (
                   <div key={l} style={{ background: 'white', padding: '6px', borderRadius: '4px', border: '1px solid #f3f4f6' }}>
                     <span style={{ display: 'block', fontSize: '0.6rem', color: 'var(--text-secondary)', fontWeight: '600', textTransform: 'uppercase' }}>{l}</span>
                     <span style={{ fontWeight: '800' }}>${v}</span>

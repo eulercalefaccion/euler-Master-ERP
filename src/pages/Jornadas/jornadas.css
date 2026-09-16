@@ -1,0 +1,346 @@
+﻿/* Jornadas Scoped CSS — Euler Jornadas dentro del Master ERP */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Righteous&display=swap');
+
+.jornadas-theme-root {
+  /* Brand */
+  --euler-red: #c44121;
+  --euler-red-dark: #9c341a;
+  --euler-yellow: #e0a42d;
+  --euler-navy: #0c3552;
+  --euler-red-glow: rgba(196, 65, 33, 0.4);
+
+  /* Dark palette */
+  --bg-deep: #061a29;
+  --bg-dark: #0c3552;
+  --bg-card: #104063;
+  --bg-card-alt: #124c75;
+  --surface: rgba(255, 255, 255, 0.06);
+  --surface-hover: rgba(255, 255, 255, 0.12);
+  --border: rgba(255, 255, 255, 0.10);
+  --border-bright: rgba(255, 255, 255, 0.20);
+
+  /* Text */
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.70);
+  --text-muted: rgba(255, 255, 255, 0.40);
+  --text-accent: #e0a42d;
+
+  /* Semantic colors */
+  --green: #10b981;
+  --yellow: #e0a42d;
+  --red: #c44121;
+  --blue: #3b82f6;
+  --purple: #8b5cf6;
+
+  /* Gradients */
+  --grad-primary: linear-gradient(135deg, #c44121 0%, #9c341a 100%);
+  --grad-dark: linear-gradient(135deg, #0c3552 0%, #061a29 100%);
+  --grad-card: linear-gradient(135deg, rgba(16, 64, 99, 0.9) 0%, rgba(6, 26, 41, 0.9) 100%);
+  --grad-success: linear-gradient(135deg, #065f46 0%, #10b981 100%);
+  --grad-danger: linear-gradient(135deg, #7f1d1d 0%, #c44121 100%);
+
+  /* Spacing & Radii */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.5);
+  --shadow-red: 0 4px 24px rgba(196, 30, 58, 0.35);
+
+  --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  min-height: calc(100vh - 60px);
+  position: relative;
+  overflow-x: hidden;
+  margin: -1.5rem;
+}
+
+.jornadas-theme-root * {
+  box-sizing: border-box;
+}
+
+.jornadas-theme-root a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.jornadas-theme-root button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  outline: none;
+}
+
+.jornadas-theme-root input,
+.jornadas-theme-root select,
+.jornadas-theme-root textarea {
+  font-family: inherit;
+}
+
+/* Glass Card */
+.jornadas-theme-root .glass-card {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  transition: var(--transition);
+}
+.jornadas-theme-root .glass-card:hover {
+  border-color: var(--border-bright);
+}
+
+/* Sub-Sidebar */
+.jornadas-theme-root .admin-sidebar {
+  width: 220px;
+  background: linear-gradient(180deg, #091f30 0%, #061a29 100%);
+  border-right: 1px solid var(--border);
+  transition: transform 0.25s ease;
+  display: flex;
+  flex-direction: column;
+}
+.jornadas-theme-root .admin-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--bg-deep);
+}
+.jornadas-theme-root .admin-topbar {
+  height: 60px;
+  background: rgba(6, 26, 41, 0.85);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+/* Nav items */
+.jornadas-theme-root .nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  background: transparent;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+  width: 100%;
+  text-align: left;
+}
+.jornadas-theme-root .nav-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+}
+.jornadas-theme-root .nav-item-active {
+  background: linear-gradient(135deg, rgba(196, 65, 33, 0.25), rgba(196, 65, 33, 0.1));
+  border-color: rgba(196, 65, 33, 0.4) !important;
+  color: #ff7e60 !important;
+}
+.jornadas-theme-root .nav-badge {
+  background: #c44121;
+  color: white;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+}
+
+/* Page titles */
+.jornadas-theme-root .page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.jornadas-theme-root .page-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.3px;
+}
+.jornadas-theme-root .page-subtitle {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+/* Inputs & Form */
+.jornadas-theme-root .form-input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  color: var(--text-primary);
+  font-size: 13px;
+  transition: var(--transition);
+}
+.jornadas-theme-root .form-input:focus {
+  outline: none;
+  border-color: var(--euler-red);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 3px var(--euler-red-glow);
+}
+.jornadas-theme-root .form-input option {
+  background: #0c3552;
+  color: white;
+}
+.jornadas-theme-root .form-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+.jornadas-theme-root .form-group {
+  margin-bottom: 16px;
+}
+
+/* Buttons */
+.jornadas-theme-root .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 18px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 700;
+  transition: var(--transition);
+}
+.jornadas-theme-root .btn-primary {
+  background: var(--grad-primary);
+  color: white;
+  box-shadow: var(--shadow-red);
+}
+.jornadas-theme-root .btn-primary:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.1);
+}
+.jornadas-theme-root .btn-ghost {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+.jornadas-theme-root .btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text-primary);
+  border-color: var(--border-bright);
+}
+.jornadas-theme-root .btn-sm {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+/* Modales */
+.jornadas-theme-root .modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+.jornadas-theme-root .modal-box,
+.jornadas-theme-root .modal-content {
+  background: #0a253a;
+  border: 1px solid var(--border-bright);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  max-height: 90vh;
+  overflow-y: auto;
+  color: var(--text-primary);
+}
+.jornadas-theme-root .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.jornadas-theme-root .modal-title {
+  font-size: 16px;
+  font-weight: 800;
+}
+.jornadas-theme-root .modal-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px;
+}
+.jornadas-theme-root .modal-close:hover {
+  color: var(--text-primary);
+}
+
+/* Tablas */
+.jornadas-theme-root .table-container {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.02);
+}
+.jornadas-theme-root table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.jornadas-theme-root th {
+  background: rgba(255, 255, 255, 0.04);
+  padding: 12px 16px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.jornadas-theme-root td {
+  padding: 12px 16px;
+  font-size: 13px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+}
+.jornadas-theme-root tr:hover td {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* Grids */
+.jornadas-theme-root .grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 768px) {
+  .jornadas-theme-root .grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
