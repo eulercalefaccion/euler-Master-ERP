@@ -305,6 +305,7 @@ const KanbanBoard = () => {
   const [detailNotes, setDetailNotes]       = useState('');
   const [builderItems, setBuilderItems]     = useState([]);
   const [canal, setCanal]                   = useState('iva');   // 'iva' | 'canal2'
+  const [initialCanal, setInitialCanal]     = useState('iva');
   const [showDesgloseDescuentos, setShowDesgloseDescuentos] = useState(false);
   const [isSavingDetail, setIsSavingDetail] = useState(false);
   const [detailTab, setDetailTab]           = useState('cotizador'); // 'cotizador' | 'datos' | 'historial'
@@ -493,6 +494,7 @@ const KanbanBoard = () => {
     setDetailNotes(item.notas || '');
     setBuilderItems(item.quoteItems || []);
     setCanal(item.canal || 'iva');
+    setInitialCanal(item.canal || 'iva');
     setShowDesgloseDescuentos(false);
     setDetailTab('cotizador');
     setEditLeadFields({
@@ -524,15 +526,10 @@ const KanbanBoard = () => {
   };
 
   // ─── Descuento Comercial toggle ─────────────────────────────────────────────
-  const handleToggleCanal = async () => {
+  const handleToggleCanal = () => {
     if (!selectedLead) return;
     const newCanal = canal === 'iva' ? 'canal2' : 'iva';
     setCanal(newCanal);
-    // Persist canal
-    try {
-      await updateDoc(doc(db, 'presupuestos', selectedLead.id), { canal: newCanal });
-      setSelectedLead(prev => ({ ...prev, canal: newCanal }));
-    } catch (e) { console.error(e); }
   };
 
   // ─── Quote Builder ──────────────────────────────────────────────────────────
@@ -680,14 +677,17 @@ const KanbanBoard = () => {
   const getDetectedBudgetChanges = () => {
     if (!selectedLead) return { changes: [], publicChanges: [], hasChanges: false };
     const prevItems = selectedLead.quoteItems || [];
-    const prevCanal = selectedLead.canal || 'iva';
+    const prevCanal = initialCanal || selectedLead.canal || 'iva';
     const prevNotas = selectedLead.notas || '';
 
     const changes = [];
     const publicChanges = [];
 
     if (canal !== prevCanal) {
-      const msg = `Se cambió la modalidad de precios de "${prevCanal === 'iva' ? 'Lista Oficial (Con IVA)' : 'Descuento Comercial'}" a "${canal === 'iva' ? 'Lista Oficial (Con IVA)' : 'Descuento Comercial'}".`;
+      const fromText = prevCanal === 'canal2' ? 'Sin Factura' : 'Con Factura';
+      const toText = canal === 'canal2' ? 'Sin Factura' : 'Con Factura';
+      const descDetail = canal === 'canal2' ? ' (Descuento Comercial)' : ' (Lista Oficial con IVA 21%)';
+      const msg = `Cambio de modalidad: de ${fromText} a ${toText}${descDetail}.`;
       changes.push(msg);
       publicChanges.push(msg);
     }
@@ -849,6 +849,7 @@ const KanbanBoard = () => {
 
       await updateDoc(doc(db, 'presupuestos', selectedLead.id), updatedFields);
       setSelectedLead(prev => ({ ...prev, ...updatedFields }));
+      setInitialCanal(canal);
       alert('Cambios guardados con éxito en la cotización.');
     } catch (err) {
       alert('Error al guardar cambios: ' + err.message);
@@ -861,6 +862,13 @@ const KanbanBoard = () => {
     if (!selectedLead || !editLeadFields) return;
     const budgetDiff = getDetectedBudgetChanges();
     const clientChanges = getDetectedClientChanges();
+
+    // Si cambió la modalidad entre formal y canal 2, se debe crear una nueva revisión obligatoriamente
+    const prevCanal = initialCanal || selectedLead.canal || 'iva';
+    if (canal !== prevCanal) {
+      handleOpenRevModal();
+      return;
+    }
 
     // Opción 3: Si ya tiene revisiones anteriores en el historial Y hay cambios en artículos/precios
     const hasHistory = (selectedLead.revisionsHistory?.length || 0) > 0;
@@ -909,7 +917,7 @@ const KanbanBoard = () => {
           quoteItems:       selectedLead.quoteItems || [],
           amount:           selectedLead.amount || 0,
           notas:            selectedLead.notas || '',
-          canal:            selectedLead.canal || 'iva',
+          canal:            initialCanal || selectedLead.canal || 'iva',
           descuentoComercial: selectedLead.descuentoComercial || null,
           cambiosRealizados: selectedLead.cambiosRealizados || (prevRev === 0 ? 'Presupuesto Inicial' : ''),
           cambiosPublicos: selectedLead.cambiosPublicos || '',
@@ -925,6 +933,25 @@ const KanbanBoard = () => {
       
       const now = new Date();
       const userName = currentUser?.name || currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Usuario';
+      
+      const prevCanalForLog = initialCanal || selectedLead.canal || 'iva';
+      const isCanalChanged = canal !== prevCanalForLog;
+      const fromText = prevCanalForLog === 'canal2' ? 'Sin Factura' : 'Con Factura';
+      const toText = canal === 'canal2' ? 'Sin Factura' : 'Con Factura';
+
+      const bitacoraDesc = isCanalChanged
+        ? `Nueva Revisión (${newPresupuestoNumber}): Cambio de ${fromText} a ${toText} (${canal === 'canal2' ? 'Descuento Comercial' : 'Lista Oficial'}).`
+        : (isInitial ? `Presupuesto Inicial (${newPresupuestoNumber}) creado.` : `Nueva Revisión (${newPresupuestoNumber}) creada.`);
+
+      const bitacoraEntry = {
+        fecha: now.toISOString(),
+        usuario: userName,
+        icono: isCanalChanged ? '🏷️' : (isInitial ? '✨' : '📝'),
+        descripcion: bitacoraDesc,
+        motivo: changeNoteInternal.trim() || (isCanalChanged ? `Cambio de ${fromText} a ${toText}` : 'Actualización de cotización'),
+      };
+      const updatedBitacora = [bitacoraEntry, ...(selectedLead.bitacora || [])];
+
       const newAuditEntry = {
         id: `audit_${Date.now()}`,
         timestamp: now.toISOString(),
@@ -961,6 +988,7 @@ const KanbanBoard = () => {
         date: now.toLocaleDateString('es-AR'),
         revisionsHistory: history,
         internalAuditLog: updatedAuditLog,
+        bitacora: updatedBitacora,
         
         name: editLeadFields.name,
         tipoCliente: editLeadFields.tipoCliente,
@@ -990,6 +1018,7 @@ const KanbanBoard = () => {
       };
       await updateDoc(doc(db, 'presupuestos', selectedLead.id), updatedFields);
       setSelectedLead(prev => ({ ...prev, ...updatedFields }));
+      setInitialCanal(canal);
       setRevChangeNote('');
       setRevChangeNotePDF('');
       setIsRevModalOpen(false);
@@ -1016,14 +1045,24 @@ const KanbanBoard = () => {
     }
 
     const budgetDiff = getDetectedBudgetChanges();
+    const prevCanalForModal = initialCanal || selectedLead.canal || 'iva';
+    const isCanalChanged = canal !== prevCanalForModal;
 
-    if (budgetDiff.changes.length === 0) {
-      alert('NO HUBO CAMBIOS, SE MANTIENE LA REVISIÓN ACTUAL.\nPara crear una nueva revisión, debés realizar algún cambio en el cotizador.');
-      return;
+    if (budgetDiff.changes.length > 0) {
+      setRevChangeNote(budgetDiff.changes.join('\n'));
+      setRevChangeNotePDF(budgetDiff.publicChanges.join('\n'));
+    } else {
+      // Si el usuario presiona "Guardar Nueva Revisión" sin cambios en la tabla
+      // (o si el canal ya había sido persistido previamente en Firestore), sugerir el motivo
+      const fromText = prevCanalForModal === 'canal2' ? 'Sin Factura' : 'Con Factura';
+      const toText = canal === 'canal2' ? 'Sin Factura' : 'Con Factura';
+      const defaultMsg = isCanalChanged || canal === 'canal2'
+        ? 'Cambio de modalidad: de Con Factura a Sin Factura (Descuento Comercial).'
+        : 'Cambio de modalidad: de Sin Factura a Con Factura (Lista Oficial con IVA 21%).';
+      setRevChangeNote(defaultMsg);
+      setRevChangeNotePDF(defaultMsg);
     }
 
-    setRevChangeNote(budgetDiff.changes.join('\n'));
-    setRevChangeNotePDF(budgetDiff.publicChanges.join('\n'));
     setIsRevModalOpen(true);
   };
 
