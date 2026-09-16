@@ -162,6 +162,11 @@ const KanbanBoard = () => {
   const [paymentAmount, setPaymentAmount] = useState('');
   const [isApproving, setIsApproving]     = useState(false);
 
+  // Return modal (when moving backward)
+  const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
+  const [returnReason, setReturnReason] = useState('');
+  const [pendingReturnMove, setPendingReturnMove] = useState(null);
+
   // Follow ups
   const [hasDismissedFollowUps, setHasDismissedFollowUps] = useState(() => {
     return localStorage.getItem('euler_dismissed_followups_date') === new Date().toISOString().split('T')[0];
@@ -1196,6 +1201,12 @@ const KanbanBoard = () => {
       return;
     }
 
+    // ── Bloquear retorno a Pendiente ──
+    if (finishCol.id === 'pendiente' && source.droppableId !== 'pendiente') {
+      alert("Este presupuesto ya fue procesado y no puede volver a Pendiente.");
+      return;
+    }
+
     if (finishCol.id === 'aprobado') {
       const itemToMove = data.items[draggableId];
       if (!itemToMove || !itemToMove.quoteItems || itemToMove.quoteItems.length === 0) {
@@ -1205,6 +1216,16 @@ const KanbanBoard = () => {
       
       setPendingMove(result);
       setIsApprovalOpen(true);
+      return;
+    }
+
+    // ── Detectar movimiento hacia atrás (retroceso) ──
+    const sourceIndex = data.columnOrder.indexOf(source.droppableId);
+    const destIndex = data.columnOrder.indexOf(destination.droppableId);
+    if (destIndex < sourceIndex) {
+      setPendingReturnMove(result);
+      setReturnReason('');
+      setIsReturnModalOpen(true);
       return;
     }
 
@@ -1280,6 +1301,53 @@ const KanbanBoard = () => {
         ...extraFields,
       });
     } catch (err) { console.error(err); }
+  };
+
+  // ─── Return Move: confirmar devolución con motivo ──────────────────────────
+  const confirmReturnMove = async () => {
+    if (!pendingReturnMove || !returnReason.trim()) return;
+    const { destination, source, draggableId } = pendingReturnMove;
+    const finishCol = data.columns[destination.droppableId];
+    const sourceCol = data.columns[source.droppableId];
+
+    try {
+      const now = new Date().toISOString();
+      const email = currentUser?.email || 'Desconocido';
+      const nombre = currentUser?.name || currentUser?.email || 'Desconocido';
+      const newStatus = finishCol.id;
+
+      const moveEvent = {
+        status: newStatus,
+        date: now,
+        user: email,
+        displayName: nombre,
+      };
+
+      const bitacoraEvent = {
+        tipo: 'retorno',
+        icono: '↩️',
+        descripcion: `Presupuesto devuelto a "${finishCol.title}" por ${nombre}`,
+        motivo: returnReason.trim(),
+        fecha: now,
+        usuario: nombre,
+        email: email,
+        columnaOrigen: sourceCol.title,
+        columnaDestino: finishCol.title,
+      };
+
+      await updateDoc(doc(db, 'presupuestos', draggableId), {
+        status: newStatus,
+        statusHistory: arrayUnion(moveEvent),
+        bitacora: arrayUnion(bitacoraEvent),
+      });
+
+      setIsReturnModalOpen(false);
+      setReturnReason('');
+      setPendingReturnMove(null);
+    } catch (err) { 
+      console.error(err); 
+      alert('Error al mover el presupuesto: ' + err.message);
+    }
   };
 
   // ─── Approval: reserva stock + crea obra ERP + crea obra Jornadas ──────────
@@ -1869,6 +1937,44 @@ const KanbanBoard = () => {
               <button className="btn btn-secondary" onClick={closeApprovalModal} disabled={isApproving}>Cancelar</button>
               <button className="btn btn-primary" onClick={confirmApproval} disabled={isApproving}>
                 {isApproving ? 'Procesando...' : '✓ Cerrar Venta y Generar Obra'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ──────────────────────────────────────────────────────────────────────
+          MODAL: Motivo de Devolución (retroceso en Kanban)
+      ────────────────────────────────────────────────────────────────────── */}
+      {isReturnModalOpen && pendingReturnMove && (
+        <div style={{ position:'fixed',top:0,left:0,right:0,bottom:0,backgroundColor:'rgba(0,0,0,0.5)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000 }}>
+          <div className="card" style={{ width:'480px',maxWidth:'95vw',display:'flex',flexDirection:'column',gap:'1rem' }}>
+            <h3 style={{ margin:0,display:'flex',alignItems:'center',gap:'0.5rem' }}>
+              ↩️ Devolver Presupuesto
+            </h3>
+            <p style={{ fontSize:'0.875rem',color:'var(--text-secondary)',margin:0 }}>
+              Estás moviendo este presupuesto de <strong>{data.columns[pendingReturnMove.source.droppableId]?.title}</strong> a <strong>{data.columns[pendingReturnMove.destination.droppableId]?.title}</strong>.
+            </p>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">¿Cuál es el motivo de la devolución? <span style={{ color: 'var(--danger)' }}>*</span></label>
+              <textarea
+                className="input-field"
+                rows={3}
+                placeholder="Ej: El cliente pidió agregar un radiador más en la habitación principal..."
+                value={returnReason}
+                onChange={e => setReturnReason(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div style={{ display:'flex',justifyContent:'flex-end',gap:'0.5rem' }}>
+              <button className="btn btn-secondary" onClick={() => { setIsReturnModalOpen(false); setPendingReturnMove(null); setReturnReason(''); }}>Cancelar</button>
+              <button 
+                className="btn btn-primary" 
+                onClick={confirmReturnMove}
+                disabled={!returnReason.trim()}
+                style={{ opacity: returnReason.trim() ? 1 : 0.5 }}
+              >
+                ↩️ Confirmar Devolución
               </button>
             </div>
           </div>
@@ -3503,6 +3609,11 @@ const KanbanBoard = () => {
                                 <div style={{ fontSize:'0.825rem',fontWeight:'600',color:'var(--text-primary)',lineHeight:1.3 }}>
                                   {ev.descripcion}
                                 </div>
+                                {ev.motivo && (
+                                  <div style={{ fontSize:'0.8rem',color:'var(--primary-700)',marginTop:'0.25rem',padding:'0.3rem 0.5rem',backgroundColor:'#fef3c7',borderRadius:'6px',borderLeft:'3px solid #f59e0b',fontStyle:'italic' }}>
+                                    Motivo: "{ev.motivo}"
+                                  </div>
+                                )}
                                 <div style={{ fontSize:'0.72rem',color:'var(--text-tertiary)',marginTop:'0.15rem',display:'flex',gap:'0.5rem',flexWrap:'wrap' }}>
                                   <span style={{ fontWeight:'600',color:'var(--primary-600)' }}>👤 {ev.usuario || ev.email || 'Sistema'}</span>
                                   <span>•</span>
