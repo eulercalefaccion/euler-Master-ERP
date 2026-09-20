@@ -34,3 +34,11 @@ dist-ssr
 .env
 .env.*
 functions/test.js
+functions/.env
+
+# Sensitive data files — never publish
+data/
+public/clientes_gesdatta.json
+public/catalogo_limpio.json
+clientes.txt
+catalogo_articulos_gesdatta.txt

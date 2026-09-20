@@ -2,51 +2,85 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Función auxiliar para verificar si el usuario es admin
-    function isAdmin() {
-      return request.auth != null && request.auth.token.role == 'admin';
+    // ─── FUNCIONES AUXILIARES ─────────────────────────────────────
+    
+    // Usuario autenticado real (excluye anónimos)
+    function isSignedIn() {
+      return request.auth != null 
+        && request.auth.token.firebase.sign_in_provider != 'anonymous';
     }
 
-    // Regla base: por defecto, todo cerrado.
+    // Usuario autenticado (incluye anónimos)
+    function isAnyAuth() {
+      return request.auth != null;
+    }
+
+    // Administrador: verifica en el documento del usuario en Firestore
+    function isAdmin() {
+      return isSignedIn() 
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'administrador';
+    }
+
+    // Admin o rol operaciones
+    function isAdminOrOperaciones() {
+      return isSignedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['administrador', 'operaciones'];
+    }
+
+    // ─── REGLA BASE: por defecto todo cerrado ────────────────────
     match /{document=**} {
       allow read, write: if false;
     }
 
+    // ─── USUARIOS ────────────────────────────────────────────────
     match /users/{userId} {
-      // Cualquier autenticado puede leer roles para verificar permisos
-      allow read: if request.auth != null;
-      // Los usuarios pueden crear/escribir su propio documento, o admin puede escribir todo
-      allow write: if isAdmin() || request.auth.uid == userId || (request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+      // Cualquier usuario autenticado real puede leer (necesario para verificar roles)
+      allow read: if isSignedIn();
+      // Un usuario puede crear su propio documento (registro inicial)
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      // Un usuario puede actualizar su propio documento PERO NO puede cambiar role ni isActive
+      allow update: if isSignedIn() && request.auth.uid == userId 
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'isActive']);
+      // Solo admin puede escribir cualquier campo (incluyendo role e isActive)
+      allow write: if isAdmin();
     }
 
-    // ─── COLECCIONES PRINCIPALES ─────────────────────────────────────
+    // ─── COLECCIONES PRINCIPALES (ERP) ───────────────────────────
     
-    // Clientes: Solo administradores pueden escribir. Cualquier autenticado lee.
     match /clientes/{clienteId} {
-      allow read: if request.auth != null;
+      allow read: if isSignedIn();
       allow write: if isAdmin();
     }
 
-    // Presupuestos: Solo administradores pueden escribir. Autenticados leen.
     match /presupuestos/{presupuestoId} {
-      allow read: if request.auth != null;
-      allow write: if isAdmin();
+      allow read: if isSignedIn();
+      // Admin puede todo. Usuarios anónimos pueden crear (formulario público)
+      allow create: if isAdmin() || isAnyAuth();
+      allow update: if isAdmin() || (isAnyAuth() && resource.data.estado == 'pendiente');
+      allow delete: if isAdmin();
     }
 
-    // Obras: Lectura para todos los autenticados. Escritura solo admin.
     match /obras/{obraId} {
-      allow read: if request.auth != null;
+      allow read: if isSignedIn();
       allow write: if isAdmin();
+      // Permitir que encuestas públicas actualicen solo el campo 'encuesta'
+      // (Un usuario anónimo autenticado puede agregar la encuesta)
+      allow update: if isAnyAuth() 
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['encuesta']);
     }
 
-    // Lista de Precios / Stock / Estandares: Lectura autenticados, escritura admin.
     match /lista_precios/{itemId} {
-      allow read: if request.auth != null;
+      allow read: if isSignedIn();
       allow write: if isAdmin();
     }
     
     match /estandares/{estandarId} {
-      allow read: if request.auth != null;
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /stock/{stockId} {
+      allow read: if isSignedIn();
       allow write: if isAdmin();
     }
 
@@ -54,32 +88,78 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    match /liquidaciones/{liquidacionId} {
+      allow read, write: if isAdmin();
+    }
+
     match /notifications/{notificationId} {
-      allow read: if request.auth != null;
-      allow write: if isAdmin() || request.auth != null; // Usuarios pueden marcar como leída
+      allow read: if isSignedIn();
+      // Cualquier autenticado real puede crear y marcar como leída
+      allow create: if isAnyAuth();
+      allow update: if isSignedIn();
+      allow delete: if isAdmin();
     }
 
     match /encuestas_obra/{encuestaId} {
-      // Las encuestas son creadas desde el exterior por clientes (o una function)
-      // Si se crean directo desde el cliente web:
+      // Las encuestas pueden ser creadas desde el exterior
       allow create: if true; 
-      allow read: if request.auth != null;
+      allow read: if isSignedIn();
       allow update, delete: if isAdmin();
     }
 
+    // ─── SERVICIOS TÉCNICOS ──────────────────────────────────────
+    
+    match /servicios/{servicioId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    match /usuarios/{usuarioId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /papelera/{papeleraId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
     match /manuales/{manualId} {
-      allow read: if request.auth != null && (
-        isAdmin() ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'tara']
-      );
-      allow create: if request.auth != null && (
-        isAdmin() ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'tara']
-      );
-      allow update, delete: if request.auth != null && (
-        isAdmin() ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
-      );
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin();
+    }
+
+    match /config/{configId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // ─── CRM Y AUXILIARES ────────────────────────────────────────
+    
+    match /folletos/{folletoId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /crmLabels/{labelId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /metadata/{metadataId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    match /configuracion/{configId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /colaboradores/{colabId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
   }
 }

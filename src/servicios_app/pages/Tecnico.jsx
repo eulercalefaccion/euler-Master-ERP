@@ -3,8 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { collection, onSnapshot, query, orderBy, where } from 'firebase/firestore'
 import { db } from '../../services/firebaseConfig'
 import { ChevronRight, AlertCircle, BookOpen, List, Map } from 'lucide-react'
-// useAuth provided by ERP auth shim
-const useAuth = () => ({ user: { uid: 'erp-admin', nombre: 'Administrador', role: 'admin' }, logout: () => {} })
+import { useAuth } from '../../context/AuthContext'
 import ManualesSoluciones from '../components/ManualesSoluciones'
 import MapaServicios from '../components/MapaServicios'
 
@@ -44,7 +43,8 @@ const EQUIPO_LABELS = {
 
 export default function Tecnico() {
   const navigate = useNavigate()
-  const { nombre } = useAuth()
+  const { currentUser } = useAuth()
+  const nombre = currentUser?.name || currentUser?.email?.split('@')[0] || 'Usuario'
   const [servicios, setServicios] = useState([])
   const [loading, setLoading] = useState(true)
   const [filtroTexto, setFiltroTexto] = useState('')

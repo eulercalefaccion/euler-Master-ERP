@@ -80,10 +80,10 @@ const FormularioPublico = () => {
   const handleFileChange = async (e) => {
     if (e.target.files) {
       const newFiles = Array.from(e.target.files);
-      const validFiles = newFiles.filter(file => file.size <= 200 * 1024 * 1024);
+      const validFiles = newFiles.filter(file => file.size <= 10 * 1024 * 1024);
       
       if (validFiles.length < newFiles.length) {
-        alert("Algunos archivos superan el límite de 200MB y no fueron agregados.");
+        alert("Algunos archivos superan el límite de 10MB y no fueron agregados.");
       }
       
       if (validFiles.length === 0) return;

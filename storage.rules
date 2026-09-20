@@ -1,0 +1,49 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // ─── Por defecto: todo cerrado ─────────────────────────────
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    // ─── Adjuntos de formulario público (leads) ────────────────
+    // Usuarios anónimos pueden subir archivos aquí (formulario de presupuesto)
+    // Límite: 10 MB por archivo, solo tipos comunes
+    match /public_leads_attachments/{fileId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*|application/pdf|video/.*');
+    }
+
+    // ─── Folletos comerciales (PDF) ────────────────────────────
+    match /folletos/{fileId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && request.resource.size < 20 * 1024 * 1024
+        && request.resource.contentType == 'application/pdf';
+    }
+
+    // ─── Archivos de obras ─────────────────────────────────────
+    match /obras/{obraId}/{fileId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && request.resource.size < 20 * 1024 * 1024;
+    }
+
+    // ─── Documentos de presupuestos ────────────────────────────
+    match /presupuestos/{presupuestoId}/{path=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && request.resource.size < 20 * 1024 * 1024;
+    }
+
+    // ─── Manuales técnicos ─────────────────────────────────────
+    match /manuales/{fileId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && request.resource.size < 50 * 1024 * 1024;
+    }
+  }
+}

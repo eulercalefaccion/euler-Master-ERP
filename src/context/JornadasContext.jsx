@@ -154,8 +154,12 @@ export function JornadasProvider({ children }) {
   const [viewMode, setViewMode] = useState('admin');
 
   useEffect(() => {
-    if (currentUser) localStorage.setItem('euler_user', JSON.stringify(currentUser));
-    else localStorage.removeItem('euler_user');
+    if (currentUser) {
+      const { password, ...safeUser } = currentUser;
+      localStorage.setItem('euler_user', JSON.stringify(safeUser));
+    } else {
+      localStorage.removeItem('euler_user');
+    }
   }, [currentUser]);
 
   function login(u, p) {

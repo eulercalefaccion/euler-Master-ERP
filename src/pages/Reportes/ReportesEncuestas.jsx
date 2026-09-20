@@ -146,7 +146,7 @@ No uses títulos gigantes, usa h3 (###) o negritas. Sé directo y profesional.`;
           <h4 style={{ margin: '0 0 1rem 0', color: '#5b21b6', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Sparkles size={18} /> Resultados del Análisis IA
           </h4>
-          <div className="markdown-body" style={{ fontSize: '0.875rem', color: '#4c1d95', lineHeight: 1.6 }} dangerouslySetInnerHTML={{ __html: aiAnalysis.replace(/\n/g, '<br/>').replace(/### (.*?)\<br\/\>/g, '<h3>$1</h3>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
+          <div className="markdown-body" style={{ fontSize: '0.875rem', color: '#4c1d95', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{aiAnalysis}</div>
         </div>
       )}
 

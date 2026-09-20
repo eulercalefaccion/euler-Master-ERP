@@ -1,11 +1,11 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Settings, ArrowLeft, Users, Wrench, HardHat, LogOut } from 'lucide-react'
-// useAuth provided by ERP auth shim
-const useAuth = () => ({ user: { uid: 'erp-admin', nombre: 'Administrador', role: 'admin' }, logout: () => {} })
+import { useAuth } from '../../context/AuthContext'
 export default function Header() {
   const location = useLocation()
   const navigate = useNavigate()
-  const { currentUser, logout, role } = useAuth()
+  const { currentUser, logout } = useAuth()
+  const role = currentUser?.role
   
   if (location.pathname.startsWith('/ver/')) {
     return null

@@ -248,8 +248,9 @@ const Clientes = () => {
   const handleImportGesdatta = async () => {
     setIsSubmitting(true);
     try {
-      const response = await fetch('/clientes_gesdatta.json');
-      const data = await response.json();
+      alert('El archivo de importación fue retirado por seguridad. Los clientes ya se encuentran en la base de datos.');
+      setIsSubmitting(false);
+      return;
       
       const batches = [];
       let currentBatch = writeBatch(db);

@@ -151,7 +151,7 @@ Responde la pregunta del usuario basándote SOLO en estos datos si te pide métr
       <div className="ai-chat-messages">
         {messages.map((msg, idx) => (
           <div key={idx} className={`ai-message ${msg.role === 'user' ? 'user' : 'bot'}`}>
-            <div dangerouslySetInnerHTML={{ __html: msg.text.replace(/\n/g, '<br/>') }} />
+            <div style={{ whiteSpace: 'pre-wrap' }}>{msg.text}</div>
           </div>
         ))}
         {loading && (

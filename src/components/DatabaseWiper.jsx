@@ -21,10 +21,9 @@ const DatabaseWiper = () => {
         }
       }
 
-      setStatus('Datos de prueba eliminados. Importando 532 clientes de Gesdatta...');
-      
-      const response = await fetch('/clientes_gesdatta.json');
-      const data = await response.json();
+      setStatus('Error: El archivo de importación fue retirado por seguridad. Los clientes ya se encuentran en la base de datos.');
+      setIsRunning(false);
+      return;
       
       const batches = [];
       let currentBatch = writeBatch(db);
