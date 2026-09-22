@@ -1,4 +1,5 @@
 import React, { createContext, useState, useEffect, useContext, useMemo } from 'react';
+import { db } from '../../services/firebaseConfig';
 import { dbSueldos } from '../../services/firebaseSueldos';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useJornadas } from '../../context/JornadasContext';
@@ -24,9 +25,26 @@ export function SueldosProvider({ children }) {
 
   const loadData = async () => {
     try {
-      const docRef = doc(dbSueldos, 'eulerData', 'mainData');
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
+      // 1. Intentar cargar desde la base principal protegida del Master ERP
+      let docRef = doc(db, 'eulerData', 'mainData');
+      let docSnap = await getDoc(docRef);
+
+      // 2. Si aún no existe en el ERP, migrar automáticamente desde eulersueldos
+      if (!docSnap.exists()) {
+        try {
+          const oldDocRef = doc(dbSueldos, 'eulerData', 'mainData');
+          const oldSnap = await getDoc(oldDocRef);
+          if (oldSnap.exists()) {
+            const oldData = oldSnap.data();
+            await setDoc(docRef, oldData, { merge: true });
+            docSnap = oldSnap;
+          }
+        } catch (migErr) {
+          console.warn('Fallo migración desde eulersueldos:', migErr);
+        }
+      }
+
+      if (docSnap && docSnap.exists()) {
         const d = docSnap.data();
         if (d.employees) setEmployees(d.employees);
         if (d.globalRates) setRates(d.globalRates);
@@ -41,14 +59,26 @@ export function SueldosProvider({ children }) {
 
   const saveData = async (d) => {
     try {
-      const docRef = doc(dbSueldos, 'eulerData', 'mainData');
-      await setDoc(docRef, {
+      const dataToSave = {
         employees: d.employees !== undefined ? d.employees : employees,
         globalRates: d.globalRates !== undefined ? d.globalRates : rates,
         liquidations: d.liquidations !== undefined ? d.liquidations : liquidations,
         paritariasHistory: d.paritariasHistory !== undefined ? d.paritariasHistory : paritarias,
         lastUpdate: new Date().toISOString()
-      }, { merge: true });
+      };
+
+      // Guardar en la base principal protegida
+      const docRef = doc(db, 'eulerData', 'mainData');
+      await setDoc(docRef, dataToSave, { merge: true });
+
+      // Sincronización secundaria con la base vieja mientras Cindy sigue en la web anterior
+      try {
+        const oldDocRef = doc(dbSueldos, 'eulerData', 'mainData');
+        await setDoc(oldDocRef, dataToSave, { merge: true });
+      } catch (e) {
+        console.warn('Sync secundario omitido:', e);
+      }
+
       return true;
     } catch (err) {
       console.error('Error guardando:', err);
