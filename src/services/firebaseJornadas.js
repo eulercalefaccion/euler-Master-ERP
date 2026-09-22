@@ -6,6 +6,7 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
+import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
 
 const jornadasConfig = {
   apiKey: "AIzaSyAmg8089B1e2wII2jSzzvHI0kEi8Sd9Fw0",
@@ -19,3 +20,14 @@ const jornadasConfig = {
 const jornadasApp = initializeApp(jornadasConfig, "jornadas");
 export const dbJornadas = getFirestore(jornadasApp);
 export const storageJornadas = getStorage(jornadasApp);
+export const authJornadas = getAuth(jornadasApp);
+
+export const ensureJornadasAuth = async () => {
+  if (!authJornadas.currentUser) {
+    try {
+      await signInWithEmailAndPassword(authJornadas, 'admin@euler-internal.com', 'euler2025_euler_pin_auth');
+    } catch (e) {
+      console.warn('Auto-autenticación en Jornadas omitida o fallida:', e);
+    }
+  }
+};

@@ -3,7 +3,7 @@
  * Adaptado del DataContext original de la webapp Euler Jornadas
  */
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import { dbJornadas } from '../services/firebaseJornadas';
+import { dbJornadas, ensureJornadasAuth } from '../services/firebaseJornadas';
 import { collection, onSnapshot, doc, setDoc, updateDoc, deleteDoc, getDocs } from 'firebase/firestore';
 
 const JornadasContext = createContext();
@@ -25,46 +25,58 @@ export function JornadasProvider({ children }) {
   const [appConfig, setAppConfig] = useState(DEFAULT_CONFIG);
 
   useEffect(() => {
-    const unsubs = [];
+    let unsubs = [];
+    let mounted = true;
 
-    // Empleados real-time
-    const unsubEmps = onSnapshot(collection(dbJornadas, 'empleados'), (snap) => {
-      setEmpleados(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
-    unsubs.push(unsubEmps);
+    const init = async () => {
+      await ensureJornadasAuth();
+      if (!mounted) return;
 
-    // Obras real-time
-    const unsubObras = onSnapshot(collection(dbJornadas, 'obras'), (snap) => {
-      setObras(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
-    unsubs.push(unsubObras);
+      // Empleados real-time (sin exponer contraseñas)
+      const unsubEmps = onSnapshot(collection(dbJornadas, 'empleados'), (snap) => {
+        if (mounted) {
+          setEmpleados(snap.docs.map(d => {
+            const { password, ...safe } = d.data();
+            return { id: d.id, ...safe };
+          }));
+        }
+      });
+      unsubs.push(unsubEmps);
 
-    // Jornadas real-time
-    const unsubJornadas = onSnapshot(collection(dbJornadas, 'jornadas'), (snap) => {
-      setJornadas(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
-    unsubs.push(unsubJornadas);
+      // Obras real-time
+      const unsubObras = onSnapshot(collection(dbJornadas, 'obras'), (snap) => {
+        if (mounted) setObras(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      });
+      unsubs.push(unsubObras);
 
-    // Gastos real-time
-    const unsubGastos = onSnapshot(collection(dbJornadas, 'gastos'), (snap) => {
-      setGastos(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
-    unsubs.push(unsubGastos);
+      // Jornadas real-time
+      const unsubJornadas = onSnapshot(collection(dbJornadas, 'jornadas'), (snap) => {
+        if (mounted) setJornadas(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      });
+      unsubs.push(unsubJornadas);
 
-    // Config real-time
-    const unsubConfig = onSnapshot(collection(dbJornadas, 'configuracion'), (snap) => {
-      if (snap.docs.length > 0) {
-        setAppConfig({ ...DEFAULT_CONFIG, ...snap.docs[0].data() });
-      }
-    });
-    unsubs.push(unsubConfig);
+      // Gastos real-time
+      const unsubGastos = onSnapshot(collection(dbJornadas, 'gastos'), (snap) => {
+        if (mounted) setGastos(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      });
+      unsubs.push(unsubGastos);
 
-    // Mark as loaded after a short delay to ensure first snapshots arrive
-    const timer = setTimeout(() => setLoading(false), 1500);
+      // Config real-time
+      const unsubConfig = onSnapshot(collection(dbJornadas, 'configuracion'), (snap) => {
+        if (mounted && snap.docs.length > 0) {
+          setAppConfig({ ...DEFAULT_CONFIG, ...snap.docs[0].data() });
+        }
+      });
+      unsubs.push(unsubConfig);
+
+      setLoading(false);
+    };
+
+    init();
 
     return () => {
+      mounted = false;
       unsubs.forEach(u => u());
-      clearTimeout(timer);
     };
   }, []);
 
