@@ -41,10 +41,8 @@ service cloud.firestore {
 
     // ─── COLECCIONES PRINCIPALES (ERP) ───────────────────────────
     
-    match /clientes/{clienteId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
-    }
+    // Clientes: movido a la sección de Servicios Técnicos
+    // para permitir creación pública desde eulerservicios.netlify.app
 
     match /presupuestos/{presupuestoId} {
       allow read: if isSignedIn();
@@ -89,7 +87,7 @@ service cloud.firestore {
     match /notifications/{notificationId} {
       allow read: if isSignedIn();
       // Cualquier autenticado real puede crear y marcar como leída
-      allow create: if isAnyAuth();
+      allow create: if true;
       allow update: if isSignedIn();
       allow delete: if isAdmin();
     }
@@ -102,14 +100,23 @@ service cloud.firestore {
     }
 
     // ─── SERVICIOS TÉCNICOS ──────────────────────────────────────
+    // El formulario público de eulerservicios.netlify.app crea servicios
+    // sin autenticación. Debe poder crear documentos sin login.
     
     match /servicios/{servicioId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if isSignedIn();
+    }
+
+    match /clientes/{clienteId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if isAdmin();
     }
 
     match /usuarios/{usuarioId} {
-      allow read: if isSignedIn();
+      allow read: if true;
       allow write: if isAdmin();
     }
 
@@ -125,7 +132,7 @@ service cloud.firestore {
     }
 
     match /config/{configId} {
-      allow read: if isSignedIn();
+      allow read: if true;
       allow write: if isAdmin();
     }
 
