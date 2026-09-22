@@ -7,7 +7,7 @@ import { jsPDF } from 'jspdf';
 import * as XLSX from 'xlsx';
 import { Download, Trash2, History, X } from 'lucide-react';
 import { useSueldos } from './SueldosContext';
-import { getMonthNumber, MESES, getCustomWeekDates, formatDF, getEmpName } from './sueldosUtils';
+import { getMonthNumber, MESES, getCustomWeekDates, formatDF, getEmpName, getLogoBase64 } from './sueldosUtils';
 
 export default function SueldosHistorial() {
   const { liquidations, setLiquidations, employees, rates, saveData } = useSueldos();
@@ -47,48 +47,83 @@ export default function SueldosHistorial() {
 
   const downloadPDF = async (liq) => {
     const doc = new jsPDF();
+    const logo = await getLogoBase64();
+
     const type = liq.weekType || 'estandar';
     const wd = getCustomWeekDates(liq.week, liq.year, type);
     const emp = employees.find(e => e.id === liq.employeeId);
 
-    doc.setFontSize(18); doc.setFont(undefined, 'bold');
-    doc.text('EULER CALEFACCIÓN', 105, 20, { align: 'center' });
-    doc.setFontSize(12); doc.setFont(undefined, 'normal');
-    doc.text('Liquidación de Haberes', 105, 28, { align: 'center' });
-    doc.setLineWidth(0.5); doc.line(20, 33, 190, 33);
+    if (logo) {
+      // Membrete ancho completo (A4 width = 210mm, altura = 35mm)
+      doc.addImage(logo, 'JPEG', 0, 0, 210, 35);
+      doc.setFontSize(14);
+      doc.setFont(undefined, 'bold');
+      doc.text('Liquidación de Haberes', 105, 45, { align: 'center' });
+    } else {
+      doc.setFontSize(18);
+      doc.setFont(undefined, 'bold');
+      doc.text('EULER CALEFACCIÓN', 105, 20, { align: 'center' });
+      doc.setFontSize(12);
+      doc.setFont(undefined, 'normal');
+      doc.text('Liquidación de Haberes', 105, 28, { align: 'center' });
+    }
 
-    let y = 43;
+    doc.setLineWidth(0.5);
+    doc.line(20, 50, 190, 50);
+
+    let y = 60;
     doc.setFontSize(11);
-    doc.setFont(undefined, 'bold'); doc.text('Colaborador: ', 20, y);
-    doc.setFont(undefined, 'normal'); doc.text(liq.employeeName || '', 60, y);
+    doc.setFont(undefined, 'bold');
+    doc.text('Colaborador: ', 20, y);
+    doc.setFont(undefined, 'normal');
+    doc.text(liq.employeeName || '', 60, y);
+
     y += 8;
-    doc.setFont(undefined, 'bold'); doc.text('Período: ', 20, y);
-    doc.setFont(undefined, 'normal'); doc.text('Semana ' + liq.week + ' - ' + liq.monthName + ' ' + liq.year, 60, y);
-    if (wd.length >= 6) { y += 6; doc.text('Del ' + formatDF(wd[0]) + ' al ' + formatDF(wd[5]), 60, y); }
+    doc.setFont(undefined, 'bold');
+    doc.text('Período: ', 20, y);
+    doc.setFont(undefined, 'normal');
+    doc.text('Semana ' + liq.week + ' - ' + liq.monthName + ' ' + liq.year, 60, y);
+
+    if (wd.length >= 6) {
+      y += 6;
+      doc.text('Del ' + formatDF(wd[0]) + ' al ' + formatDF(wd[5]), 60, y);
+    }
 
     y += 12;
-    doc.setFont(undefined, 'bold'); doc.setFillColor(240, 240, 240);
-    doc.rect(20, y - 5, 170, 7, 'F'); doc.text('DETALLE DE HORAS', 25, y);
-    y += 10; doc.setFont(undefined, 'normal');
+    doc.setFont(undefined, 'bold');
+    doc.setFillColor(240, 240, 240);
+    doc.rect(20, y - 5, 170, 7, 'F');
+    doc.text('DETALLE DE HORAS', 25, y);
 
-    const diasK = type === 'adelantada'
-      ? ['viernes', 'sabado', 'domingo', 'lunes', 'martes', 'miercoles', 'jueves']
-      : ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
-    const diasL = type === 'adelantada'
-      ? ['Viernes', 'Sábado', 'Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves']
-      : ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+    y += 10;
+    doc.setFont(undefined, 'normal');
 
-    diasL.forEach((d, i) => {
+    const diasEstandar = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+    const diasKEstandar = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
+    const diasAdelantada = ['Viernes', 'Sábado', 'Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves'];
+    const diasKAdelantada = ['viernes', 'sabado', 'domingo', 'lunes', 'martes', 'miercoles', 'jueves'];
+
+    const dias = type === 'adelantada' ? diasAdelantada : diasEstandar;
+    const diasK = type === 'adelantada' ? diasKAdelantada : diasKEstandar;
+
+    dias.forEach((d, i) => {
+      const hrs = liq.hours?.[diasK[i]] || 0;
       if (liq.hours?.[diasK[i]] !== undefined) {
-        doc.text(d + ': ' + (liq.hours[diasK[i]] || 0).toFixed(1) + ' hs', 25, y); y += 6;
+        doc.text(d + ': ' + hrs.toFixed(1) + ' hs', 25, y);
+        y += 6;
       }
     });
+
     doc.setFont(undefined, 'bold');
     doc.text('Total: ' + (liq.calculations?.totalHours || 0).toFixed(1) + ' hs', 25, y);
 
-    y += 12; doc.setFillColor(240, 240, 240);
-    doc.rect(20, y - 5, 170, 7, 'F'); doc.text('LIQUIDACIÓN', 25, y);
-    y += 10; doc.setFont(undefined, 'normal');
+    y += 12;
+    doc.setFillColor(240, 240, 240);
+    doc.rect(20, y - 5, 170, 7, 'F');
+    doc.text('LIQUIDACIÓN', 25, y);
+
+    y += 10;
+    doc.setFont(undefined, 'normal');
     const r = liq.ratesUsed || rates;
 
     const addItem = (label, val, bold = false) => {
@@ -100,35 +135,166 @@ export default function SueldosHistorial() {
       y += (lines.length * 5) + 2;
     };
 
-    const eRate = liq.calculations?.effectiveHourlyRate || r.hourlyRate;
-    addItem('Valor hora $' + eRate + ' x ' + (liq.calculations?.totalHours || 0).toFixed(1) + ' hs', liq.calculations?.valorSemana || 0);
-    if (liq.calculations?.valorBocas > 0) {
-      y += 2; doc.setFont(undefined, 'bold'); doc.text('Bocas:', 25, y); y += 6; doc.setFont(undefined, 'normal');
-      if (liq.bocasObraNueva2p > 0) addItem('  ON 2p: ' + liq.bocasObraNueva2p + ' (x $' + (r.bocaObraNueva2p || 0) + ')', liq.calculations?.vbon2 || 0);
-      if (liq.bocasObraNueva3p > 0) addItem('  ON 3p: ' + liq.bocasObraNueva3p + ' (x $' + (r.bocaObraNueva3p || 0) + ')', liq.calculations?.vbon3 || 0);
-      if (liq.bocasRefaccion2p > 0) addItem('  Ref 2p: ' + liq.bocasRefaccion2p + ' (x $' + (r.bocaRefaccion2p || 0) + ')', liq.calculations?.vref2 || 0);
-      if (liq.bocasRefaccion3p > 0) addItem('  Ref 3p: ' + liq.bocasRefaccion3p + ' (x $' + (r.bocaRefaccion3p || 0) + ')', liq.calculations?.vref3 || 0);
-    }
-    if (emp && emp.percentage > 0) addItem('Adicional (' + emp.percentage + '%)', liq.calculations?.adicional || 0);
-    if (liq.vacaciones > 0) addItem('Vacaciones', liq.vacaciones);
-    if (liq.bonoUocra > 0) addItem('Bono UOCRA', liq.bonoUocra);
-    if (liq.aguinaldo > 0) addItem('Aguinaldo', liq.aguinaldo);
-    if (liq.retroactivo > 0) addItem('Retroactivo', liq.retroactivo);
-    if (liq.adelanto > 0) { doc.setTextColor(220, 38, 38); addItem('Adelanto', -liq.adelanto); doc.setTextColor(0); }
+    const effectiveRate = liq.calculations?.effectiveHourlyRate || r.hourlyRate;
+    addItem('Valor hora $' + effectiveRate + ' x ' + (liq.calculations?.totalHours || 0).toFixed(1) + ' hs', liq.calculations?.valorSemana || 0);
 
-    y += 5; doc.setLineWidth(0.5); doc.line(20, y, 190, y); y += 10;
-    doc.setFont(undefined, 'bold'); doc.setFontSize(12);
-    doc.text('TOTAL SALARIO:', 25, y); doc.text('$' + (liq.calculations?.totalSalario || 0).toFixed(2), 185, y, { align: 'right' });
-    y += 8; doc.setTextColor(37, 99, 235);
-    doc.text('TOTAL GASTOS:', 25, y); doc.text('$' + (liq.calculations?.totalGastos || 0).toFixed(2), 185, y, { align: 'right' });
+    if (liq.calculations?.valorBocas > 0) {
+      y += 2;
+      doc.setFont(undefined, 'bold');
+      doc.text('Bocas:', 25, y);
+      y += 6;
+      doc.setFont(undefined, 'normal');
+
+      if (liq.bocasObraNueva2p > 0) addItem('  ON 2p: ' + liq.bocasObraNueva2p + ' (x $' + (r.bocaObraNueva2p || 0) + ')' + (liq.bocasObraNueva2pObra ? ' - ' + liq.bocasObraNueva2pObra : ''), liq.calculations?.vbon2 || 0);
+      if (liq.bocasObraNueva3p > 0) addItem('  ON 3p: ' + liq.bocasObraNueva3p + ' (x $' + (r.bocaObraNueva3p || 0) + ')' + (liq.bocasObraNueva3pObra ? ' - ' + liq.bocasObraNueva3pObra : ''), liq.calculations?.vbon3 || 0);
+      if (liq.bocasRefaccion2p > 0) addItem('  Ref 2p: ' + liq.bocasRefaccion2p + ' (x $' + (r.bocaRefaccion2p || 0) + ')' + (liq.bocasRefaccion2pObra ? ' - ' + liq.bocasRefaccion2pObra : ''), liq.calculations?.vref2 || 0);
+      if (liq.bocasRefaccion3p > 0) addItem('  Ref 3p: ' + liq.bocasRefaccion3p + ' (x $' + (r.bocaRefaccion3p || 0) + ')' + (liq.bocasRefaccion3pObra ? ' - ' + liq.bocasRefaccion3pObra : ''), liq.calculations?.vref3 || 0);
+    }
+
+    if (emp && emp.percentage > 0) {
+      addItem('Adicional (' + emp.percentage + '%)', liq.calculations?.adicional || 0);
+    }
+    if (liq.vacaciones > 0) addItem('Vacaciones' + (liq.vacacionesObs ? ' - ' + liq.vacacionesObs : ''), liq.vacaciones);
+    if (liq.bonoUocra > 0) addItem('Bono UOCRA' + (liq.bonoUocraObs ? ' - ' + liq.bonoUocraObs : ''), liq.bonoUocra);
+    if (liq.aguinaldo > 0) addItem('Aguinaldo' + (liq.aguinaldoObs ? ' - ' + liq.aguinaldoObs : ''), liq.aguinaldo);
+    if (liq.retroactivo > 0) addItem('Retroactivo' + (liq.retroactivoObs ? ' - ' + liq.retroactivoObs : ''), liq.retroactivo);
+
+    if (liq.adelanto > 0) {
+      doc.setTextColor(220, 38, 38);
+      addItem('Adelanto', -liq.adelanto);
+      doc.setTextColor(0);
+    }
+
+    if (liq.gastos && liq.gastos.length > 0) {
+      y += 5;
+      doc.setFillColor(240, 240, 240);
+      doc.rect(20, y - 5, 170, 7, 'F');
+      doc.setFont(undefined, 'bold');
+      doc.text('GASTOS (transf. aparte)', 25, y);
+      y += 8;
+      doc.setFont(undefined, 'normal');
+      liq.gastos.forEach(g => {
+        addItem(g.nombre || 'Gasto', g.valor || 0);
+      });
+    }
+
+    y += 5;
+    doc.setLineWidth(0.5);
+    doc.line(20, y, 190, y);
+    y += 10;
+
+    doc.setFont(undefined, 'bold');
+    doc.setFontSize(12);
+    doc.text('TOTAL SALARIO:', 25, y);
+    doc.text('$' + (liq.calculations?.totalSalario || 0).toFixed(2), 185, y, { align: 'right' });
+
+    y += 8;
+    doc.setTextColor(37, 99, 235);
+    doc.text('TOTAL GASTOS:', 25, y);
+    doc.text('$' + (liq.calculations?.totalGastos || 0).toFixed(2), 185, y, { align: 'right' });
     doc.setTextColor(0);
-    y += 12; doc.setFillColor(240, 255, 240); doc.setDrawColor(34, 197, 94);
+
+    y += 12;
+    doc.setFillColor(240, 255, 240);
+    doc.setDrawColor(34, 197, 94);
     doc.roundedRect(20, y - 8, 170, 14, 2, 2, 'FD');
-    doc.setFontSize(14); doc.setTextColor(21, 128, 61);
-    doc.text('TOTAL A PAGAR:', 25, y); doc.text('$' + (liq.calculations?.total || 0).toFixed(2), 185, y, { align: 'right' });
-    doc.setFontSize(8); doc.setTextColor(100); doc.setFont(undefined, 'normal');
-    doc.text('Liquidado por: ' + liq.createdBy + ' - ' + new Date(liq.createdAt).toLocaleString('es-AR'), 20, 285);
+    doc.setFontSize(14);
+    doc.setTextColor(21, 128, 61);
+    doc.text('TOTAL A PAGAR:', 25, y);
+    doc.text('$' + (liq.calculations?.total || 0).toFixed(2), 185, y, { align: 'right' });
+
+    if (liq.notas) {
+      y += 15;
+      doc.setFontSize(10);
+      doc.setTextColor(0);
+      doc.setFillColor(250, 250, 250);
+      doc.rect(20, y - 5, 170, 7, 'F');
+      doc.setFont(undefined, 'bold');
+      doc.text('ACLARACIONES / NOTAS', 25, y);
+      y += 8;
+      doc.setFont(undefined, 'italic');
+      const splitNotas = doc.splitTextToSize(liq.notas, 160);
+      doc.text(splitNotas, 25, y);
+      y += splitNotas.length * 5;
+      doc.setFont(undefined, 'normal');
+    }
+
+    doc.setFontSize(8);
+    doc.setTextColor(100);
+    doc.setFont(undefined, 'normal');
+    doc.text('Liquidado por: ' + (liq.createdBy || 'CINDEA') + ' - ' + (liq.createdAt ? new Date(liq.createdAt).toLocaleString('es-AR') : ''), 20, 285);
+
     doc.save('Liquidacion_' + (liq.employeeName || '').replace(/\s/g, '_') + '_Sem' + liq.week + '_' + liq.year + '.pdf');
+  };
+
+  const downloadReportePDF = async () => {
+    const doc = new jsPDF();
+    const logo = await getLogoBase64();
+
+    if (logo) {
+      doc.addImage(logo, 'JPEG', 0, 0, 210, 35);
+      doc.setFontSize(14);
+      doc.setFont(undefined, 'bold');
+      doc.text('Reporte de Liquidaciones', 105, 45, { align: 'center' });
+    } else {
+      doc.setFontSize(16);
+      doc.setFont(undefined, 'bold');
+      doc.text('EULER CALEFACCIÓN', 105, 15, { align: 'center' });
+      doc.setFontSize(12);
+      doc.text('Reporte de Liquidaciones', 105, 23, { align: 'center' });
+    }
+
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'normal');
+    let ft = 'Filtros: ';
+    const fs = [];
+    if (fYear) fs.push('Año ' + fYear);
+    if (fMonth !== '') fs.push(MESES[parseInt(fMonth)]);
+    if (fWeek) fs.push('Semana ' + fWeek);
+    if (fEmp) {
+      const e = employees.find(x => x.id === fEmp);
+      if (e) fs.push(getEmpName(e));
+    }
+    ft += fs.length > 0 ? fs.join(', ') : 'Ninguno';
+
+    doc.text(ft, 20, 55);
+    doc.text('Total: ' + filtered.length + ' liquidaciones', 20, 61);
+
+    let y = 70;
+    doc.setFontSize(9);
+    filtered.forEach((l, i) => {
+      if (y > 270) {
+        doc.addPage();
+        y = 20;
+      }
+      doc.text((i + 1) + '. ' + (l.employeeName || 'Sin nombre') + ' - Sem ' + l.week + '/' + l.year + ' - $' + (l.calculations?.total || 0).toFixed(2), 20, y);
+      y += 6;
+    });
+
+    y += 10;
+    if (y > 260) {
+      doc.addPage();
+      y = 20;
+    }
+    doc.setFontSize(11);
+    doc.setFont(undefined, 'bold');
+    doc.text('TOTALES', 20, y);
+    y += 8;
+    doc.setFont(undefined, 'normal');
+    doc.text('Horas Totales: ' + totals.hours.toFixed(1) + ' hs', 25, y);
+    y += 6;
+    doc.text('Bocas ON 2p: ' + totals.bon2 + ' | ON 3p: ' + totals.bon3, 25, y);
+    y += 6;
+    doc.text('Bocas Ref 2p: ' + totals.br2 + ' | Ref 3p: ' + totals.br3, 25, y);
+    y += 6;
+    doc.text('Salarios: $' + totals.sal.toFixed(2), 25, y);
+    y += 6;
+    doc.text('Gastos: $' + totals.gas.toFixed(2), 25, y);
+    y += 6;
+    doc.setFont(undefined, 'bold');
+    doc.text('Total: $' + totals.tot.toFixed(2), 25, y);
+
+    doc.save('Reporte_Liquidaciones.pdf');
   };
 
   const downloadExcel = () => {
@@ -169,7 +335,7 @@ export default function SueldosHistorial() {
         </div>
         <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
           <button onClick={downloadExcel} style={{ flex: 1, background: '#16a34a', color: 'white', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}><Download size={16} /> Excel Consolidado</button>
-          <button onClick={() => {}} style={{ flex: 1, background: '#dc2626', color: 'white', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}><Download size={16} /> PDF Reporte</button>
+          <button onClick={downloadReportePDF} style={{ flex: 1, background: '#dc2626', color: 'white', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}><Download size={16} /> PDF Reporte</button>
         </div>
       </div>
 

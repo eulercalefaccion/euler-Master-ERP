@@ -77,3 +77,18 @@ export const getEmpName = (e) => {
   if (e.name) return e.name;
   return '';
 };
+
+export const getLogoBase64 = async () => {
+  try {
+    const response = await fetch('/logo.jpeg');
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.readAsDataURL(blob);
+    });
+  } catch (e) {
+    console.error("Error loading logo", e);
+    return null;
+  }
+};
