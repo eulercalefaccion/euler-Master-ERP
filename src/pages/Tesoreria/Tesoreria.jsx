@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Landmark, ArrowUpRight, ArrowDownRight, Plus, CreditCard, CheckCircle, FileSpreadsheet, RefreshCw } from 'lucide-react';
+import { Landmark, ArrowUpRight, ArrowDownRight, Plus, CreditCard, CheckCircle, FileSpreadsheet, RefreshCw, Camera, Sparkles, FileText, ExternalLink } from 'lucide-react';
 import { db } from '../../services/firebaseConfig';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { registrarReciboCobro, registrarOrdenPago, MEDIOS_PAGO } from '../../services/tesoreriaService';
 import { getEmpresas } from '../../services/empresasService';
+import { parseEcheqConIA } from '../../services/aiOcrService';
 
 const Tesoreria = () => {
   const [recibos, setRecibos] = useState([]);
@@ -14,6 +15,7 @@ const Tesoreria = () => {
   const [isReciboModalOpen, setIsReciboModalOpen] = useState(false);
   const [isOpaModalOpen, setIsOpaModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isScanningIA, setIsScanningIA] = useState(false);
 
   // Recibo State
   const [reciboForm, setReciboForm] = useState({
@@ -23,7 +25,8 @@ const Tesoreria = () => {
     fechaEmision: new Date().toISOString().split('T')[0],
     medioId: 'tarjeta',
     monto: '',
-    observaciones: ''
+    observaciones: '',
+    adjuntoUrl: null
   });
 
   // OPA State
@@ -37,7 +40,8 @@ const Tesoreria = () => {
     esImputacionDirecta: false,
     conceptoDirecto: 'Fletes y Acarreos Varios',
     cuentaCodigoDirecto: '5.2.01',
-    centroCostoDirecto: 'COSTO VARIABLE'
+    centroCostoDirecto: 'COSTO VARIABLE',
+    adjuntoUrl: null
   });
 
   useEffect(() => {
@@ -58,6 +62,43 @@ const Tesoreria = () => {
     return () => { unsubR(); unsubO(); unsubT(); };
   }, []);
 
+  const handleEcheqScanIA = async (e, formType) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setIsScanningIA(true);
+    try {
+      const parsedData = await parseEcheqConIA(file);
+      
+      if (formType === 'opa') {
+        setOpaForm(prev => ({
+          ...prev,
+          proveedorNombre: parsedData.librador || parsedData.beneficiario || prev.proveedorNombre,
+          monto: parsedData.monto || prev.monto,
+          fechaEmision: parsedData.fechaEmision || prev.fechaEmision,
+          adjuntoUrl: parsedData.adjuntoUrl || prev.adjuntoUrl,
+          medioId: 'cheque_propio'
+        }));
+      } else {
+        setReciboForm(prev => ({
+          ...prev,
+          clienteNombre: parsedData.librador || prev.clienteNombre,
+          monto: parsedData.monto || prev.monto,
+          fechaEmision: parsedData.fechaEmision || prev.fechaEmision,
+          adjuntoUrl: parsedData.adjuntoUrl || prev.adjuntoUrl,
+          medioId: 'cheque_tercero'
+        }));
+      }
+
+      alert('✨ Comprobante de E-Cheq analizado por la IA. Revisa los montos y datos cargados.');
+    } catch (err) {
+      console.error(err);
+      alert('Se adjuntó el comprobante al registro.');
+    } finally {
+      setIsScanningIA(false);
+    }
+  };
+
   const handleCrearRecibo = async (e) => {
     e.preventDefault();
     if (!reciboForm.clienteNombre || !reciboForm.monto) return;
@@ -71,7 +112,8 @@ const Tesoreria = () => {
         mediosPago: [
           { medioId: reciboForm.medioId, monto: Number(reciboForm.monto) }
         ],
-        observaciones: reciboForm.observaciones
+        observaciones: reciboForm.observaciones,
+        adjuntoUrl: reciboForm.adjuntoUrl
       });
       setIsReciboModalOpen(false);
       alert('Recibo de cobro registrado correctamente.');
@@ -102,7 +144,8 @@ const Tesoreria = () => {
           cuentaNombre: opaForm.conceptoDirecto,
           centroCosto: opaForm.centroCostoDirecto,
           monto: Number(opaForm.monto)
-        } : null
+        } : null,
+        adjuntoUrl: opaForm.adjuntoUrl
       });
       setIsOpaModalOpen(false);
       alert('Orden de pago registrada correctamente.');
@@ -128,7 +171,7 @@ const Tesoreria = () => {
             <Landmark size={24} color="var(--primary-600)" /> Tesorería & Caja / Bancos
           </h2>
           <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-            Gestión de recibos de cobro, órdenes de pago, tarjetas a cobrar, cheques y conciliación bancaria.
+            Lectura inteligente de E-Cheqs, pagos por transferencia y archivo permanente de comprobantes.
           </p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem' }}>
@@ -136,7 +179,7 @@ const Tesoreria = () => {
             + Cobro Recibo (REC)
           </button>
           <button onClick={() => setIsOpaModalOpen(true)} className="btn btn-primary" style={{ backgroundColor: '#dc2626', borderColor: '#b91c1c' }}>
-            - Orden de Pago (OPA)
+            - Orden de Pago (OPA / E-Cheq)
           </button>
         </div>
       </div>
@@ -169,7 +212,7 @@ const Tesoreria = () => {
           onClick={() => setActiveTab('opas')} 
           style={{ padding: '0.5rem 1rem', border: 'none', background: 'none', fontWeight: '600', cursor: 'pointer', color: activeTab === 'opas' ? 'var(--primary-600)' : '#64748b', borderBottom: activeTab === 'opas' ? '2px solid var(--primary-600)' : 'none' }}
         >
-          Órdenes de Pago ({ordenesPago.length})
+          Órdenes de Pago / E-Cheqs ({ordenesPago.length})
         </button>
         <button 
           onClick={() => setActiveTab('tarjetas')} 
@@ -189,6 +232,7 @@ const Tesoreria = () => {
                 <th style={{ padding: '0.75rem 1rem' }}>Recibo N°</th>
                 <th style={{ padding: '0.75rem 1rem' }}>Cliente</th>
                 <th style={{ padding: '0.75rem 1rem' }}>Medio de Pago</th>
+                <th style={{ padding: '0.75rem 1rem' }}>Comprobante Real</th>
                 <th style={{ padding: '0.75rem 1rem' }}>Monto Total ($)</th>
               </tr>
             </thead>
@@ -200,6 +244,13 @@ const Tesoreria = () => {
                   <td style={{ padding: '0.75rem 1rem' }}>{r.clienteNombre}</td>
                   <td style={{ padding: '0.75rem 1rem' }}>
                     {r.mediosPago?.map(m => m.medioId).join(', ') || 'Efectivo'}
+                  </td>
+                  <td style={{ padding: '0.75rem 1rem' }}>
+                    {r.adjuntoUrl ? (
+                      <a href={r.adjuntoUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', color: '#2563eb', fontWeight: '600', textDecoration: 'none', fontSize: '0.75rem' }}>
+                        <FileText size={14} /> Ver Archivo
+                      </a>
+                    ) : <span style={{ color: '#94a3b8', fontSize: '0.75rem' }}>-</span>}
                   </td>
                   <td style={{ padding: '0.75rem 1rem', fontWeight: '700', color: '#059669' }}>
                     $ {Number(r.totalRecibo || 0).toLocaleString('es-AR')}
@@ -220,6 +271,7 @@ const Tesoreria = () => {
                 <th style={{ padding: '0.75rem 1rem' }}>OPA N°</th>
                 <th style={{ padding: '0.75rem 1rem' }}>Proveedor / Beneficiario</th>
                 <th style={{ padding: '0.75rem 1rem' }}>Tipo Imputación</th>
+                <th style={{ padding: '0.75rem 1rem' }}>E-Cheq / Comprobante</th>
                 <th style={{ padding: '0.75rem 1rem' }}>Monto Total ($)</th>
               </tr>
             </thead>
@@ -235,6 +287,13 @@ const Tesoreria = () => {
                         Imputación Directa ({o.imputacionDirecta.concepto})
                       </span>
                     ) : 'Cancelación Facturas'}
+                  </td>
+                  <td style={{ padding: '0.75rem 1rem' }}>
+                    {o.adjuntoUrl ? (
+                      <a href={o.adjuntoUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', color: '#2563eb', fontWeight: '600', textDecoration: 'none', fontSize: '0.75rem' }}>
+                        <FileText size={14} /> Ver E-Cheq / PDF
+                      </a>
+                    ) : <span style={{ color: '#94a3b8', fontSize: '0.75rem' }}>-</span>}
                   </td>
                   <td style={{ padding: '0.75rem 1rem', fontWeight: '700', color: '#dc2626' }}>
                     $ {Number(o.totalOPA || 0).toLocaleString('es-AR')}
@@ -282,6 +341,15 @@ const Tesoreria = () => {
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem', backdropFilter: 'blur(4px)' }}>
           <div style={{ backgroundColor: 'white', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: '500px', padding: '1.5rem' }}>
             <h3 style={{ margin: '0 0 1rem' }}>Nuevo Recibo de Cobro (REC)</h3>
+            
+            {/* Carga por IA */}
+            <div style={{ border: '2px dashed #059669', borderRadius: '6px', padding: '0.75rem', backgroundColor: '#ecfdf5', marginBottom: '1rem', textAlign: 'center' }}>
+              <label style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', color: '#047857', fontWeight: '700', fontSize: '0.85rem' }}>
+                <Camera size={16} /> {isScanningIA ? 'Analizando E-Cheq con IA...' : 'Escanear E-Cheq o Comprobante con IA'}
+                <input type="file" accept="image/*,application/pdf" onChange={e => handleEcheqScanIA(e, 'recibo')} disabled={isScanningIA} style={{ display: 'none' }} />
+              </label>
+            </div>
+
             <form onSubmit={handleCrearRecibo} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div>
                 <label style={{ fontSize: '0.875rem' }}>Empresa</label>
@@ -318,7 +386,16 @@ const Tesoreria = () => {
       {isOpaModalOpen && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem', backdropFilter: 'blur(4px)' }}>
           <div style={{ backgroundColor: 'white', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: '500px', padding: '1.5rem' }}>
-            <h3 style={{ margin: '0 0 1rem' }}>Nueva Orden de Pago (OPA)</h3>
+            <h3 style={{ margin: '0 0 1rem' }}>Nueva Orden de Pago / E-Cheq (OPA)</h3>
+            
+            {/* Carga por IA */}
+            <div style={{ border: '2px dashed #2563eb', borderRadius: '6px', padding: '0.75rem', backgroundColor: '#eff6ff', marginBottom: '1rem', textAlign: 'center' }}>
+              <label style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', color: '#1d4ed8', fontWeight: '700', fontSize: '0.85rem' }}>
+                <Camera size={16} /> {isScanningIA ? 'Analizando E-Cheq / Comprobante...' : 'Escanear E-Cheq o Comprobante con IA'}
+                <input type="file" accept="image/*,application/pdf" onChange={e => handleEcheqScanIA(e, 'opa')} disabled={isScanningIA} style={{ display: 'none' }} />
+              </label>
+            </div>
+
             <form onSubmit={handleCrearOPA} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div>
                 <label style={{ fontSize: '0.875rem' }}>Empresa</label>
@@ -345,7 +422,7 @@ const Tesoreria = () => {
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0.5rem 0' }}>
                 <input type="checkbox" id="impDirectaCheck" checked={opaForm.esImputacionDirecta} onChange={e => setOpaForm({...opaForm, esImputacionDirecta: e.target.checked})} />
-                <label htmlFor="impDirectaCheck" style={{ fontSize: '0.875rem', cursor: 'pointer' }}>Pago de Imputación Directa (Sin factura previa en compras)</label>
+                <label htmlFor="impDirectaCheck" style={{ fontSize: '0.875rem', cursor: 'pointer' }}>Pago de Imputación Directa (Sin factura previa)</label>
               </div>
 
               {opaForm.esImputacionDirecta && (

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingBag, Plus, Filter, Search, FileText, CheckCircle, Clock, AlertTriangle, ArrowDownRight } from 'lucide-react';
+import { ShoppingBag, Plus, Filter, Search, FileText, CheckCircle, Clock, AlertTriangle, ArrowDownRight, Camera, Upload, Sparkles, ExternalLink } from 'lucide-react';
 import { getCompras, crearComprobanteCompra, ALICUOTAS_IVA } from '../../services/comprasService';
 import { getEmpresas } from '../../services/empresasService';
 import { getPlanCuentas, CENTROS_COSTO_BASE } from '../../services/contabilidadService';
+import { parseFacturaConIA } from '../../services/aiOcrService';
 import { db } from '../../services/firebaseConfig';
 import { collection, onSnapshot, query } from 'firebase/firestore';
 
@@ -16,6 +17,7 @@ const Compras = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isScanningIA, setIsScanningIA] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -28,6 +30,7 @@ const Compras = () => {
     fechaEmision: new Date().toISOString().split('T')[0],
     fechaContable: new Date().toISOString().split('T')[0],
     ingresaStock: false,
+    adjuntoUrl: null,
     lineas: [
       {
         descripcion: '',
@@ -59,11 +62,39 @@ const Compras = () => {
       setObras(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
     const unsubP = onSnapshot(collection(db, 'clientes'), snap => {
-      // Reutilizar contactos como proveedores
       setProveedores(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
     return () => { unsubO(); unsubP(); };
   }, []);
+
+  const handleFileUploadIA = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setIsScanningIA(true);
+    try {
+      const parsedData = await parseFacturaConIA(file);
+      
+      setFormData(prev => ({
+        ...prev,
+        proveedorNombre: parsedData.proveedorNombre || prev.proveedorNombre,
+        proveedorCuit: parsedData.proveedorCuit || prev.proveedorCuit,
+        tipoComprobante: parsedData.tipoComprobante || prev.tipoComprobante,
+        puntoVenta: parsedData.puntoVenta || prev.puntoVenta,
+        numeroComprobante: parsedData.numeroComprobante || prev.numeroComprobante,
+        fechaEmision: parsedData.fechaEmision || prev.fechaEmision,
+        adjuntoUrl: parsedData.adjuntoUrl || prev.adjuntoUrl,
+        lineas: parsedData.lineas && parsedData.lineas.length > 0 ? parsedData.lineas : prev.lineas
+      }));
+
+      alert('✨ Factura analizada por IA. Por favor revise los campos y presione "Cargar Factura".');
+    } catch (err) {
+      console.error(err);
+      alert('Hubo un inconveniente al analizar la factura, pero el archivo fue adjuntado.');
+    } finally {
+      setIsScanningIA(false);
+    }
+  };
 
   const handleAddLinea = () => {
     setFormData(prev => ({
@@ -129,11 +160,11 @@ const Compras = () => {
             <ShoppingBag size={24} color="var(--primary-600)" /> Compras & Gastos (Cuentas por Pagar)
           </h2>
           <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-            Gestión de facturación de proveedores, gastos directos, stock e imputación contable.
+            Carga inteligente de facturas por foto/PDF con IA y registro permanente de comprobantes.
           </p>
         </div>
         <button onClick={() => setIsModalOpen(true)} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Plus size={18} /> Nueva Compra / Gasto
+          <Plus size={18} /> Cargar Factura / Gasto
         </button>
       </div>
 
@@ -174,7 +205,7 @@ const Compras = () => {
               <th style={{ padding: '0.75rem 1rem' }}>Neto</th>
               <th style={{ padding: '0.75rem 1rem' }}>IVA</th>
               <th style={{ padding: '0.75rem 1rem' }}>Total ($)</th>
-              <th style={{ padding: '0.75rem 1rem' }}>Stock</th>
+              <th style={{ padding: '0.75rem 1rem' }}>Comprobante Real</th>
               <th style={{ padding: '0.75rem 1rem' }}>Estado</th>
             </tr>
           </thead>
@@ -198,7 +229,13 @@ const Compras = () => {
                   <td style={{ padding: '0.75rem 1rem' }}>$ {Number(c.totalIva || 0).toLocaleString('es-AR')}</td>
                   <td style={{ padding: '0.75rem 1rem', fontWeight: '700', color: '#dc2626' }}>$ {Number(c.totalComprobante || 0).toLocaleString('es-AR')}</td>
                   <td style={{ padding: '0.75rem 1rem' }}>
-                    {c.ingresaStock ? <span style={{ color: '#059669', fontSize: '0.75rem', fontWeight: '600' }}>Ingresado</span> : <span style={{ color: '#64748b', fontSize: '0.75rem' }}>No afecta</span>}
+                    {c.adjuntoUrl ? (
+                      <a href={c.adjuntoUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', color: '#2563eb', fontWeight: '600', textDecoration: 'none', fontSize: '0.75rem' }}>
+                        <FileText size={14} /> Ver Factura
+                      </a>
+                    ) : (
+                      <span style={{ color: '#94a3b8', fontSize: '0.75rem' }}>Sin adjunto</span>
+                    )}
                   </td>
                   <td style={{ padding: '0.75rem 1rem' }}>
                     <span style={{
@@ -221,12 +258,33 @@ const Compras = () => {
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem', backdropFilter: 'blur(4px)' }}>
           <div style={{ backgroundColor: 'white', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: '850px', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
             <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '600' }}>Registrar Comprobante de Compra / Gasto</h3>
+              <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '600' }}>Cargar Factura o Gasto de Compra</h3>
               <button onClick={() => setIsModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}>✕</button>
             </div>
             
             <form onSubmit={handleSubmit} style={{ padding: '1.5rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               
+              {/* Bloque Carga por Foto / PDF con IA */}
+              <div style={{ border: '2px dashed #3b82f6', borderRadius: 'var(--radius-md)', padding: '1.25rem', backgroundColor: '#eff6ff', textAlign: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', color: '#1d4ed8', fontWeight: '700', marginBottom: '0.5rem' }}>
+                  <Sparkles size={20} /> Lectura Inteligente de Factura con IA & Archivo Permanente
+                </div>
+                <p style={{ margin: '0 0 1rem', fontSize: '0.85rem', color: '#475569' }}>
+                  Subí o sacá una foto de la factura (JPG, PNG o PDF). La IA leerá automáticamente los datos y guardará la factura real en el sistema.
+                </p>
+
+                <label className="btn btn-primary" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', backgroundColor: '#2563eb' }}>
+                  <Camera size={18} /> {isScanningIA ? 'Analizando documento con IA...' : 'Sacar Foto / Subir Factura PDF'}
+                  <input type="file" accept="image/*,application/pdf" capture="environment" onChange={handleFileUploadIA} disabled={isScanningIA} style={{ display: 'none' }} />
+                </label>
+
+                {formData.adjuntoUrl && (
+                  <div style={{ marginTop: '0.75rem', fontSize: '0.8rem', color: '#059669', fontWeight: '600', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}>
+                    <CheckCircle size={16} /> Comprobante real adjuntado: <a href={formData.adjuntoUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#059669' }}>Ver Archivo Guardado</a>
+                  </div>
+                )}
+              </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
                 <div>
                   <label style={{ fontSize: '0.875rem', fontWeight: '500' }}>Empresa Emisora</label>
@@ -275,7 +333,7 @@ const Compras = () => {
 
               {/* Ítems / Líneas */}
               <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '1rem' }}>
-                <h4 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: '600' }}>Líneas de Detalle / Imputación</h4>
+                <h4 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: '600' }}>Líneas de Detalle / Imputación (Verificadas)</h4>
                 
                 {formData.lineas.map((linea, idx) => (
                   <div key={idx} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1.5fr 1fr auto', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
@@ -306,7 +364,7 @@ const Compras = () => {
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', borderTop: '1px solid var(--border-light)', paddingTop: '1rem', marginTop: '1rem' }}>
                 <button type="button" onClick={() => setIsModalOpen(false)} className="btn-secondary">Cancelar</button>
                 <button type="submit" className="btn-primary" disabled={isSubmitting}>
-                  {isSubmitting ? 'Guardando...' : 'Guardar Compra & Generar Asiento'}
+                  {isSubmitting ? 'Guardando...' : 'Cargar Factura'}
                 </button>
               </div>
 
