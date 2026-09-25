@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth, isSuperAdminEmail } from '../../context/AuthContext';
 import ReportesTiempos from './ReportesTiempos';
 import ReportesEncuestas from './ReportesEncuestas';
 import ReportesIA from './ReportesIA';
@@ -11,7 +11,7 @@ const Reportes = () => {
   const [activeTab, setActiveTab] = useState('tiempos');
 
   // ─── Guard: solo administradores ──────────────────────────────────────────
-  const isAdmin = currentUser?.role === 'administrador' || currentUser?.email === 'nicolas@euler.com.ar';
+  const isAdmin = currentUser?.role === 'administrador' || isSuperAdminEmail(currentUser?.email);
 
   if (!isAdmin) {
     return (

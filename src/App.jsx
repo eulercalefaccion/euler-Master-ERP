@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { JornadasProvider } from './context/JornadasContext';
-import { useAuth } from './context/AuthContext';
+import { useAuth, isSuperAdminEmail } from './context/AuthContext';
 import { TecnicosProvider } from './servicios_app/components/PinLock';
 import MainLayout from './layouts/MainLayout';
 import PresupuestosCRM from './pages/Presupuestos/PresupuestosCRM';
@@ -35,7 +35,10 @@ const PrivateRoute = ({ children, requiredRole }) => {
   
   if (!currentUser) return <Navigate to="/login" />;
   
-  if (currentUser.isActive === false) {
+  const isSuperAdmin = isSuperAdminEmail(currentUser.email);
+  const isAdmin = currentUser.role === 'administrador' || isSuperAdmin;
+
+  if (currentUser.isActive === false && !isSuperAdmin) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg-primary)', padding: '2rem', textAlign: 'center' }}>
         <h2 style={{ color: 'var(--primary-700)', marginBottom: '1rem' }}>Cuenta Inactiva</h2>
@@ -45,7 +48,7 @@ const PrivateRoute = ({ children, requiredRole }) => {
     );
   }
 
-  if (requiredRole && currentUser.role !== requiredRole) {
+  if (requiredRole && currentUser.role !== requiredRole && !isAdmin) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg-primary)', padding: '2rem', textAlign: 'center' }}>
         <h2 style={{ color: 'var(--accent-600)', marginBottom: '1rem' }}>Acceso Denegado</h2>
