@@ -136,19 +136,19 @@ const FlujoFondos = () => {
 
           {/* Selector Horizonte */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-            <span style={{ fontSize: '0.7rem', fontWeight: '700', color: '#64748b', letterSpacing: '0.05em' }}>HORIZONTE</span>
-            <div style={{ display: 'flex', backgroundColor: '#e2e8f0', padding: '2px', borderRadius: '6px' }}>
-              {[15, 30, 45].map(h => (
+            <span style={{ fontSize: '0.7rem', fontWeight: '700', color: '#64748b', letterSpacing: '0.05em' }}>HORIZONTE DE TIEMPO</span>
+            <div style={{ display: 'flex', backgroundColor: '#e2e8f0', padding: '2px', borderRadius: '6px', flexWrap: 'wrap' }}>
+              {[15, 30, 45, 60, 90, 120].map(h => (
                 <button
                   key={h}
                   onClick={() => setHorizonte(h)}
                   style={{
-                    padding: '0.35rem 0.85rem', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '700',
+                    padding: '0.35rem 0.65rem', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '700',
                     backgroundColor: horizonte === h ? '#0f172a' : 'transparent',
                     color: horizonte === h ? 'white' : '#475569'
                   }}
                 >
-                  {h} días
+                  {h}d
                 </button>
               ))}
             </div>
