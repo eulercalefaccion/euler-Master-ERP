@@ -32,6 +32,7 @@ service cloud.firestore {
           || request.auth.token.email in [
             'admin@eulercalefaccion.com',
             'cindeaalvarez07@gmail.com',
+            'cindea.alvarez@euler.com.ar',
             'agustin.ayala@euler.com.ar'
           ]
           || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'administrador'

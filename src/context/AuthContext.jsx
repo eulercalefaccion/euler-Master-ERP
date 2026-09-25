@@ -19,6 +19,7 @@ export const AUTHORIZED_ADMIN_EMAILS = [
   'nfayala@gmail.com',
   'admin@eulercalefaccion.com',
   'cindeaalvarez07@gmail.com',
+  'cindea.alvarez@euler.com.ar',
   'agustin.ayala@euler.com.ar'
 ];
 
