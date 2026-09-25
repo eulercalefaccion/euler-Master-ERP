@@ -15,7 +15,7 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Superadministradores por correo (dueño / desarrollador)
+    // Superadministradores por correo (dueño / desarrollador - únicos autorizados para nombrar administradores)
     function isSuperAdmin() {
       return isSignedIn() && request.auth.token.email in [
         'nicolas@euler.com.ar',
@@ -24,11 +24,16 @@ service cloud.firestore {
       ];
     }
 
-    // Administrador: verifica superadmin por correo o documento del usuario en Firestore
+    // Administradores autorizados del sistema
     function isAdmin() {
       return isSignedIn() 
         && (
           isSuperAdmin()
+          || request.auth.token.email in [
+            'admin@eulercalefaccion.com',
+            'cindeaalvarez07@gmail.com',
+            'agustin.ayala@euler.com.ar'
+          ]
           || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'administrador'
         );
     }
@@ -42,13 +47,35 @@ service cloud.firestore {
     match /users/{userId} {
       // Cualquier usuario autenticado real puede leer (necesario para verificar roles)
       allow read: if isSignedIn();
-      // Un usuario puede crear su propio documento (registro inicial)
-      allow create: if isSignedIn() && request.auth.uid == userId;
-      // Un usuario puede actualizar su propio documento PERO NO puede cambiar role ni isActive
-      allow update: if isSignedIn() && request.auth.uid == userId 
-        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'isActive']);
-      // Solo admin puede escribir cualquier campo (incluyendo role e isActive)
-      allow write: if isAdmin();
+      
+      // Creación de usuario:
+      // - Superadmin puede crear con cualquier rol (incluido administrador).
+      // - Otros admins o autoregistro solo pueden crearse con rol no-administrador.
+      allow create: if isSignedIn() && (
+        isSuperAdmin()
+        || (isAdmin() && (!('role' in request.resource.data) || request.resource.data.role != 'administrador'))
+        || (request.auth.uid == userId && (!('role' in request.resource.data) || request.resource.data.role != 'administrador'))
+      );
+
+      // Modificación de usuarios:
+      // - Superadmin puede modificar cualquier usuario y asignar cualquier rol.
+      // - Otros admins solo pueden editar usuarios que NO sean administradores y NO pueden asignar rol administrador.
+      // - El propio usuario solo puede editar datos personales (sin tocar role ni isActive).
+      allow update: if isSignedIn() && (
+        isSuperAdmin()
+        || (
+          isAdmin() 
+          && (!('role' in resource.data) || resource.data.role != 'administrador')
+          && (!('role' in request.resource.data) || request.resource.data.role != 'administrador')
+        )
+        || (
+          request.auth.uid == userId 
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'isActive'])
+        )
+      );
+
+      // Solo superadmin puede eliminar usuarios
+      allow delete: if isSuperAdmin();
     }
 
     // ─── COLECCIONES PRINCIPALES (ERP) ───────────────────────────

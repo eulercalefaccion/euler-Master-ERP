@@ -5,16 +5,31 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 const AuthContext = createContext();
 
-// Lista de correos maestros (dueño / desarrollador) que siempre son Administrador Activo
-export const ADMIN_EMAILS = [
+// Dueño / Desarrollador (Superadmin único con potestad de autorizar otros administradores)
+export const SUPERADMIN_EMAILS = [
   'nicolas@euler.com.ar',
   'info@euler.com.ar',
   'nfayala@gmail.com'
 ];
 
+// Administradores autorizados explícitamente por el dueño
+export const AUTHORIZED_ADMIN_EMAILS = [
+  'nicolas@euler.com.ar',
+  'info@euler.com.ar',
+  'nfayala@gmail.com',
+  'admin@eulercalefaccion.com',
+  'cindeaalvarez07@gmail.com',
+  'agustin.ayala@euler.com.ar'
+];
+
 export const isSuperAdminEmail = (email) => {
   if (!email) return false;
-  return ADMIN_EMAILS.includes(email.toLowerCase().trim());
+  return SUPERADMIN_EMAILS.includes(email.toLowerCase().trim());
+};
+
+export const isAuthorizedAdminEmail = (email) => {
+  if (!email) return false;
+  return AUTHORIZED_ADMIN_EMAILS.includes(email.toLowerCase().trim());
 };
 
 export function AuthProvider({ children }) {
@@ -26,17 +41,28 @@ export function AuthProvider({ children }) {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         try {
-          const isOwner = isSuperAdminEmail(user.email);
+          const isSuperAdmin = isSuperAdminEmail(user.email);
+          const isAuthorizedAdmin = isAuthorizedAdminEmail(user.email);
           const userDoc = await getDoc(doc(db, 'users', user.uid));
           
           if (userDoc.exists()) {
             const data = userDoc.data();
             
-            // Si es dueño/admin maestro, forzar administrador y activo
-            const effectiveRole = isOwner ? 'administrador' : (data.role || 'tecnico');
-            const effectiveActive = isOwner ? true : (data.isActive !== false);
+            // Determinar rol efectivo:
+            // - Superadmin siempre es 'administrador'
+            // - Si es administrador autorizado, mantiene 'administrador'
+            // - Nadie más puede asumir 'administrador' a menos que esté autorizado
+            let effectiveRole = data.role || 'tecnico';
+            if (isSuperAdmin) {
+              effectiveRole = 'administrador';
+            } else if (effectiveRole === 'administrador' && !isAuthorizedAdmin) {
+              console.warn("Usuario no autorizado para rol administrador. Asignando técnico:", user.email);
+              effectiveRole = 'tecnico';
+            }
 
-            if (isOwner && (data.role !== 'administrador' || data.isActive === false)) {
+            const effectiveActive = isSuperAdmin ? true : (data.isActive !== false);
+
+            if (isSuperAdmin && (data.role !== 'administrador' || data.isActive === false)) {
               data.role = 'administrador';
               data.isActive = true;
               try {
@@ -57,8 +83,8 @@ export function AuthProvider({ children }) {
             const newUserProfile = { 
               email: user.email, 
               name: user.displayName || user.email.split('@')[0], 
-              role: isOwner ? 'administrador' : 'tecnico', 
-              isActive: isOwner ? true : false 
+              role: isSuperAdmin ? 'administrador' : 'tecnico', 
+              isActive: isSuperAdmin ? true : false 
             };
             try {
               await setDoc(doc(db, 'users', user.uid), newUserProfile);
@@ -69,10 +95,10 @@ export function AuthProvider({ children }) {
           }
         } catch (error) {
           console.error("Error fetching user data from Firestore", error);
-          const isOwner = isSuperAdminEmail(user?.email);
+          const isSuperAdmin = isSuperAdminEmail(user?.email);
           setCurrentUser({
             ...user,
-            role: isOwner ? 'administrador' : 'tecnico',
+            role: isSuperAdmin ? 'administrador' : 'tecnico',
             isActive: true
           });
         }
@@ -102,8 +128,11 @@ export function AuthProvider({ children }) {
     return signOut(auth);
   };
 
+  const isSuperAdmin = isSuperAdminEmail(currentUser?.email);
+
   const value = {
     currentUser,
+    isSuperAdmin,
     login,
     loginWithGoogle,
     register,

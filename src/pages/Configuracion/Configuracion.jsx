@@ -3,9 +3,11 @@ import { collection, getDocs, doc, updateDoc, setDoc } from 'firebase/firestore'
 import { sendPasswordResetEmail, getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { initializeApp } from 'firebase/app';
 import { db, firebaseConfig, auth } from '../../services/firebaseConfig';
+import { useAuth, isSuperAdminEmail } from '../../context/AuthContext';
 import { Settings, UserX, UserCheck, ShieldAlert, Shield, Plus, KeyRound, Edit2, X, Save } from 'lucide-react';
 
 const Configuracion = () => {
+  const { currentUser, isSuperAdmin } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState(null);
@@ -42,6 +44,14 @@ const Configuracion = () => {
   }, []);
 
   const handleRoleChange = async (userId, newRole) => {
+    const targetUser = users.find(u => u.id === userId);
+
+    // Solo el dueño (superadmin) puede nombrar administradores o cambiar el rol de un administrador existente
+    if ((newRole === 'administrador' || targetUser?.role === 'administrador') && !isSuperAdmin) {
+      alert('Solo el dueño del sistema (Nicolás) tiene autorización para asignar o modificar el rol de Administrador.');
+      return;
+    }
+
     setUpdatingId(userId);
     try {
       const userRef = doc(db, 'users', userId);
@@ -49,13 +59,27 @@ const Configuracion = () => {
       setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u));
     } catch (error) {
       console.error('Error updating role:', error);
-      alert('Error al actualizar el rol');
+      alert('Error al actualizar el rol: no tienes permisos para esta acción.');
     } finally {
       setUpdatingId(null);
     }
   };
 
   const handleToggleStatus = async (userId, currentStatus) => {
+    const targetUser = users.find(u => u.id === userId);
+
+    // La cuenta del dueño no se puede suspender
+    if (targetUser && isSuperAdminEmail(targetUser.email)) {
+      alert('La cuenta principal del dueño está protegida y no puede ser suspendida.');
+      return;
+    }
+
+    // Solo el dueño puede suspender o reactivar administradores
+    if (targetUser?.role === 'administrador' && !isSuperAdmin) {
+      alert('Solo el dueño del sistema (Nicolás) puede suspender o reactivar administradores.');
+      return;
+    }
+
     const confirmMsg = currentStatus === false 
       ? '¿Estás seguro de reactivar a este usuario? Podrá acceder nuevamente al sistema.' 
       : '¿Estás seguro de suspender a este usuario? Ya no podrá acceder al sistema.';
@@ -70,7 +94,7 @@ const Configuracion = () => {
       setUsers(users.map(u => u.id === userId ? { ...u, isActive: newStatus } : u));
     } catch (error) {
       console.error('Error updating status:', error);
-      alert('Error al actualizar el estado');
+      alert('Error al actualizar el estado: no tienes permisos para esta acción.');
     } finally {
       setUpdatingId(null);
     }
@@ -104,6 +128,11 @@ const Configuracion = () => {
 
   const handleCreateUser = async (e) => {
     e.preventDefault();
+    if (newRole === 'administrador' && !isSuperAdmin) {
+      alert('Solo el dueño del sistema (Nicolás) puede crear usuarios con rol de Administrador.');
+      return;
+    }
+
     setIsCreating(true);
     try {
       // 1. Create secondary app to avoid logging out the current admin
@@ -120,7 +149,7 @@ const Configuracion = () => {
       
       // 4. Save to Firestore (using MAIN app db)
       const newUserProfile = {
-        email: newEmail.toLowerCase(),
+        email: newEmail.toLowerCase().trim(),
         name: newName,
         role: newRole,
         isActive: true
@@ -156,7 +185,12 @@ const Configuracion = () => {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <Settings color="var(--primary-600)" size={32} />
-          <h1 style={{ fontSize: '1.75rem', color: 'var(--text-primary)', margin: 0 }}>Configuración de Usuarios</h1>
+          <div>
+            <h1 style={{ fontSize: '1.75rem', color: 'var(--text-primary)', margin: 0 }}>Configuración de Usuarios</h1>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '0.25rem 0 0 0' }}>
+              Administradores autorizados: <strong>Nicolás, Admin, Cindy y Agustín</strong>. Solo Nicolás puede autorizar nuevos administradores.
+            </p>
+          </div>
         </div>
         <button 
           onClick={() => setIsModalOpen(true)}
@@ -194,87 +228,109 @@ const Configuracion = () => {
                   </td>
                 </tr>
               ) : (
-                users.map(user => (
-                  <tr key={user.id} style={{ borderBottom: '1px solid var(--border-light)', backgroundColor: user.isActive === false ? '#fff1f2' : 'transparent' }}>
-                    <td style={{ padding: '1rem 1.5rem', fontWeight: '500', color: 'var(--text-primary)' }}>
-                      {editingNameId === user.id ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <input 
-                            type="text" 
-                            className="input-field" 
-                            value={editNameValue} 
-                            onChange={(e) => setEditNameValue(e.target.value)}
-                            style={{ padding: '0.25rem 0.5rem', width: '150px' }}
-                          />
-                          <button onClick={() => handleSaveName(user.id)} style={{ color: 'var(--primary-600)', background: 'none', border: 'none', cursor: 'pointer' }}><Save size={16} /></button>
-                          <button onClick={() => setEditingNameId(null)} style={{ color: 'var(--text-tertiary)', background: 'none', border: 'none', cursor: 'pointer' }}><X size={16} /></button>
-                        </div>
-                      ) : (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <span>{user.name}</span>
-                          <button 
-                            onClick={() => { setEditingNameId(user.id); setEditNameValue(user.name || ''); }} 
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)' }}
-                            title="Editar nombre"
+                users.map(user => {
+                  const isUserSuperAdmin = isSuperAdminEmail(user.email);
+                  const isUserAdmin = user.role === 'administrador';
+                  const canModifyThisUserRole = isSuperAdmin || !isUserAdmin;
+                  const canToggleThisUserStatus = !isUserSuperAdmin && (isSuperAdmin || !isUserAdmin);
+
+                  return (
+                    <tr key={user.id} style={{ borderBottom: '1px solid var(--border-light)', backgroundColor: user.isActive === false ? '#fff1f2' : 'transparent' }}>
+                      <td style={{ padding: '1rem 1.5rem', fontWeight: '500', color: 'var(--text-primary)' }}>
+                        {editingNameId === user.id ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <input 
+                              type="text" 
+                              className="input-field" 
+                              value={editNameValue} 
+                              onChange={(e) => setEditNameValue(e.target.value)}
+                              style={{ padding: '0.25rem 0.5rem', width: '150px' }}
+                            />
+                            <button onClick={() => handleSaveName(user.id)} style={{ color: 'var(--primary-600)', background: 'none', border: 'none', cursor: 'pointer' }}><Save size={16} /></button>
+                            <button onClick={() => setEditingNameId(null)} style={{ color: 'var(--text-tertiary)', background: 'none', border: 'none', cursor: 'pointer' }}><X size={16} /></button>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span>{user.name}</span>
+                            <button 
+                              onClick={() => { setEditingNameId(user.id); setEditNameValue(user.name || ''); }} 
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)' }}
+                              title="Editar nombre"
+                            >
+                              <Edit2 size={12} />
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ padding: '1rem 1.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                        {user.email}
+                      </td>
+                      <td style={{ padding: '1rem 1.5rem' }}>
+                        <select
+                          className="input-field"
+                          value={user.role || 'tecnico'}
+                          onChange={(e) => handleRoleChange(user.id, e.target.value)}
+                          disabled={updatingId === user.id || !canModifyThisUserRole}
+                          title={!canModifyThisUserRole ? 'Solo Nicolás puede modificar a otros administradores' : ''}
+                          style={{ padding: '0.4rem', fontSize: '0.85rem', width: 'auto', minWidth: '140px', opacity: canModifyThisUserRole ? 1 : 0.7 }}
+                        >
+                          {isSuperAdmin && <option value="administrador">Administrador</option>}
+                          {!isSuperAdmin && isUserAdmin && <option value="administrador">Administrador (Fijo)</option>}
+                          <option value="operaciones">Operaciones</option>
+                          <option value="tecnico">Técnico/Instalador</option>
+                        </select>
+                      </td>
+                      <td style={{ padding: '1rem 1.5rem' }}>
+                        {user.isActive === false ? (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: '999px', backgroundColor: '#ffe4e6', color: '#e11d48', fontSize: '0.75rem', fontWeight: '600' }}>
+                            <ShieldAlert size={14} /> Inactivo
+                          </span>
+                        ) : (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: '999px', backgroundColor: '#dcfce7', color: '#166534', fontSize: '0.75rem', fontWeight: '600' }}>
+                            <Shield size={14} /> Activo
+                          </span>
+                        )}
+                      </td>
+                      <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                          <button
+                            onClick={() => handleResetPassword(user.email)}
+                            title="Enviar correo para restablecer contraseña"
+                            className="btn btn-secondary"
+                            style={{ padding: '0.4rem 0.6rem', display: 'inline-flex', alignItems: 'center' }}
                           >
-                            <Edit2 size={12} />
+                            <KeyRound size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleToggleStatus(user.id, user.isActive)}
+                            disabled={updatingId === user.id || !canToggleThisUserStatus}
+                            className={`btn ${user.isActive === false ? 'btn-primary' : 'btn-secondary'}`}
+                            style={{ 
+                              padding: '0.4rem 0.75rem', 
+                              fontSize: '0.8rem', 
+                              display: 'inline-flex', 
+                              alignItems: 'center', 
+                              gap: '0.35rem',
+                              opacity: canToggleThisUserStatus ? 1 : 0.4,
+                              cursor: canToggleThisUserStatus ? 'pointer' : 'not-allowed'
+                            }}
+                            title={
+                              isUserSuperAdmin 
+                                ? 'Cuenta principal protegida' 
+                                : (!canToggleThisUserStatus ? 'Solo Nicolás puede suspender administradores' : '')
+                            }
+                          >
+                            {user.isActive === false ? (
+                              <><UserCheck size={14} /> Reactivar</>
+                            ) : (
+                              <><UserX size={14} /> Suspender</>
+                            )}
                           </button>
                         </div>
-                      )}
-                    </td>
-                    <td style={{ padding: '1rem 1.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                      {user.email}
-                    </td>
-                    <td style={{ padding: '1rem 1.5rem' }}>
-                      <select
-                        className="input-field"
-                        value={user.role || 'tecnico'}
-                        onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                        disabled={updatingId === user.id}
-                        style={{ padding: '0.4rem', fontSize: '0.85rem', width: 'auto', minWidth: '140px' }}
-                      >
-                        <option value="administrador">Administrador</option>
-                        <option value="operaciones">Operaciones</option>
-                        <option value="tecnico">Técnico/Instalador</option>
-                      </select>
-                    </td>
-                    <td style={{ padding: '1rem 1.5rem' }}>
-                      {user.isActive === false ? (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: '999px', backgroundColor: '#ffe4e6', color: '#e11d48', fontSize: '0.75rem', fontWeight: '600' }}>
-                          <ShieldAlert size={14} /> Inactivo
-                        </span>
-                      ) : (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem', borderRadius: '999px', backgroundColor: '#dcfce7', color: '#166534', fontSize: '0.75rem', fontWeight: '600' }}>
-                          <Shield size={14} /> Activo
-                        </span>
-                      )}
-                    </td>
-                    <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-                        <button
-                          onClick={() => handleResetPassword(user.email)}
-                          title="Enviar correo para restablecer contraseña"
-                          className="btn btn-secondary"
-                          style={{ padding: '0.4rem 0.6rem', display: 'inline-flex', alignItems: 'center' }}
-                        >
-                          <KeyRound size={14} />
-                        </button>
-                        <button
-                          onClick={() => handleToggleStatus(user.id, user.isActive)}
-                          disabled={updatingId === user.id}
-                          className={`btn ${user.isActive === false ? 'btn-primary' : 'btn-secondary'}`}
-                          style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
-                        >
-                          {user.isActive === false ? (
-                            <><UserCheck size={14} /> Reactivar</>
-                          ) : (
-                            <><UserX size={14} /> Suspender</>
-                          )}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -311,8 +367,13 @@ const Configuracion = () => {
                 <select className="input-field" value={newRole} onChange={e => setNewRole(e.target.value)}>
                   <option value="tecnico">Técnico/Instalador</option>
                   <option value="operaciones">Operaciones</option>
-                  <option value="administrador">Administrador</option>
+                  {isSuperAdmin && <option value="administrador">Administrador</option>}
                 </select>
+                {!isSuperAdmin && (
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '0.25rem', display: 'block' }}>
+                    Solo Nicolás puede autorizar nuevos administradores.
+                  </span>
+                )}
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
