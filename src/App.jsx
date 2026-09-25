@@ -27,6 +27,7 @@ import ServiciosTecnicos from './servicios_app/pages/Admin';
 import ServiciosClientes from './servicios_app/pages/Clientes';
 import ClienteDetalle from './servicios_app/pages/ClienteDetalle';
 import NuevoServicio from './servicios_app/pages/NuevoServicio';
+import CompartirServicio from './servicios_app/pages/CompartirServicio';
 import './servicios_app/index.css';
 
 // Rutas Privadas
@@ -72,6 +73,7 @@ function App() {
         <Route path="/login" element={currentUser ? <Navigate to="/" /> : <Login />} />
         <Route path="/encuesta/:id" element={<EncuestaObra />} />
         <Route path="/presupuesto" element={<FormularioPublico />} />
+        <Route path="/ver/:id" element={<div className="servicios-app"><CompartirServicio /></div>} />
         <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
         <Route path="/clientes" element={<PrivateRoute><Clientes /></PrivateRoute>} />
         <Route path="/clientes/:id" element={<PrivateRoute><ClienteDetalleERP /></PrivateRoute>} />
