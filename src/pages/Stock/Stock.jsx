@@ -39,8 +39,8 @@ const Stock = () => {
   // Filtered
   const filtered = useMemo(() => {
     return items.filter(item => {
-      // Only show materials/kits (skip mano_de_obra/servicio for stock)
-      if (item.tipo === 'mano_de_obra' || item.tipo === 'servicio') return false;
+      // Only show materials/kits (skip mano_de_obra, servicio, y gasto de stock físico)
+      if (item.tipo === 'mano_de_obra' || item.tipo === 'servicio' || item.tipo === 'gasto') return false;
 
       const term = searchTerm.toLowerCase();
       const matchSearch = !term || item.descripcion?.toLowerCase().includes(term) || item.proveedor?.toLowerCase().includes(term);
@@ -49,6 +49,7 @@ const Stock = () => {
       const stock = item.stock ?? 0;
       const minimo = item.stockMinimo ?? 0;
       let matchStock = true;
+      if (filterStock === 'negativo') matchStock = stock < 0;
       if (filterStock === 'bajo') matchStock = stock > 0 && stock <= minimo;
       if (filterStock === 'sinstock') matchStock = stock === 0;
       
@@ -58,7 +59,7 @@ const Stock = () => {
 
   // Stats
   const stats = useMemo(() => {
-    const materiales = items.filter(i => i.tipo !== 'mano_de_obra' && i.tipo !== 'servicio');
+    const materiales = items.filter(i => i.tipo !== 'mano_de_obra' && i.tipo !== 'servicio' && i.tipo !== 'gasto');
     const conStock = materiales.filter(i => (i.stock ?? 0) > 0);
     const bajoStock = materiales.filter(i => {
       const s = i.stock ?? 0;
@@ -66,6 +67,7 @@ const Stock = () => {
       return s > 0 && m > 0 && s <= m;
     });
     const sinStock = materiales.filter(i => (i.stock ?? 0) === 0 && (i.stockMinimo ?? 0) > 0);
+    const stockNegativo = materiales.filter(i => (i.stock ?? 0) < 0);
 
     // Inventory value
     let valorTotal = 0;
@@ -77,12 +79,12 @@ const Stock = () => {
       }
     }
 
-    return { total: materiales.length, conStock: conStock.length, bajoStock: bajoStock.length, sinStock: sinStock.length, valorTotal };
+    return { total: materiales.length, conStock: conStock.length, bajoStock: bajoStock.length, sinStock: sinStock.length, stockNegativo: stockNegativo.length, valorTotal };
   }, [items, tc]);
 
   // Quick stock adjust
   const adjustStock = async (item, amount) => {
-    const newQty = Math.max(0, (item.stock ?? 0) + amount);
+    const newQty = (item.stock ?? 0) + amount;
     try {
       await updateDoc(doc(db, 'lista_precios', item.id), {
         stock: newQty,
@@ -113,11 +115,13 @@ const Stock = () => {
   const getStockStatus = (item) => {
     const stock = item.stock ?? 0;
     const reservado = item.stockReservado ?? 0;
-    const disponible = Math.max(0, stock - reservado);
+    const disponible = stock - reservado;
     const minimo = item.stockMinimo ?? 0;
+
+    if (stock < 0) return { label: 'Stock Negativo', color: 'red', icon: <AlertTriangle size={14} /> };
     if (minimo === 0 && stock === 0) return { label: 'Sin datos', color: 'gray', icon: null };
-    if (disponible === 0 && stock === 0) return { label: 'Sin stock', color: 'red', icon: <XCircle size={14} /> };
-    if (disponible === 0 && stock > 0) return { label: 'Todo reservado', color: 'orange', icon: <AlertTriangle size={14} /> };
+    if (disponible <= 0 && stock === 0) return { label: 'Sin stock', color: 'red', icon: <XCircle size={14} /> };
+    if (disponible <= 0 && stock > 0) return { label: 'Todo reservado', color: 'orange', icon: <AlertTriangle size={14} /> };
     if (minimo > 0 && disponible <= minimo) return { label: 'Bajo', color: 'orange', icon: <AlertTriangle size={14} /> };
     return { label: 'OK', color: 'green', icon: <CheckCircle size={14} /> };
   };

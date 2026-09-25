@@ -117,7 +117,55 @@ service cloud.firestore {
     }
 
     match /transacciones/{trxId} {
-      allow read, write: if isAdmin();
+      allow read, write: if isSignedIn();
+    }
+
+    match /empresas/{empresaId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /comprobantes_compra/{compraId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /comprobantes_venta/{ventaId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /recibos/{reciboId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /ordenes_pago/{opaId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /asientos_contables/{asientoId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /cuentas_bancarias/{cuentaId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /plan_cuentas/{cuentaId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /remitos/{remitoId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /cheques/{chequeId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /tarjetas_cobrar/{tarjetaId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /migraciones_gesdatta/{migId} {
+      allow read, write: if isSignedIn();
     }
 
     match /liquidaciones/{liquidacionId} {

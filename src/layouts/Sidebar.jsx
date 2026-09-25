@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, Calculator, ClipboardList, Package, MapPin, Receipt, HardHat, Wallet, DollarSign, Trash2, Zap, BarChart2, X, LogOut, Settings, Wrench } from 'lucide-react';
+import { LayoutDashboard, Users, Calculator, Package, MapPin, Receipt, HardHat, Wallet, DollarSign, Trash2, Zap, BarChart2, X, LogOut, Settings, Wrench, ShoppingBag, Tag, Landmark, BookOpen, Database } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const Sidebar = ({ className = '', isMobile, onClose }) => {
@@ -13,9 +13,10 @@ const Sidebar = ({ className = '', isMobile, onClose }) => {
       ]
     },
     {
-      label: 'COMERCIAL',
+      label: 'VENTAS & CRM',
       items: [
         { name: 'Clientes', icon: <Users size={20} />, path: '/clientes' },
+        { name: 'Ventas (AR)', icon: <Tag size={20} />, path: '/ventas' },
         { name: 'Presupuestos', icon: <Calculator size={20} />, path: '/presupuestos' },
         { name: 'Balance Térmico IA', icon: <Zap size={20} />, path: '/balance-termico' },
         { name: 'Estándares', icon: <Zap size={20} />, path: '/estandares' },
@@ -23,8 +24,9 @@ const Sidebar = ({ className = '', isMobile, onClose }) => {
       ]
     },
     {
-      label: 'OPERACIONES',
+      label: 'COMPRAS & OPERACIONES',
       items: [
+        { name: 'Compras & Gastos (AP)', icon: <ShoppingBag size={20} />, path: '/compras' },
         { name: 'Obras', icon: <HardHat size={20} />, path: '/obras' },
         { name: 'Servicios Técnicos', icon: <Wrench size={20} />, path: '/servicios' },
         { name: 'Stock', icon: <Package size={20} />, path: '/stock' },
@@ -32,11 +34,18 @@ const Sidebar = ({ className = '', isMobile, onClose }) => {
       ]
     },
     {
-      label: 'RRHH & FINANZAS',
+      label: 'TESORERÍA & CONTABILIDAD',
+      items: [
+        { name: 'Tesorería & Bancos', icon: <Landmark size={20} />, path: '/tesoreria' },
+        { name: 'Balance General', icon: <Wallet size={20} />, path: '/balance' },
+        { name: 'Contabilidad', icon: <BookOpen size={20} />, path: '/contabilidad' },
+      ]
+    },
+    {
+      label: 'RRHH',
       items: [
         { name: 'Colaboradores', icon: <Users size={20} />, path: '/colaboradores' },
         { name: 'Sueldos', icon: <Receipt size={20} />, path: '/sueldos' },
-        { name: 'Balance', icon: <Wallet size={20} />, path: '/balance' },
       ]
     },
     {
@@ -48,6 +57,7 @@ const Sidebar = ({ className = '', isMobile, onClose }) => {
     {
       label: 'SISTEMA',
       items: [
+        { name: 'Migración GesDatta', icon: <Database size={20} />, path: '/migracion-gesdatta' },
         { name: 'Configuración', icon: <Settings size={20} />, path: '/configuracion' },
         { name: 'Papelera', icon: <Trash2 size={20} />, path: '/papelera' },
       ]

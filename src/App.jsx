@@ -28,6 +28,13 @@ import ServiciosClientes from './servicios_app/pages/Clientes';
 import ClienteDetalle from './servicios_app/pages/ClienteDetalle';
 import NuevoServicio from './servicios_app/pages/NuevoServicio';
 import CompartirServicio from './servicios_app/pages/CompartirServicio';
+
+import Compras from './pages/Compras/Compras';
+import Ventas from './pages/Ventas/Ventas';
+import Tesoreria from './pages/Tesoreria/Tesoreria';
+import Contabilidad from './pages/Contabilidad/Contabilidad';
+import MigracionGesDatta from './pages/Migracion/MigracionGesDatta';
+
 import './servicios_app/index.css';
 
 // Rutas Privadas
@@ -77,6 +84,11 @@ function App() {
         <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
         <Route path="/clientes" element={<PrivateRoute><Clientes /></PrivateRoute>} />
         <Route path="/clientes/:id" element={<PrivateRoute><ClienteDetalleERP /></PrivateRoute>} />
+        <Route path="/compras" element={<PrivateRoute><Compras /></PrivateRoute>} />
+        <Route path="/ventas" element={<PrivateRoute><Ventas /></PrivateRoute>} />
+        <Route path="/tesoreria" element={<PrivateRoute><Tesoreria /></PrivateRoute>} />
+        <Route path="/contabilidad" element={<PrivateRoute><Contabilidad /></PrivateRoute>} />
+        <Route path="/migracion-gesdatta" element={<PrivateRoute requiredRole="administrador"><MigracionGesDatta /></PrivateRoute>} />
         <Route path="/servicios" element={<PrivateRoute><div className="servicios-app"><ServiciosTecnicos /></div></PrivateRoute>} />
         <Route path="/servicios/clientes" element={<PrivateRoute><div className="servicios-app"><ServiciosClientes /></div></PrivateRoute>} />
         <Route path="/servicios/clientes/:id" element={<PrivateRoute><div className="servicios-app"><ClienteDetalle /></div></PrivateRoute>} />
