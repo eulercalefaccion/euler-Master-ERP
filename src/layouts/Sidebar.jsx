@@ -36,6 +36,7 @@ const Sidebar = ({ className = '', isMobile, onClose }) => {
     {
       label: 'TESORERÍA & CONTABILIDAD',
       items: [
+        { name: 'Flujo de Fondos Proyectado', icon: <TrendingUp size={20} />, path: '/flujo-fondos' },
         { name: 'Tesorería & Bancos', icon: <Landmark size={20} />, path: '/tesoreria' },
         { name: 'Balance General', icon: <Wallet size={20} />, path: '/balance' },
         { name: 'Contabilidad', icon: <BookOpen size={20} />, path: '/contabilidad' },

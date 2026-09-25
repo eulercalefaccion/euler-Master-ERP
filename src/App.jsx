@@ -33,6 +33,7 @@ import Compras from './pages/Compras/Compras';
 import Ventas from './pages/Ventas/Ventas';
 import Tesoreria from './pages/Tesoreria/Tesoreria';
 import Contabilidad from './pages/Contabilidad/Contabilidad';
+import FlujoFondos from './pages/FlujoFondos/FlujoFondos';
 import MigracionGesDatta from './pages/Migracion/MigracionGesDatta';
 
 import './servicios_app/index.css';
@@ -87,6 +88,7 @@ function App() {
         <Route path="/compras" element={<PrivateRoute><Compras /></PrivateRoute>} />
         <Route path="/ventas" element={<PrivateRoute><Ventas /></PrivateRoute>} />
         <Route path="/tesoreria" element={<PrivateRoute><Tesoreria /></PrivateRoute>} />
+        <Route path="/flujo-fondos" element={<PrivateRoute><FlujoFondos /></PrivateRoute>} />
         <Route path="/contabilidad" element={<PrivateRoute><Contabilidad /></PrivateRoute>} />
         <Route path="/migracion-gesdatta" element={<PrivateRoute requiredRole="administrador"><MigracionGesDatta /></PrivateRoute>} />
         <Route path="/servicios" element={<PrivateRoute><div className="servicios-app"><ServiciosTecnicos /></div></PrivateRoute>} />
