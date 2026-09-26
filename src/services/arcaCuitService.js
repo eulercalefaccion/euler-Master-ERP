@@ -109,7 +109,26 @@ export const consultarCuitArca = async (cuitRaw) => {
   const esPersonaFisica = ['20', '23', '24', '27'].includes(prefijo);
   const dniExtraido = extraerDniDeCuit(cleanCuit);
 
-  // Intentamos fuentes en orden de velocidad y disponibilidad
+  // 1. Intentar Netlify Serverless Function oficial (servidor Node.js sin bloques CORS/Cloudflare)
+  try {
+    const fnUrl = `/.netlify/functions/cuitPadron?cuit=${cleanCuit}`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+    const res = await fetch(fnUrl, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data.exito && data.name) {
+        return data;
+      }
+    }
+  } catch (err) {
+    console.warn("[ARCA Service] Netlify Function fallback:", err);
+  }
+
+  // 2. Intentar fuentes HTML secundarias
   const fuentesHtml = [
     `/api/arca-cuit/${cleanCuit}`, // Netlify / Vite Proxy
     `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://www.cuitonline.com/search.php?q=${cleanCuit}`)}`,
