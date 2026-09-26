@@ -106,16 +106,21 @@ const parsePadronHtml = (html, cleanCuit) => {
  */
 const parseDuckDuckGoHtml = (html, cleanCuit) => {
   if (!html) return null;
-  const cuitFormatted = formatCUIT(cleanCuit);
 
   let name = '';
   let location = '';
+  let detailSlug = '';
+
+  // Extract detail page slug from URL in results: detalle/CUIT/nombre-con-guiones.html
+  const slugMatch = html.match(new RegExp(`detalle/${cleanCuit}/([a-z0-9-]+)\\.html`, 'i'));
+  if (slugMatch && slugMatch[1]) {
+    detailSlug = slugMatch[1];
+  }
 
   // Pattern 1: result__a link text: "NAME (XX-XXXXXXXX-X), LOCATION"
   const resultAMatch = html.match(/class=["']result__a["'][^>]*>([^<]+)\(\d{2}-\d{8}-\d\)/i);
   if (resultAMatch && resultAMatch[1]) {
     name = resultAMatch[1].trim();
-    // Check for location after the CUIT
     const fullMatch = html.match(/class=["']result__a["'][^>]*>[^<]+\(\d{2}-\d{8}-\d\),\s*([^<]+)/i);
     if (fullMatch && fullMatch[1]) {
       location = fullMatch[1].replace(/-\s*Cuit\s*Online.*/i, '').replace(/\s*-\s*$/, '').trim();
@@ -133,17 +138,15 @@ const parseDuckDuckGoHtml = (html, cleanCuit) => {
     }
   }
 
-  // Pattern 3: URL slug: /detalle/CUIT/nombre-con-guiones.html
-  if (!name) {
-    const slugMatch = html.match(new RegExp(`detalle/${cleanCuit}/([a-z0-9-]+)\\.html`, 'i'));
-    if (slugMatch && slugMatch[1]) {
-      name = slugMatch[1].replace(/-/g, ' ').trim();
-    }
+  // Pattern 3: From URL slug if no other name found
+  if (!name && detailSlug) {
+    name = detailSlug.replace(/-/g, ' ').trim();
   }
 
   return {
     name: name ? name.toUpperCase().replace(/\s+/g, ' ').trim() : '',
-    location: location || ''
+    location: location || '',
+    detailSlug
   };
 };
 
@@ -248,6 +251,7 @@ export const handler = async (event) => {
   // ═══════════════════════════════════════════════════════════════
   // STRATEGY 2: DuckDuckGo HTML search (works from datacenter IPs)
   // ═══════════════════════════════════════════════════════════════
+  let ddgDetailSlug = '';
   if (!finalName) {
     try {
       const ddgUrl = `https://html.duckduckgo.com/html/?q=cuit+${cleanCuit}+cuitonline`;
@@ -265,10 +269,66 @@ export const handler = async (event) => {
         if (ddgParsed && ddgParsed.name) {
           finalName = ddgParsed.name;
           finalLocation = ddgParsed.location || finalLocation;
+          ddgDetailSlug = ddgParsed.detailSlug || '';
         }
       }
     } catch (err) {
       console.warn('[cuitPadron] DuckDuckGo failed:', err.message);
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // STRATEGY 2b: Fetch CuitOnline DETAIL page using slug from DDG
+  //              (detail pages may bypass Cloudflare even from datacenter)
+  // ═══════════════════════════════════════════════════════════════
+  if (!finalAddress && (ddgDetailSlug || finalName)) {
+    const slug = ddgDetailSlug || finalName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    const detailUrl = `https://www.cuitonline.com/detalle/${cleanCuit}/${slug}.html`;
+    try {
+      const controller = new AbortController();
+      const tid = setTimeout(() => controller.abort(), 5000);
+      const detailRes = await fetch(detailUrl, { headers: fetchHeaders, signal: controller.signal });
+      clearTimeout(tid);
+      if (detailRes.ok) {
+        const detailHtml = await detailRes.text();
+        if (detailHtml.length > 10000 && !detailHtml.includes('cf-browser-verification')) {
+          const dp = parsePadronHtml(detailHtml, cleanCuit);
+          if (dp) {
+            finalAddress = dp.address || finalAddress;
+            finalLocation = dp.location || finalLocation;
+            finalCondicionIva = dp.condicionIva || finalCondicionIva;
+            if (!finalName && dp.name) finalName = dp.name;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[cuitPadron] CuitOnline detail page failed:', e.message);
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // STRATEGY 2c: DDG search for domicilio specifically
+  // ═══════════════════════════════════════════════════════════════
+  if (!finalAddress && finalName) {
+    try {
+      const ddgDomUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(finalName)}+${cleanCuit}+domicilio`;
+      const controller = new AbortController();
+      const tid = setTimeout(() => controller.abort(), 4000);
+      const ddgDomRes = await fetch(ddgDomUrl, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/122.0.0.0' },
+        signal: controller.signal
+      });
+      clearTimeout(tid);
+      if (ddgDomRes.ok) {
+        const ddgDomHtml = await ddgDomRes.text();
+        // Look for domicilio/address patterns in DDG snippets
+        const domSnippet = ddgDomHtml.match(/(?:domicilio|direcci[oó]n|dom\.?)\s*(?:fiscal)?[:\s]+([A-ZÁÉÍÓÚÑ0-9][A-ZÁÉÍÓÚÑ0-9a-záéíóúñ .,\-\d]{5,80})/i);
+        if (domSnippet && domSnippet[1]) {
+          finalAddress = domSnippet[1].trim().toUpperCase();
+        }
+      }
+    } catch (e) {
+      console.warn('[cuitPadron] DDG domicilio search failed:', e.message);
     }
   }
 
