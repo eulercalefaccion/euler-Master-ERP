@@ -27,7 +27,7 @@ const extraerDniDeCuit = (cleanCuit) => {
   return '';
 };
 
-exports.handler = async (event) => {
+export const handler = async (event) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
