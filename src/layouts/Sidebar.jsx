@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, Calculator, Package, MapPin, Receipt, HardHat, Wallet, DollarSign, Trash2, Zap, BarChart2, X, LogOut, Settings, Wrench, ShoppingBag, Tag, Landmark, BookOpen, Database } from 'lucide-react';
+import { LayoutDashboard, Users, Calculator, Package, MapPin, Receipt, HardHat, Wallet, DollarSign, Trash2, Zap, BarChart2, X, LogOut, Settings, Wrench, ShoppingBag, Tag, Landmark, BookOpen, Database, TrendingUp } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const Sidebar = ({ className = '', isMobile, onClose }) => {
