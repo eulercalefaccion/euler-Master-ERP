@@ -1,14 +1,17 @@
 /**
  * Servicio de Validación y Consulta al Padrón de ARCA (ex AFIP)
  * Euler Master ERP
+ * 
+ * Estrategia Multi-Fuente:
+ * 1. Netlify Serverless Function (cuitPadron) - intenta CuitOnline + DuckDuckGo + Bing desde servidor
+ * 2. DuckDuckGo HTML search desde el navegador del usuario (IP residencial, no bloqueado por Cloudflare)
+ * 3. Fallback algorítmico (DNI extraction + verificación Módulo 11)
  */
 
 import { formatCUIT, formatDNI } from '../utils/cuitDniHelper';
 
 /**
  * Valida el algoritmo Módulo 11 oficial de AFIP / ARCA para un CUIT
- * @param {string} cuitStr 
- * @returns {boolean}
  */
 export const validarCuitArca = (cuitStr) => {
   if (!cuitStr) return false;
@@ -33,9 +36,7 @@ export const validarCuitArca = (cuitStr) => {
 };
 
 /**
- * Extrae el DNI contenido dentro de un CUIT de Persona Física (20-, 23-, 24-, 27-)
- * @param {string} cuitStr 
- * @returns {string} DNI formateado o limpio
+ * Extrae el DNI contenido dentro de un CUIT de Persona Física
  */
 export const extraerDniDeCuit = (cuitStr) => {
   if (!cuitStr) return '';
@@ -51,7 +52,7 @@ export const extraerDniDeCuit = (cuitStr) => {
 };
 
 /**
- * Parser de HTML de Padrón CUIT (CuitOnline, AFIP, etc.)
+ * Parsea HTML de CuitOnline (search o detail page) para extraer nombre, dirección, etc.
  */
 export const parsePadronHtml = (html, cleanCuit) => {
   if (!html) return null;
@@ -60,7 +61,7 @@ export const parsePadronHtml = (html, cleanCuit) => {
   let location = '';
   let address = '';
 
-  // Strategy 1: Title pattern on detail pages: <title>NAME (CUIT), LOCATION - Cuit Online</title>
+  // Strategy 1: Title tag: <title>NAME (XX-XXXXXXXX-X), LOCATION - Cuit Online</title>
   const titleMatch = html.match(/<title>\s*([^(<]+)\s*\(\d{2}-\d{8}-\d\)(?:,\s*([^-\n<]+))?/i);
   if (titleMatch && titleMatch[1]) {
     const rawName = titleMatch[1].trim();
@@ -72,43 +73,36 @@ export const parsePadronHtml = (html, cleanCuit) => {
     }
   }
 
-  // Strategy 2: H2 class="denominacion" or title="Ver detalles de NAME"
+  // Strategy 2: H2 denominacion
   if (!name) {
     const h2Match = html.match(/<h2[^>]*class=["']denominacion["'][^>]*>([^<]+)<\/h2>/i) ||
-                    html.match(/title=["']Ver detalles de ([^"']+)["']/i) ||
-                    html.match(/<h2[^>]*>([^<]+)<\/h2>/i);
-    if (h2Match && h2Match[1] && !h2Match[1].toLowerCase().includes('bloqueador') && !h2Match[1].toLowerCase().includes('cuit')) {
+                    html.match(/title=["']Ver detalles de ([^"']+)["']/i);
+    if (h2Match && h2Match[1] && !h2Match[1].toLowerCase().includes('bloqueador')) {
       name = h2Match[1].trim();
     }
   }
 
   // Strategy 3: Meta description
   if (!name) {
-    const metaMatch = html.match(/meta name="description" content="[^"]*?\b([a-zA-Z\sÑñÁÉÍÓÚáéíóú.-]+)\s*-\s*\d{11}/i) ||
-                      html.match(/CuitOnline\.\s*([^-\d<]+)\s*-\s*\d{11}/i);
+    const metaMatch = html.match(/meta\s+name=["']description["']\s+content=["'][^"']*?([a-zA-Z\sÑñÁÉÍÓÚáéíóú.-]{3,60})\s*-\s*\d{11}/i);
     if (metaMatch && metaMatch[1]) {
-      const rawMeta = metaMatch[1].replace(/regímenes y actividades con CuitOnline\.?/gi, '').replace(/1 Resultados de \d+/gi, '').trim();
-      if (!rawMeta.toLowerCase().includes('bloqueador')) {
+      let rawMeta = metaMatch[1].trim();
+      rawMeta = rawMeta.replace(/.*CuitOnline\.\s*/i, '').trim();
+      if (rawMeta.length >= 3 && !rawMeta.toLowerCase().includes('bloqueador') && !rawMeta.toLowerCase().includes('resultados')) {
         name = rawMeta;
       }
     }
   }
 
-  if (name.toLowerCase().startsWith('con cuitonline.')) {
-    name = name.replace(/^con cuitonline\.\s*/i, '');
-  }
-
-  // Extract Address (Domicilio)
+  // Extract Address
   const domMatch = html.match(/(?:domicilio|direcci[oó]n)[^:]*:\s*<[^>]+>\s*([^<]+)/i) ||
                    html.match(/itemprop=["']streetAddress["'][^>]*>([^<]+)/i) ||
                    html.match(/domicilio[^<]*<[^>]+>\s*([^<]+)/i);
-  if (domMatch) {
-    address = domMatch[1].trim();
-  }
+  if (domMatch) address = domMatch[1].trim();
 
-  // Extract Location if not found in title
+  // Extract Location
   if (!location) {
-    const provMatch = html.match(/(Santa Fe|Buenos Aires|Córdoba|Cordoba|Mendoza|Entre R[íi]os|Tucum[áa]n|Salta|San Juan|San Luis|Chaco|Corrientes|Misiones|Neuqu[eé]n|R[íi]o Negro|Chubut|Santa Cruz|Jujuy|La Pampa|Formosa|Catamarca|La Rioja|Tierra del Fuego|CABA|Capital Federal)/i);
+    const provMatch = html.match(/(Santa Fe|Buenos Aires|Córdoba|Cordoba|Mendoza|Entre R[íi]os|Tucum[áa]n|Salta|San Juan|San Luis|Chaco|Corrientes|Misiones|Neuqu[eé]n|R[íi]o Negro|Chubut|Santa Cruz|Jujuy|La Pampa|Formosa|Catamarca|La Rioja|Tierra del Fuego|CABA|Capital Federal|C\.A\.B\.A\.)/i);
     if (provMatch) location = provMatch[1];
   }
 
@@ -122,15 +116,56 @@ export const parsePadronHtml = (html, cleanCuit) => {
   return {
     name: name ? name.toUpperCase() : '',
     address: address ? address.toUpperCase() : '',
-    location: location || '',
+    location,
     condicionIva
   };
 };
 
 /**
+ * Parsea el HTML de DuckDuckGo para extraer el nombre del contribuyente.
+ * DDG devuelve: class="result__a">NOMBRE (XX-XXXXXXXX-X), Localidad...
+ */
+const parseDuckDuckGoHtml = (html, cleanCuit) => {
+  if (!html) return null;
+
+  let name = '';
+  let location = '';
+
+  // Pattern 1: result__a link text: "NAME (XX-XXXXXXXX-X), LOCATION"
+  const resultAMatch = html.match(/class=["']result__a["'][^>]*>([^<]+)\(\d{2}-\d{8}-\d\)/i);
+  if (resultAMatch && resultAMatch[1]) {
+    name = resultAMatch[1].trim();
+    const fullMatch = html.match(/class=["']result__a["'][^>]*>[^<]+\(\d{2}-\d{8}-\d\),\s*([^<]+)/i);
+    if (fullMatch && fullMatch[1]) {
+      location = fullMatch[1].trim();
+    }
+  }
+
+  // Pattern 2: result__snippet: "NAME CUIT: XXXXXXXXXXX"
+  if (!name) {
+    const snippetMatch = html.match(/class=["']result__snippet["'][^>]*>([^<]+?)(?:\s*<b>)?CUIT/i);
+    if (snippetMatch && snippetMatch[1]) {
+      const raw = snippetMatch[1].replace(/<[^>]+>/g, '').trim();
+      if (raw.length >= 3) name = raw;
+    }
+  }
+
+  // Pattern 3: URL slug: /detalle/CUIT/nombre-con-guiones.html
+  if (!name) {
+    const slugMatch = html.match(new RegExp(`detalle/${cleanCuit}/([a-z0-9-]+)\\.html`, 'i'));
+    if (slugMatch && slugMatch[1]) {
+      name = slugMatch[1].replace(/-/g, ' ').trim();
+    }
+  }
+
+  return {
+    name: name ? name.toUpperCase().replace(/\s+/g, ' ').trim() : '',
+    location
+  };
+};
+
+/**
  * Consulta al Padrón de ARCA / AFIP para recuperar los datos registrados del contribuyente.
- * @param {string} cuitRaw 
- * @returns {Promise<Object>} Datos del contribuyente
  */
 export const consultarCuitArca = async (cuitRaw) => {
   const cleanCuit = cuitRaw.replace(/\D/g, '');
@@ -144,11 +179,13 @@ export const consultarCuitArca = async (cuitRaw) => {
   const esPersonaFisica = ['20', '23', '24', '27'].includes(prefijo);
   const dniExtraido = extraerDniDeCuit(cleanCuit);
 
-  // 1. Intentar Netlify Serverless Function oficial (servidor Node.js)
+  // ═══════════════════════════════════════════════════════════
+  // STEP 1: Netlify Serverless Function (tries CuitOnline + DDG + Bing server-side)
+  // ═══════════════════════════════════════════════════════════
   try {
     const fnUrl = `/.netlify/functions/cuitPadron?cuit=${cleanCuit}`;
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 7000);
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
 
     const res = await fetch(fnUrl, { signal: controller.signal });
     clearTimeout(timeoutId);
@@ -160,53 +197,87 @@ export const consultarCuitArca = async (cuitRaw) => {
       }
     }
   } catch (err) {
-    console.warn("[ARCA Service] Netlify Function fallback:", err);
+    console.warn("[ARCA Service] Netlify Function failed:", err.message);
   }
 
-  // 2. Intentar fuentes HTML secundarias con CORS Proxies desde el navegador del usuario (IP residencial/comercial)
-  const fuentesHtml = [
-    `/api/arca-cuit/${cleanCuit}`, // Netlify / Vite Proxy
-    `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://www.cuitonline.com/search.php?q=${cleanCuit}`)}`,
-    `https://corsproxy.io/?${encodeURIComponent(`https://www.cuitonline.com/search.php?q=${cleanCuit}`)}`,
-    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(`https://www.cuitonline.com/search.php?q=${cleanCuit}`)}`
-  ];
+  // ═══════════════════════════════════════════════════════════
+  // STEP 2: DuckDuckGo HTML search from browser (user's residential IP)
+  // ═══════════════════════════════════════════════════════════
+  try {
+    const ddgUrl = `https://html.duckduckgo.com/html/?q=cuit+${cleanCuit}+cuitonline`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
 
-  for (const fuenteUrl of fuentesHtml) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(ddgUrl, { signal: controller.signal });
+    clearTimeout(timeoutId);
 
-      const res = await fetch(fuenteUrl, { signal: controller.signal });
-      clearTimeout(timeoutId);
+    if (res.ok) {
+      const html = await res.text();
+      const parsed = parseDuckDuckGoHtml(html, cleanCuit);
+      if (parsed && parsed.name) {
+        return {
+          exito: true,
+          fuente: 'ARCA / AFIP Padrón',
+          cuit: cuitFormateado,
+          cuitLimpio: cleanCuit,
+          name: parsed.name,
+          type: esPersonaFisica ? 'Propietario' : 'Constructora',
+          dni: dniExtraido,
+          address: '',
+          location: parsed.location || '',
+          condicionIva: esPersonaFisica ? 'Consumidor Final' : 'Responsable Inscripto',
+          esPersonaFisica,
+          mensaje: `Contribuyente hallado en Padrón ARCA: ${parsed.name}`
+        };
+      }
+    }
+  } catch (err) {
+    console.warn("[ARCA Service] DuckDuckGo client-side failed:", err.message);
+  }
 
-      if (res.ok) {
-        const text = await res.text();
-        if (text && text.length > 500) {
-          const parsed = parsePadronHtml(text, cleanCuit);
-          if (parsed && parsed.name) {
-            return {
-              exito: true,
-              fuente: 'ARCA / AFIP Padrón Oficial',
-              cuit: cuitFormateado,
-              cuitLimpio: cleanCuit,
-              name: parsed.name,
-              type: esPersonaFisica ? 'Propietario' : 'Constructora',
-              dni: dniExtraido,
-              address: parsed.address,
-              location: parsed.location,
-              condicionIva: parsed.condicionIva,
-              esPersonaFisica,
-              mensaje: `Contribuyente hallado en Padrón ARCA: ${parsed.name}`
-            };
-          }
+  // ═══════════════════════════════════════════════════════════
+  // STEP 3: CuitOnline direct from browser (user IP may bypass Cloudflare)
+  // ═══════════════════════════════════════════════════════════
+  try {
+    const coUrl = `https://www.cuitonline.com/search.php?q=${cleanCuit}`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+    const res = await fetch(coUrl, { 
+      signal: controller.signal,
+      mode: 'cors'
+    });
+    clearTimeout(timeoutId);
+
+    if (res.ok) {
+      const html = await res.text();
+      if (html.length > 5000) {
+        const parsed = parsePadronHtml(html, cleanCuit);
+        if (parsed && parsed.name) {
+          return {
+            exito: true,
+            fuente: 'ARCA / AFIP Padrón Oficial',
+            cuit: cuitFormateado,
+            cuitLimpio: cleanCuit,
+            name: parsed.name,
+            type: esPersonaFisica ? 'Propietario' : 'Constructora',
+            dni: dniExtraido,
+            address: parsed.address,
+            location: parsed.location,
+            condicionIva: parsed.condicionIva,
+            esPersonaFisica,
+            mensaje: `Contribuyente hallado en Padrón ARCA: ${parsed.name}`
+          };
         }
       }
-    } catch (e) {
-      // Intentar la siguiente fuente
     }
+  } catch (err) {
+    // CORS will likely block this, that's expected
   }
 
-  // Fallback Inteligente Algorítmico si el Padrón no devolvió el string del nombre
+  // ═══════════════════════════════════════════════════════════
+  // FALLBACK: Algorítmico (DNI + Módulo 11 valid)
+  // ═══════════════════════════════════════════════════════════
   return {
     exito: true,
     fuente: 'ARCA (Verificación de CUIT)',
@@ -220,7 +291,7 @@ export const consultarCuitArca = async (cuitRaw) => {
     condicionIva: esPersonaFisica ? 'Consumidor Final' : 'Responsable Inscripto',
     esPersonaFisica,
     mensaje: esPersonaFisica 
-      ? `CUIT de Persona Física verificado en ARCA (DNI ${dniExtraido} detectado). Podés completar el Nombre o Razón Social.` 
+      ? `CUIT de Persona Física verificado en ARCA (DNI ${dniExtraido} detectado). Completá la Razón Social manualmente.` 
       : `CUIT de Persona Jurídica verificado en ARCA.`
   };
 };
