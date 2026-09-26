@@ -15,6 +15,11 @@ export default defineConfig({
         target: 'https://firebasestorage.googleapis.com',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/proxy\/storage/, '')
+      },
+      '/api/arca-cuit': {
+        target: 'https://www.cuitonline.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/arca-cuit\//, '/search.php?q=')
       }
     }
   }

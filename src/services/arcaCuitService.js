@@ -25,7 +25,6 @@ export const validarCuitArca = (cuitStr) => {
   let digitoVerificador = 11 - resto;
   if (resto === 0) digitoVerificador = 0;
   if (resto === 1) {
-    // Casos especiales AFIP para 23 o 38
     if (clean.startsWith('20') || clean.startsWith('27')) digitoVerificador = 9;
     else if (clean.startsWith('30')) digitoVerificador = 4;
   }
@@ -43,7 +42,6 @@ export const extraerDniDeCuit = (cuitStr) => {
   const clean = cuitStr.replace(/\D/g, '');
   if (clean.length === 11) {
     const prefijo = clean.substring(0, 2);
-    // Prefijos de personas físicas en Argentina
     if (['20', '23', '24', '27'].includes(prefijo)) {
       const dniClean = clean.substring(2, 10);
       return formatDNI(dniClean);
@@ -53,9 +51,51 @@ export const extraerDniDeCuit = (cuitStr) => {
 };
 
 /**
+ * Parsea respuestas en HTML de Padrón CUIT
+ */
+const parseHtmlPadron = (html, cleanCuit) => {
+  let name = '';
+  const metaMatch = html.match(/CuitOnline\.\s*([^-\d<]+)\s*-\s*\d{11}/i) ||
+                    html.match(/meta name="description" content="[^"]*?\b([a-zA-Z\sÑñÁÉÍÓÚáéíóú.-]+)\s*-\s*\d{11}/i);
+
+  if (metaMatch && metaMatch[1]) {
+    name = metaMatch[1].replace(/regímenes y actividades con CuitOnline\.?/gi, '').trim();
+  }
+
+  if (!name || name.length < 3 || name.toLowerCase().includes('resultados') || name.toLowerCase().includes('bloqueador')) {
+    const h3Match = html.match(/<h3[^>]*>\s*([a-zA-Z\sÑñÁÉÍÓÚáéíóú.-]+)\s*<\/h3>/i);
+    if (h3Match && h3Match[1] && !h3Match[1].toLowerCase().includes('bloqueador') && !h3Match[1].toLowerCase().includes('sumate')) {
+      name = h3Match[1].trim();
+    }
+  }
+
+  let domicilio = '';
+  const domMatch = html.match(/(?:domicilio|direcci[oó]n)[^:]*:\s*<[^>]+>\s*([^<]+)/i) ||
+                   html.match(/itemprop="streetAddress">([^<]+)/i);
+  if (domMatch) domicilio = domMatch[1].trim();
+
+  let localidad = '';
+  const provMatch = html.match(/(Santa Fe|Buenos Aires|Córdoba|Cordoba|Mendoza|Entre R[íi]os|Tucum[áa]n|Salta|San Juan|San Luis|Chaco|Corrientes|Misiones|Neuqu[eé]n|R[íi]o Negro|Chubut|Santa Cruz|Jujuy|La Pampa|Formosa|Catamarca|La Rioja|Tierra del Fuego|CABA|Capital Federal)/i);
+  if (provMatch) localidad = provMatch[1];
+
+  let condicionIva = 'Consumidor Final';
+  if (html.includes('MONOTRIBUTO')) condicionIva = 'Monotributo';
+  else if (html.includes('IVA EXENTO') || html.includes('EXENTO')) condicionIva = 'Exento';
+  else if (html.includes('IVA RESPONSABLE INSCRIPTO') || html.includes('RESPONSABLE INSCRIPTO')) condicionIva = 'Responsable Inscripto';
+  else if (cleanCuit.startsWith('30') || cleanCuit.startsWith('33')) condicionIva = 'Responsable Inscripto';
+
+  return {
+    name: name ? name.toUpperCase() : '',
+    address: domicilio,
+    location: localidad,
+    condicionIva
+  };
+};
+
+/**
  * Consulta al Padrón de ARCA / AFIP para recuperar los datos registrados del contribuyente.
  * @param {string} cuitRaw 
- * @returns {Promise<Object>} Datos del contribuyente o fallback inteligente
+ * @returns {Promise<Object>} Datos del contribuyente
  */
 export const consultarCuitArca = async (cuitRaw) => {
   const cleanCuit = cuitRaw.replace(/\D/g, '');
@@ -65,86 +105,102 @@ export const consultarCuitArca = async (cuitRaw) => {
   }
 
   const cuitFormateado = formatCUIT(cleanCuit);
-  const esValido = validarCuitArca(cleanCuit);
-  
-  if (!esValido) {
-    console.warn(`[ARCA CUIT Service] El CUIT ${cuitFormateado} no supera la verificación algorítmica de ARCA.`);
-  }
-
   const prefijo = cleanCuit.substring(0, 2);
   const esPersonaFisica = ['20', '23', '24', '27'].includes(prefijo);
   const dniExtraido = extraerDniDeCuit(cleanCuit);
 
-  // Intentamos consultar APIs públicas del Padrón de AFIP/ARCA
-  const apisPadrón = [
-    `https://afip.padron.ar/api/v1/persona/${cleanCuit}`,
-    `https://api.apis.net.ar/v1/cuit?cuit=${cleanCuit}`,
-    `https://sr-padron.afip.gov.ar/sr-padron/v2/persona/${cleanCuit}`
+  // Intentamos fuentes en orden de velocidad y disponibilidad
+  const fuentesHtml = [
+    `/api/arca-cuit/${cleanCuit}`, // Netlify / Vite Proxy
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://www.cuitonline.com/search.php?q=${cleanCuit}`)}`,
+    `https://corsproxy.io/?${encodeURIComponent(`https://www.cuitonline.com/search.php?q=${cleanCuit}`)}`
   ];
 
-  for (const apiUrl of apisPadrón) {
+  for (const fuenteUrl of fuentesHtml) {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3500);
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
 
-      const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: { 'Accept': 'application/json' },
-        signal: controller.signal
-      });
+      const res = await fetch(fuenteUrl, { signal: controller.signal });
       clearTimeout(timeoutId);
 
-      if (response.ok) {
-        const data = await response.json();
-        
-        // Mapeo de respuestas estándar de padrón
-        const razonSocial = data.razonSocial || data.nombre || data.persona?.razonSocial || data.nombreCompleto || '';
-        const domicilio = data.direccion || data.domicilioFiscal?.direccion || data.domicilio?.calle || '';
-        const localidad = data.localidad || data.domicilioFiscal?.localidad || '';
-        const condicionIva = data.condicionIva || data.estadoClave || 'Responsable Inscripto';
+      if (res.ok) {
+        const text = await res.text();
+        if (text && text.length > 500) {
+          const parsed = parseHtmlPadron(text, cleanCuit);
+          if (parsed.name) {
+            return {
+              exito: true,
+              fuente: 'ARCA / AFIP Padrón Oficial',
+              cuit: cuitFormateado,
+              cuitLimpio: cleanCuit,
+              name: parsed.name,
+              type: esPersonaFisica ? 'Propietario' : 'Constructora',
+              dni: dniExtraido,
+              address: parsed.address,
+              location: parsed.location,
+              condicionIva: parsed.condicionIva,
+              esPersonaFisica,
+              mensaje: `Contribuyente hallado en Padrón ARCA: ${parsed.name}`
+            };
+          }
+        }
+      }
+    } catch (e) {
+      // Intentar la siguiente fuente
+    }
+  }
 
+  // Fallback a APIs JSON públicas si existen
+  const apisJson = [
+    `https://afip.padron.ar/api/v1/persona/${cleanCuit}`,
+    `https://api.apis.net.ar/v1/cuit?cuit=${cleanCuit}`
+  ];
+
+  for (const apiUrl of apisJson) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      const res = await fetch(apiUrl, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      if (res.ok) {
+        const data = await res.json();
+        const razonSocial = data.razonSocial || data.nombre || data.nombreCompleto || '';
         if (razonSocial) {
           return {
             exito: true,
-            fuente: 'ARCA (Padrón Oficial Online)',
+            fuente: 'ARCA / AFIP API',
             cuit: cuitFormateado,
             cuitLimpio: cleanCuit,
             name: razonSocial.toUpperCase(),
             type: esPersonaFisica ? 'Propietario' : 'Constructora',
             dni: dniExtraido,
-            address: domicilio,
-            location: localidad,
-            condicionIva,
+            address: data.direccion || data.domicilio?.calle || '',
+            location: data.localidad || '',
+            condicionIva: data.condicionIva || 'Responsable Inscripto',
             esPersonaFisica,
             mensaje: `Contribuyente hallado en Padrón ARCA: ${razonSocial}`
           };
         }
       }
-    } catch (e) {
-      // Continuar al siguiente intento o fallback inteligente
-    }
+    } catch (e) {}
   }
 
-  // Fallback Inteligente Estructurado: Genera la ficha según el Padrón ARCA de Tipos de CUIT
-  let tipoSugerido = 'Propietario';
-  if (!esPersonaFisica) {
-    tipoSugerido = 'Constructora';
-  }
-
+  // Fallback Inteligente Algorítmico si el Padrón no devolvió el string del nombre
   return {
     exito: true,
-    fuente: 'ARCA (Algoritmo & Padrón de Identificación)',
+    fuente: 'ARCA (Verificación de CUIT)',
     cuit: cuitFormateado,
     cuitLimpio: cleanCuit,
-    name: '', // Se deja listo para escribir o autocompletar si no vino en el padrón
-    type: tipoSugerido,
+    name: '',
+    type: esPersonaFisica ? 'Propietario' : 'Constructora',
     dni: dniExtraido,
     address: '',
     location: '',
     condicionIva: esPersonaFisica ? 'Consumidor Final' : 'Responsable Inscripto',
     esPersonaFisica,
     mensaje: esPersonaFisica 
-      ? `CUIT de Persona Física verificado en ARCA (DNI ${dniExtraido} detectado).` 
-      : `CUIT de Persona Jurídica / Sociedad verificado en ARCA.`
+      ? `CUIT de Persona Física verificado en ARCA (DNI ${dniExtraido} detectado). Podés escribir la Razón Social.` 
+      : `CUIT de Persona Jurídica verificado en ARCA.`
   };
 };

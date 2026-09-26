@@ -1,2 +1,4 @@
 /proxy/storage/*  https://firebasestorage.googleapis.com/:splat  200
+/api/arca-cuit/*  https://www.cuitonline.com/search.php?q=:splat  200
 /* /index.html 200
+
