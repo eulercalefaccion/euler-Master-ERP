@@ -4,6 +4,7 @@ import { Search, Filter, Plus, FileText, Wrench, MoreVertical, Building, User, M
 import ValidatedInput from '../../components/Form/ValidatedInput';
 import { db } from '../../services/firebaseConfig';
 import { collection, onSnapshot, query, addDoc, updateDoc, deleteDoc, writeBatch, doc } from 'firebase/firestore';
+import { consultarCuitArca } from '../../services/arcaCuitService';
 
 const Clientes = () => {
   const navigate = useNavigate();
@@ -20,6 +21,10 @@ const Clientes = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [rolFiltro, setRolFiltro] = useState('Todos'); // Todos, cliente, proveedor, ambos
+  
+  // ARCA CUIT Lookup States
+  const [isConsultandoArca, setIsConsultandoArca] = useState(false);
+  const [arcaStatusMessage, setArcaStatusMessage] = useState('');
 
   const [formData, setFormData] = useState({
     name: '',
@@ -132,6 +137,56 @@ const Clientes = () => {
     });
   };
 
+  const handleConsultarArca = async (cuitOverride) => {
+    const cuitToQuery = cuitOverride || formData.cuit;
+    if (!cuitToQuery) {
+      alert("Ingresá un número de CUIT para consultar en ARCA / AFIP.");
+      return;
+    }
+
+    const clean = cuitToQuery.replace(/\D/g, '');
+    if (clean.length !== 11) {
+      alert("El CUIT debe tener 11 dígitos numéricos. Ej: 30-12345678-9");
+      return;
+    }
+
+    setIsConsultandoArca(true);
+    setArcaStatusMessage("Buscando en Padrón de ARCA / AFIP...");
+
+    try {
+      const res = await consultarCuitArca(clean);
+      if (res.exito) {
+        setFormData(prev => {
+          const next = {
+            ...prev,
+            cuit: res.cuit,
+            type: res.type || prev.type,
+            dni: res.dni || prev.dni,
+            address: res.address || prev.address,
+            location: res.location || prev.location,
+          };
+          if (res.name) {
+            next.name = res.name;
+          }
+          if (prev.facturacionIgualCliente) {
+            next.facturacionNombre = next.name;
+            next.facturacionCuit = res.cuit;
+            next.facturacionDireccion = next.address;
+            if (res.dni) next.facturacionDni = res.dni;
+          }
+          return next;
+        });
+
+        setArcaStatusMessage(`✅ ${res.mensaje}`);
+      }
+    } catch (err) {
+      console.error("Error al consultar ARCA:", err);
+      setArcaStatusMessage(`⚠️ ${err.message}`);
+    } finally {
+      setIsConsultandoArca(false);
+    }
+  };
+
   const handleToggleFacturacionIgualCliente = (checked) => {
     setFormData(prev => {
       const next = { ...prev, facturacionIgualCliente: checked };
@@ -147,6 +202,7 @@ const Clientes = () => {
 
   const openNewPanel = () => {
     setEditingId(null);
+    setArcaStatusMessage('');
     let defaultRol = 'cliente';
     if (rolFiltro === 'proveedor') defaultRol = 'proveedor';
     if (rolFiltro === 'ambos') defaultRol = 'ambos';
@@ -179,6 +235,7 @@ const Clientes = () => {
 
   const openEditPanel = (cliente) => {
     setEditingId(cliente.id);
+    setArcaStatusMessage('');
     setFormData({
       name: cliente.name || '',
       rolContacto: cliente.rolContacto || 'cliente',
@@ -645,15 +702,40 @@ const Clientes = () => {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               <div className="form-group" style={{ marginBottom: 0 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                  <label className="form-label" style={{ marginBottom: 0 }}>CUIT</label>
+                  <button
+                    type="button"
+                    onClick={() => handleConsultarArca()}
+                    disabled={isConsultandoArca || !formData.cuit}
+                    style={{
+                      background: 'none', border: 'none', color: 'var(--primary-600)',
+                      fontSize: '0.75rem', fontWeight: '700', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', gap: '0.25rem', padding: 0
+                    }}
+                  >
+                    {isConsultandoArca ? '⌛ Buscando...' : '🔍 Buscar en ARCA'}
+                  </button>
+                </div>
                 <ValidatedInput 
-                  label="CUIT"
                   name="cuit" 
                   value={formData.cuit} 
-                  onChange={(val) => setFormData(prev => ({...prev, cuit: val}))}
+                  onChange={(val) => {
+                    setFormData(prev => ({...prev, cuit: val}));
+                    const clean = val.replace(/\D/g, '');
+                    if (clean.length === 11 && !isConsultandoArca) {
+                      handleConsultarArca(clean);
+                    }
+                  }}
                   placeholder="30-12345678-9"
                   pattern="^\\d{2}-\\d{8}-\\d$"
                   errorMsg="Formato esperado: XX-XXXXXXXX-X"
                 />
+                {arcaStatusMessage && (
+                  <div style={{ fontSize: '0.75rem', color: arcaStatusMessage.startsWith('✅') ? '#059669' : 'var(--text-secondary)', marginTop: '0.25rem', fontWeight: '600' }}>
+                    {arcaStatusMessage}
+                  </div>
+                )}
               </div>
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label className="form-label">DNI</label>
