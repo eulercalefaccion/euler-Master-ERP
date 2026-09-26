@@ -109,6 +109,8 @@ const parseDuckDuckGoHtml = (html, cleanCuit) => {
 
   let name = '';
   let location = '';
+  let address = '';
+  let condicionIva = '';
   let detailSlug = '';
 
   // Extract detail page slug from URL in results: detalle/CUIT/nombre-con-guiones.html
@@ -127,14 +129,42 @@ const parseDuckDuckGoHtml = (html, cleanCuit) => {
     }
   }
 
-  // Pattern 2: result__snippet: "NAME CUIT: XXXXXXXXXXX"
-  if (!name) {
-    const snippetMatch = html.match(/class=["']result__snippet["'][^>]*>([^<]+?)(?:\s*<b>)?CUIT/i);
-    if (snippetMatch && snippetMatch[1]) {
-      const raw = snippetMatch[1].replace(/<[^>]+>/g, '').trim();
-      if (raw.length >= 3) {
-        name = raw;
+  // Pattern 2: Scan ALL snippets for address & localidad
+  // CuitOnline snippet format: "NAME CUIT: XXXXXXXXXXX Persona Física/Jurídica ADDRESS Localidad: CITY ..."
+  const snippetRegex = /class=["']result__snippet["'][^>]*>([\s\S]*?)<\/a>/gi;
+  let snippetMatch;
+  while ((snippetMatch = snippetRegex.exec(html)) !== null) {
+    const clean = snippetMatch[1].replace(/<[^>]+>/g, '').trim();
+
+    // Extract name from snippet if not found yet
+    if (!name) {
+      const nameFromSnippet = clean.match(/^([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ .',-]{2,60})\s+CUIT/i);
+      if (nameFromSnippet) {
+        name = nameFromSnippet[1].trim();
       }
+    }
+
+    // Extract address: text between "Persona Física/Jurídica (gender)" and "Localidad:"
+    if (!address) {
+      const addrMatch = clean.match(/Persona\s+(?:F[ií]sica|Jur[ií]dica)(?:\s*\([^)]*\))?\s+(.+?)\s+Localidad:/i);
+      if (addrMatch && addrMatch[1]) {
+        address = addrMatch[1].trim();
+      }
+    }
+
+    // Extract localidad from "Localidad: CITY"
+    if (!location) {
+      const locMatch = clean.match(/Localidad:\s*([A-Za-záéíóúñÁÉÍÓÚÑ .]+?)(?:\s+(?:Ganancias|Fecha|IVA|No Inscripto|Monotributo)|$)/i);
+      if (locMatch && locMatch[1]) {
+        location = locMatch[1].trim();
+      }
+    }
+
+    // Extract condicion IVA
+    if (!condicionIva) {
+      if (clean.includes('Monotributo')) condicionIva = 'Monotributo';
+      else if (clean.includes('IVA Exento') || clean.includes('Exento')) condicionIva = 'Exento';
+      else if (clean.includes('Responsable Inscripto')) condicionIva = 'Responsable Inscripto';
     }
   }
 
@@ -145,7 +175,9 @@ const parseDuckDuckGoHtml = (html, cleanCuit) => {
 
   return {
     name: name ? name.toUpperCase().replace(/\s+/g, ' ').trim() : '',
+    address: address ? address.toUpperCase() : '',
     location: location || '',
+    condicionIva: condicionIva || '',
     detailSlug
   };
 };
@@ -268,7 +300,9 @@ export const handler = async (event) => {
         const ddgParsed = parseDuckDuckGoHtml(ddgHtml, cleanCuit);
         if (ddgParsed && ddgParsed.name) {
           finalName = ddgParsed.name;
+          finalAddress = ddgParsed.address || finalAddress;
           finalLocation = ddgParsed.location || finalLocation;
+          if (ddgParsed.condicionIva) finalCondicionIva = ddgParsed.condicionIva;
           ddgDetailSlug = ddgParsed.detailSlug || '';
         }
       }

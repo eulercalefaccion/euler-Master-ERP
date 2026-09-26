@@ -122,14 +122,16 @@ export const parsePadronHtml = (html, cleanCuit) => {
 };
 
 /**
- * Parsea el HTML de DuckDuckGo para extraer el nombre del contribuyente.
- * DDG devuelve: class="result__a">NOMBRE (XX-XXXXXXXX-X), Localidad...
+ * Parsea el HTML de DuckDuckGo para extraer nombre, dirección y localidad.
+ * DDG snippets contain: "NAME CUIT: XXXXXXXXXXX Persona Física/Jurídica ADDRESS Localidad: CITY ..."
  */
 const parseDuckDuckGoHtml = (html, cleanCuit) => {
   if (!html) return null;
 
   let name = '';
   let location = '';
+  let address = '';
+  let condicionIva = '';
 
   // Pattern 1: result__a link text: "NAME (XX-XXXXXXXX-X), LOCATION"
   const resultAMatch = html.match(/class=["']result__a["'][^>]*>([^<]+)\(\d{2}-\d{8}-\d\)/i);
@@ -141,26 +143,45 @@ const parseDuckDuckGoHtml = (html, cleanCuit) => {
     }
   }
 
-  // Pattern 2: result__snippet: "NAME CUIT: XXXXXXXXXXX"
-  if (!name) {
-    const snippetMatch = html.match(/class=["']result__snippet["'][^>]*>([^<]+?)(?:\s*<b>)?CUIT/i);
-    if (snippetMatch && snippetMatch[1]) {
-      const raw = snippetMatch[1].replace(/<[^>]+>/g, '').trim();
-      if (raw.length >= 3) name = raw;
+  // Pattern 2: Scan ALL snippets for address & localidad
+  const snippetRegex = /class=["']result__snippet["'][^>]*>([\s\S]*?)<\/a>/gi;
+  let snippetMatch;
+  while ((snippetMatch = snippetRegex.exec(html)) !== null) {
+    const clean = snippetMatch[1].replace(/<[^>]+>/g, '').trim();
+
+    if (!name) {
+      const nameFromSnippet = clean.match(/^([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ .',-]{2,60})\s+CUIT/i);
+      if (nameFromSnippet) name = nameFromSnippet[1].trim();
+    }
+
+    if (!address) {
+      const addrMatch = clean.match(/Persona\s+(?:F[ií]sica|Jur[ií]dica)(?:\s*\([^)]*\))?\s+(.+?)\s+Localidad:/i);
+      if (addrMatch && addrMatch[1]) address = addrMatch[1].trim();
+    }
+
+    if (!location) {
+      const locMatch = clean.match(/Localidad:\s*([A-Za-záéíóúñÁÉÍÓÚÑ .]+?)(?:\s+(?:Ganancias|Fecha|IVA|No Inscripto|Monotributo)|$)/i);
+      if (locMatch && locMatch[1]) location = locMatch[1].trim();
+    }
+
+    if (!condicionIva) {
+      if (clean.includes('Monotributo')) condicionIva = 'Monotributo';
+      else if (clean.includes('IVA Exento') || clean.includes('Exento')) condicionIva = 'Exento';
+      else if (clean.includes('Responsable Inscripto')) condicionIva = 'Responsable Inscripto';
     }
   }
 
-  // Pattern 3: URL slug: /detalle/CUIT/nombre-con-guiones.html
+  // Pattern 3: URL slug fallback
   if (!name) {
     const slugMatch = html.match(new RegExp(`detalle/${cleanCuit}/([a-z0-9-]+)\\.html`, 'i'));
-    if (slugMatch && slugMatch[1]) {
-      name = slugMatch[1].replace(/-/g, ' ').trim();
-    }
+    if (slugMatch && slugMatch[1]) name = slugMatch[1].replace(/-/g, ' ').trim();
   }
 
   return {
     name: name ? name.toUpperCase().replace(/\s+/g, ' ').trim() : '',
-    location
+    address: address ? address.toUpperCase() : '',
+    location,
+    condicionIva
   };
 };
 
@@ -223,9 +244,9 @@ export const consultarCuitArca = async (cuitRaw) => {
           name: parsed.name,
           type: esPersonaFisica ? 'Propietario' : 'Constructora',
           dni: dniExtraido,
-          address: '',
+          address: parsed.address || '',
           location: parsed.location || '',
-          condicionIva: esPersonaFisica ? 'Consumidor Final' : 'Responsable Inscripto',
+          condicionIva: parsed.condicionIva || (esPersonaFisica ? 'Consumidor Final' : 'Responsable Inscripto'),
           esPersonaFisica,
           mensaje: `Contribuyente hallado en Padrón ARCA: ${parsed.name}`
         };
