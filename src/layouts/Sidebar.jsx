@@ -15,7 +15,7 @@ const Sidebar = ({ className = '', isMobile, onClose }) => {
     {
       label: 'VENTAS & CRM',
       items: [
-        { name: 'Clientes', icon: <Users size={20} />, path: '/clientes' },
+        { name: 'Contactos (Clientes & Proveedores)', icon: <Users size={20} />, path: '/clientes' },
         { name: 'Ventas (AR)', icon: <Tag size={20} />, path: '/ventas' },
         { name: 'Presupuestos', icon: <Calculator size={20} />, path: '/presupuestos' },
         { name: 'Balance Térmico IA', icon: <Zap size={20} />, path: '/balance-termico' },
@@ -27,6 +27,7 @@ const Sidebar = ({ className = '', isMobile, onClose }) => {
       label: 'COMPRAS & OPERACIONES',
       items: [
         { name: 'Compras & Gastos (AP)', icon: <ShoppingBag size={20} />, path: '/compras' },
+        { name: 'Proveedores (Contactos)', icon: <Users size={20} />, path: '/clientes?rol=proveedor' },
         { name: 'Obras', icon: <HardHat size={20} />, path: '/obras' },
         { name: 'Servicios Técnicos', icon: <Wrench size={20} />, path: '/servicios' },
         { name: 'Stock', icon: <Package size={20} />, path: '/stock' },

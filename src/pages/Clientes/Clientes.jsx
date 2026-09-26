@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, Filter, Plus, FileText, Wrench, MoreVertical, Building, User, Mail, Phone, X, Save, Edit2, Trash2, ExternalLink } from 'lucide-react';
 import ValidatedInput from '../../components/Form/ValidatedInput';
 import { db } from '../../services/firebaseConfig';
@@ -7,6 +7,9 @@ import { collection, onSnapshot, query, addDoc, updateDoc, deleteDoc, writeBatch
 
 const Clientes = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const urlRol = searchParams.get('rol');
+
   const [clientes, setClientes] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('Todos');
@@ -17,6 +20,7 @@ const Clientes = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [rolFiltro, setRolFiltro] = useState('Todos'); // Todos, cliente, proveedor, ambos
+
   const [formData, setFormData] = useState({
     name: '',
     rolContacto: 'cliente', // cliente, proveedor, ambos
@@ -48,6 +52,14 @@ const Clientes = () => {
   const formTypes = ['Propietario', 'Arquitecto', 'Estudio de Arquitectura', 'Constructora', 'Desarrolladora', 'Cliente SSTT'];
 
   useEffect(() => {
+    if (urlRol === 'proveedor') {
+      setRolFiltro('proveedor');
+    } else if (urlRol === 'cliente') {
+      setRolFiltro('cliente');
+    }
+  }, [urlRol]);
+
+  useEffect(() => {
     const q = query(collection(db, 'clientes')); 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const docs = snapshot.docs.map(doc => ({
@@ -66,6 +78,13 @@ const Clientes = () => {
     return () => document.removeEventListener('click', handleClick);
   }, [openMenuId]);
 
+  const counts = {
+    todos: clientes.length,
+    clientes: clientes.filter(c => (c.rolContacto || 'cliente') === 'cliente' || c.rolContacto === 'ambos').length,
+    proveedores: clientes.filter(c => c.rolContacto === 'proveedor' || c.rolContacto === 'ambos').length,
+    ambos: clientes.filter(c => c.rolContacto === 'ambos').length,
+  };
+
   const filteredClientes = clientes.filter(cliente => {
     const term = searchTerm.toLowerCase();
     const nameMatch = cliente.name ? cliente.name.toLowerCase().includes(term) : false;
@@ -73,7 +92,18 @@ const Clientes = () => {
     const phoneMatch = cliente.phone ? cliente.phone.includes(term) : false;
     const matchesSearch = nameMatch || cuitMatch || phoneMatch;
     const matchesType = filterType === 'Todos' || cliente.type === filterType;
-    return matchesSearch && matchesType;
+
+    const rol = cliente.rolContacto || 'cliente';
+    let matchesRol = true;
+    if (rolFiltro === 'cliente') {
+      matchesRol = rol === 'cliente' || rol === 'ambos';
+    } else if (rolFiltro === 'proveedor') {
+      matchesRol = rol === 'proveedor' || rol === 'ambos';
+    } else if (rolFiltro === 'ambos') {
+      matchesRol = rol === 'ambos';
+    }
+
+    return matchesSearch && matchesType && matchesRol;
   }).sort((a, b) => {
     const nameA = a.name || '';
     const nameB = b.name || '';
@@ -117,8 +147,13 @@ const Clientes = () => {
 
   const openNewPanel = () => {
     setEditingId(null);
+    let defaultRol = 'cliente';
+    if (rolFiltro === 'proveedor') defaultRol = 'proveedor';
+    if (rolFiltro === 'ambos') defaultRol = 'ambos';
+
     setFormData({
       name: '',
+      rolContacto: defaultRol,
       type: 'Propietario',
       email: '',
       phone: '',
@@ -146,6 +181,7 @@ const Clientes = () => {
     setEditingId(cliente.id);
     setFormData({
       name: cliente.name || '',
+      rolContacto: cliente.rolContacto || 'cliente',
       type: cliente.type || 'Propietario',
       cuit: cliente.cuit || '',
       dni: cliente.dni || '',
@@ -193,6 +229,7 @@ const Clientes = () => {
     try {
       const payload = {
         ...formData,
+        rolContacto: formData.rolContacto || 'cliente',
         nombre: formData.name,
         nombreCompleto: formData.name,
         nombreBusqueda: (formData.name || '').toLowerCase().trim(),
@@ -219,6 +256,7 @@ const Clientes = () => {
       setEditingId(null);
       setFormData({
         name: '',
+        rolContacto: 'cliente',
         type: 'Propietario',
         email: '',
         phone: '',
@@ -303,6 +341,58 @@ const Clientes = () => {
         </div>
       </div>
 
+      {/* Top Filter Tabs por Rol Comercial */}
+      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          onClick={() => setRolFiltro('Todos')}
+          style={{
+            padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid var(--border-light)',
+            fontWeight: '600', fontSize: '0.85rem', cursor: 'pointer',
+            backgroundColor: rolFiltro === 'Todos' ? 'var(--primary-600)' : 'var(--bg-surface)',
+            color: rolFiltro === 'Todos' ? '#fff' : 'var(--text-secondary)'
+          }}
+        >
+          Todos ({counts.todos})
+        </button>
+        <button
+          type="button"
+          onClick={() => setRolFiltro('cliente')}
+          style={{
+            padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid var(--border-light)',
+            fontWeight: '600', fontSize: '0.85rem', cursor: 'pointer',
+            backgroundColor: rolFiltro === 'cliente' ? '#2563eb' : 'var(--bg-surface)',
+            color: rolFiltro === 'cliente' ? '#fff' : 'var(--text-secondary)'
+          }}
+        >
+          👤 Clientes ({counts.clientes})
+        </button>
+        <button
+          type="button"
+          onClick={() => setRolFiltro('proveedor')}
+          style={{
+            padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid var(--border-light)',
+            fontWeight: '600', fontSize: '0.85rem', cursor: 'pointer',
+            backgroundColor: rolFiltro === 'proveedor' ? '#d97706' : 'var(--bg-surface)',
+            color: rolFiltro === 'proveedor' ? '#fff' : 'var(--text-secondary)'
+          }}
+        >
+          🏭 Proveedores ({counts.proveedores})
+        </button>
+        <button
+          type="button"
+          onClick={() => setRolFiltro('ambos')}
+          style={{
+            padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid var(--border-light)',
+            fontWeight: '600', fontSize: '0.85rem', cursor: 'pointer',
+            backgroundColor: rolFiltro === 'ambos' ? '#4f46e5' : 'var(--bg-surface)',
+            color: rolFiltro === 'ambos' ? '#fff' : 'var(--text-secondary)'
+          }}
+        >
+          🔄 Cliente y Proveedor ({counts.ambos})
+        </button>
+      </div>
+
       {/* Toolbox */}
       <div className="card" style={{ padding: '1rem', marginBottom: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
         <div style={{ position: 'relative', flexGrow: 1, maxWidth: '400px' }}>
@@ -354,7 +444,22 @@ const Clientes = () => {
                         {getTypeIcon(cliente.type)}
                       </div>
                       <div>
-                        <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{cliente.name || 'Sin nombre'}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <span style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{cliente.name || 'Sin nombre'}</span>
+                          {cliente.rolContacto === 'ambos' ? (
+                            <span style={{ fontSize: '0.65rem', padding: '0.15rem 0.4rem', borderRadius: '4px', backgroundColor: '#e0e7ff', color: '#3730a3', fontWeight: '700', letterSpacing: '0.03em' }}>
+                              CLIENTE Y PROVEEDOR
+                            </span>
+                          ) : cliente.rolContacto === 'proveedor' ? (
+                            <span style={{ fontSize: '0.65rem', padding: '0.15rem 0.4rem', borderRadius: '4px', backgroundColor: '#fef3c7', color: '#92400e', fontWeight: '700', letterSpacing: '0.03em' }}>
+                              PROVEEDOR
+                            </span>
+                          ) : (
+                            <span style={{ fontSize: '0.65rem', padding: '0.15rem 0.4rem', borderRadius: '4px', backgroundColor: '#dbeafe', color: '#1e40af', fontWeight: '700', letterSpacing: '0.03em' }}>
+                              CLIENTE
+                            </span>
+                          )}
+                        </div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.125rem' }}>{cliente.type || 'Tipo No Definido'} • CUIT: {cliente.cuit || '-'}</div>
                       </div>
                     </div>
@@ -463,11 +568,56 @@ const Clientes = () => {
           
           {/* SECCIÓN 1: Identidad del Contacto */}
           <div style={{ borderBottom: '1px solid var(--border-light)', paddingBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <h4 style={{ margin: 0, color: 'var(--primary-700)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Identidad del Contacto</h4>
+            <h4 style={{ margin: 0, color: 'var(--primary-700)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Identidad & Rol Comercial</h4>
             
             <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label" style={{ fontWeight: '600', color: 'var(--text-primary)' }}>¿Qué rol cumple este contacto?</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', marginTop: '0.25rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, rolContacto: 'cliente' }))}
+                  style={{
+                    padding: '0.625rem 0.25rem', borderRadius: '8px',
+                    border: formData.rolContacto === 'cliente' ? '2px solid #2563eb' : '1px solid var(--border-light)',
+                    backgroundColor: formData.rolContacto === 'cliente' ? '#dbeafe' : 'var(--bg-surface)',
+                    color: formData.rolContacto === 'cliente' ? '#1e40af' : 'var(--text-primary)',
+                    fontWeight: '600', fontSize: '0.8rem', cursor: 'pointer', textAlign: 'center'
+                  }}
+                >
+                  👤 Solo Cliente
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, rolContacto: 'proveedor' }))}
+                  style={{
+                    padding: '0.625rem 0.25rem', borderRadius: '8px',
+                    border: formData.rolContacto === 'proveedor' ? '2px solid #d97706' : '1px solid var(--border-light)',
+                    backgroundColor: formData.rolContacto === 'proveedor' ? '#fef3c7' : 'var(--bg-surface)',
+                    color: formData.rolContacto === 'proveedor' ? '#92400e' : 'var(--text-primary)',
+                    fontWeight: '600', fontSize: '0.8rem', cursor: 'pointer', textAlign: 'center'
+                  }}
+                >
+                  🏭 Solo Proveedor
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, rolContacto: 'ambos' }))}
+                  style={{
+                    padding: '0.625rem 0.25rem', borderRadius: '8px',
+                    border: formData.rolContacto === 'ambos' ? '2px solid #4f46e5' : '1px solid var(--border-light)',
+                    backgroundColor: formData.rolContacto === 'ambos' ? '#e0e7ff' : 'var(--bg-surface)',
+                    color: formData.rolContacto === 'ambos' ? '#3730a3' : 'var(--text-primary)',
+                    fontWeight: '600', fontSize: '0.8rem', cursor: 'pointer', textAlign: 'center'
+                  }}
+                >
+                  🔄 Cliente y Proveedor
+                </button>
+              </div>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 0 }}>
               <ValidatedInput 
-                label="Nombre o Razón Social del Cliente"
+                label="Nombre o Razón Social"
                 name="name" 
                 value={formData.name} 
                 onChange={(val) => setFormData(prev => ({...prev, name: val}))}
