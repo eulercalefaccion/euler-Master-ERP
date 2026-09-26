@@ -51,33 +51,68 @@ export const extraerDniDeCuit = (cuitStr) => {
 };
 
 /**
- * Parsea respuestas en HTML de Padrón CUIT
+ * Parser de HTML de Padrón CUIT (CuitOnline, AFIP, etc.)
  */
-const parseHtmlPadron = (html, cleanCuit) => {
+export const parsePadronHtml = (html, cleanCuit) => {
+  if (!html) return null;
+
   let name = '';
-  const metaMatch = html.match(/CuitOnline\.\s*([^-\d<]+)\s*-\s*\d{11}/i) ||
-                    html.match(/meta name="description" content="[^"]*?\b([a-zA-Z\sÑñÁÉÍÓÚáéíóú.-]+)\s*-\s*\d{11}/i);
+  let location = '';
+  let address = '';
 
-  if (metaMatch && metaMatch[1]) {
-    name = metaMatch[1].replace(/regímenes y actividades con CuitOnline\.?/gi, '').trim();
-  }
-
-  if (!name || name.length < 3 || name.toLowerCase().includes('resultados') || name.toLowerCase().includes('bloqueador')) {
-    const h3Match = html.match(/<h3[^>]*>\s*([a-zA-Z\sÑñÁÉÍÓÚáéíóú.-]+)\s*<\/h3>/i);
-    if (h3Match && h3Match[1] && !h3Match[1].toLowerCase().includes('bloqueador') && !h3Match[1].toLowerCase().includes('sumate')) {
-      name = h3Match[1].trim();
+  // Strategy 1: Title pattern on detail pages: <title>NAME (CUIT), LOCATION - Cuit Online</title>
+  const titleMatch = html.match(/<title>\s*([^(<]+)\s*\(\d{2}-\d{8}-\d\)(?:,\s*([^-\n<]+))?/i);
+  if (titleMatch && titleMatch[1]) {
+    const rawName = titleMatch[1].trim();
+    if (!rawName.toLowerCase().includes('cuit online') && !rawName.toLowerCase().includes('resultados')) {
+      name = rawName;
+    }
+    if (titleMatch[2]) {
+      location = titleMatch[2].replace(/-\s*Cuit\s*Online/i, '').trim();
     }
   }
 
-  let domicilio = '';
+  // Strategy 2: H2 class="denominacion" or title="Ver detalles de NAME"
+  if (!name) {
+    const h2Match = html.match(/<h2[^>]*class=["']denominacion["'][^>]*>([^<]+)<\/h2>/i) ||
+                    html.match(/title=["']Ver detalles de ([^"']+)["']/i) ||
+                    html.match(/<h2[^>]*>([^<]+)<\/h2>/i);
+    if (h2Match && h2Match[1] && !h2Match[1].toLowerCase().includes('bloqueador') && !h2Match[1].toLowerCase().includes('cuit')) {
+      name = h2Match[1].trim();
+    }
+  }
+
+  // Strategy 3: Meta description
+  if (!name) {
+    const metaMatch = html.match(/meta name="description" content="[^"]*?\b([a-zA-Z\sÑñÁÉÍÓÚáéíóú.-]+)\s*-\s*\d{11}/i) ||
+                      html.match(/CuitOnline\.\s*([^-\d<]+)\s*-\s*\d{11}/i);
+    if (metaMatch && metaMatch[1]) {
+      const rawMeta = metaMatch[1].replace(/regímenes y actividades con CuitOnline\.?/gi, '').replace(/1 Resultados de \d+/gi, '').trim();
+      if (!rawMeta.toLowerCase().includes('bloqueador')) {
+        name = rawMeta;
+      }
+    }
+  }
+
+  if (name.toLowerCase().startsWith('con cuitonline.')) {
+    name = name.replace(/^con cuitonline\.\s*/i, '');
+  }
+
+  // Extract Address (Domicilio)
   const domMatch = html.match(/(?:domicilio|direcci[oó]n)[^:]*:\s*<[^>]+>\s*([^<]+)/i) ||
-                   html.match(/itemprop="streetAddress">([^<]+)/i);
-  if (domMatch) domicilio = domMatch[1].trim();
+                   html.match(/itemprop=["']streetAddress["'][^>]*>([^<]+)/i) ||
+                   html.match(/domicilio[^<]*<[^>]+>\s*([^<]+)/i);
+  if (domMatch) {
+    address = domMatch[1].trim();
+  }
 
-  let localidad = '';
-  const provMatch = html.match(/(Santa Fe|Buenos Aires|Córdoba|Cordoba|Mendoza|Entre R[íi]os|Tucum[áa]n|Salta|San Juan|San Luis|Chaco|Corrientes|Misiones|Neuqu[eé]n|R[íi]o Negro|Chubut|Santa Cruz|Jujuy|La Pampa|Formosa|Catamarca|La Rioja|Tierra del Fuego|CABA|Capital Federal)/i);
-  if (provMatch) localidad = provMatch[1];
+  // Extract Location if not found in title
+  if (!location) {
+    const provMatch = html.match(/(Santa Fe|Buenos Aires|Córdoba|Cordoba|Mendoza|Entre R[íi]os|Tucum[áa]n|Salta|San Juan|San Luis|Chaco|Corrientes|Misiones|Neuqu[eé]n|R[íi]o Negro|Chubut|Santa Cruz|Jujuy|La Pampa|Formosa|Catamarca|La Rioja|Tierra del Fuego|CABA|Capital Federal)/i);
+    if (provMatch) location = provMatch[1];
+  }
 
+  // Extract Condicion IVA
   let condicionIva = 'Consumidor Final';
   if (html.includes('MONOTRIBUTO')) condicionIva = 'Monotributo';
   else if (html.includes('IVA EXENTO') || html.includes('EXENTO')) condicionIva = 'Exento';
@@ -86,8 +121,8 @@ const parseHtmlPadron = (html, cleanCuit) => {
 
   return {
     name: name ? name.toUpperCase() : '',
-    address: domicilio,
-    location: localidad,
+    address: address ? address.toUpperCase() : '',
+    location: location || '',
     condicionIva
   };
 };
@@ -109,11 +144,11 @@ export const consultarCuitArca = async (cuitRaw) => {
   const esPersonaFisica = ['20', '23', '24', '27'].includes(prefijo);
   const dniExtraido = extraerDniDeCuit(cleanCuit);
 
-  // 1. Intentar Netlify Serverless Function oficial (servidor Node.js sin bloques CORS/Cloudflare)
+  // 1. Intentar Netlify Serverless Function oficial (servidor Node.js)
   try {
     const fnUrl = `/.netlify/functions/cuitPadron?cuit=${cleanCuit}`;
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 6000);
+    const timeoutId = setTimeout(() => controller.abort(), 7000);
 
     const res = await fetch(fnUrl, { signal: controller.signal });
     clearTimeout(timeoutId);
@@ -128,17 +163,18 @@ export const consultarCuitArca = async (cuitRaw) => {
     console.warn("[ARCA Service] Netlify Function fallback:", err);
   }
 
-  // 2. Intentar fuentes HTML secundarias
+  // 2. Intentar fuentes HTML secundarias con CORS Proxies desde el navegador del usuario (IP residencial/comercial)
   const fuentesHtml = [
     `/api/arca-cuit/${cleanCuit}`, // Netlify / Vite Proxy
     `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://www.cuitonline.com/search.php?q=${cleanCuit}`)}`,
-    `https://corsproxy.io/?${encodeURIComponent(`https://www.cuitonline.com/search.php?q=${cleanCuit}`)}`
+    `https://corsproxy.io/?${encodeURIComponent(`https://www.cuitonline.com/search.php?q=${cleanCuit}`)}`,
+    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(`https://www.cuitonline.com/search.php?q=${cleanCuit}`)}`
   ];
 
   for (const fuenteUrl of fuentesHtml) {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 4000);
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
 
       const res = await fetch(fuenteUrl, { signal: controller.signal });
       clearTimeout(timeoutId);
@@ -146,8 +182,8 @@ export const consultarCuitArca = async (cuitRaw) => {
       if (res.ok) {
         const text = await res.text();
         if (text && text.length > 500) {
-          const parsed = parseHtmlPadron(text, cleanCuit);
-          if (parsed.name) {
+          const parsed = parsePadronHtml(text, cleanCuit);
+          if (parsed && parsed.name) {
             return {
               exito: true,
               fuente: 'ARCA / AFIP Padrón Oficial',
@@ -170,41 +206,6 @@ export const consultarCuitArca = async (cuitRaw) => {
     }
   }
 
-  // Fallback a APIs JSON públicas si existen
-  const apisJson = [
-    `https://afip.padron.ar/api/v1/persona/${cleanCuit}`,
-    `https://api.apis.net.ar/v1/cuit?cuit=${cleanCuit}`
-  ];
-
-  for (const apiUrl of apisJson) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000);
-      const res = await fetch(apiUrl, { signal: controller.signal });
-      clearTimeout(timeoutId);
-      if (res.ok) {
-        const data = await res.json();
-        const razonSocial = data.razonSocial || data.nombre || data.nombreCompleto || '';
-        if (razonSocial) {
-          return {
-            exito: true,
-            fuente: 'ARCA / AFIP API',
-            cuit: cuitFormateado,
-            cuitLimpio: cleanCuit,
-            name: razonSocial.toUpperCase(),
-            type: esPersonaFisica ? 'Propietario' : 'Constructora',
-            dni: dniExtraido,
-            address: data.direccion || data.domicilio?.calle || '',
-            location: data.localidad || '',
-            condicionIva: data.condicionIva || 'Responsable Inscripto',
-            esPersonaFisica,
-            mensaje: `Contribuyente hallado en Padrón ARCA: ${razonSocial}`
-          };
-        }
-      }
-    } catch (e) {}
-  }
-
   // Fallback Inteligente Algorítmico si el Padrón no devolvió el string del nombre
   return {
     exito: true,
@@ -219,7 +220,7 @@ export const consultarCuitArca = async (cuitRaw) => {
     condicionIva: esPersonaFisica ? 'Consumidor Final' : 'Responsable Inscripto',
     esPersonaFisica,
     mensaje: esPersonaFisica 
-      ? `CUIT de Persona Física verificado en ARCA (DNI ${dniExtraido} detectado). Podés escribir la Razón Social.` 
+      ? `CUIT de Persona Física verificado en ARCA (DNI ${dniExtraido} detectado). Podés completar el Nombre o Razón Social.` 
       : `CUIT de Persona Jurídica verificado en ARCA.`
   };
 };

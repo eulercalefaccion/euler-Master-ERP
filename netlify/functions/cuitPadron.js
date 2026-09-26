@@ -27,6 +27,80 @@ const extraerDniDeCuit = (cleanCuit) => {
   return '';
 };
 
+const parsePadronHtml = (html, cleanCuit) => {
+  if (!html) return null;
+
+  let name = '';
+  let location = '';
+  let address = '';
+
+  // Strategy 1: Title pattern on detail pages: <title>NAME (CUIT), LOCATION - Cuit Online</title>
+  const titleMatch = html.match(/<title>\s*([^(<]+)\s*\(\d{2}-\d{8}-\d\)(?:,\s*([^-\n<]+))?/i);
+  if (titleMatch && titleMatch[1]) {
+    const rawName = titleMatch[1].trim();
+    if (!rawName.toLowerCase().includes('cuit online') && !rawName.toLowerCase().includes('resultados')) {
+      name = rawName;
+    }
+    if (titleMatch[2]) {
+      location = titleMatch[2].replace(/-\s*Cuit\s*Online/i, '').trim();
+    }
+  }
+
+  // Strategy 2: H2 class="denominacion" or title="Ver detalles de NAME"
+  if (!name) {
+    const h2Match = html.match(/<h2[^>]*class=["']denominacion["'][^>]*>([^<]+)<\/h2>/i) ||
+                    html.match(/title=["']Ver detalles de ([^"']+)["']/i) ||
+                    html.match(/<h2[^>]*>([^<]+)<\/h2>/i);
+    if (h2Match && h2Match[1] && !h2Match[1].toLowerCase().includes('bloqueador') && !h2Match[1].toLowerCase().includes('cuit')) {
+      name = h2Match[1].trim();
+    }
+  }
+
+  // Strategy 3: Meta description
+  if (!name) {
+    const metaMatch = html.match(/meta name="description" content="[^"]*?\b([a-zA-Z\sÑñÁÉÍÓÚáéíóú.-]+)\s*-\s*\d{11}/i) ||
+                      html.match(/CuitOnline\.\s*([^-\d<]+)\s*-\s*\d{11}/i);
+    if (metaMatch && metaMatch[1]) {
+      const rawMeta = metaMatch[1].replace(/regímenes y actividades con CuitOnline\.?/gi, '').replace(/1 Resultados de \d+/gi, '').trim();
+      if (!rawMeta.toLowerCase().includes('bloqueador')) {
+        name = rawMeta;
+      }
+    }
+  }
+
+  if (name.toLowerCase().startsWith('con cuitonline.')) {
+    name = name.replace(/^con cuitonline\.\s*/i, '');
+  }
+
+  // Extract Address (Domicilio)
+  const domMatch = html.match(/(?:domicilio|direcci[oó]n)[^:]*:\s*<[^>]+>\s*([^<]+)/i) ||
+                   html.match(/itemprop=["']streetAddress["'][^>]*>([^<]+)/i) ||
+                   html.match(/domicilio[^<]*<[^>]+>\s*([^<]+)/i);
+  if (domMatch) {
+    address = domMatch[1].trim();
+  }
+
+  // Extract Location if not found in title
+  if (!location) {
+    const provMatch = html.match(/(Santa Fe|Buenos Aires|Córdoba|Cordoba|Mendoza|Entre R[íi]os|Tucum[áa]n|Salta|San Juan|San Luis|Chaco|Corrientes|Misiones|Neuqu[eé]n|R[íi]o Negro|Chubut|Santa Cruz|Jujuy|La Pampa|Formosa|Catamarca|La Rioja|Tierra del Fuego|CABA|Capital Federal)/i);
+    if (provMatch) location = provMatch[1];
+  }
+
+  // Extract Condicion IVA
+  let condicionIva = 'Consumidor Final';
+  if (html.includes('MONOTRIBUTO')) condicionIva = 'Monotributo';
+  else if (html.includes('IVA EXENTO') || html.includes('EXENTO')) condicionIva = 'Exento';
+  else if (html.includes('IVA RESPONSABLE INSCRIPTO') || html.includes('RESPONSABLE INSCRIPTO')) condicionIva = 'Responsable Inscripto';
+  else if (cleanCuit.startsWith('30') || cleanCuit.startsWith('33')) condicionIva = 'Responsable Inscripto';
+
+  return {
+    name: name ? name.toUpperCase() : '',
+    address: address ? address.toUpperCase() : '',
+    location: location || '',
+    condicionIva
+  };
+};
+
 export const handler = async (event) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -54,63 +128,55 @@ export const handler = async (event) => {
   const esPersonaFisica = ['20', '23', '24', '27'].includes(prefijo);
   const dniExtraido = extraerDniDeCuit(cleanCuit);
 
+  const fetchHeaders = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+    'Accept-Language': 'es-AR,es;q=0.9,en-US;q=0.8,en;q=0.7',
+    'Cache-Control': 'max-age=0',
+    'Sec-Ch-Ua': '"Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122"',
+    'Sec-Ch-Ua-Mobile': '?0',
+    'Sec-Ch-Ua-Platform': '"Windows"',
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': 'none',
+    'Sec-Fetch-User': '?1',
+    'Upgrade-Insecure-Requests': '1'
+  };
+
   try {
-    const targetUrl = `https://www.cuitonline.com/search.php?q=${cleanCuit}`;
-    const response = await fetch(targetUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-        'Accept-Language': 'es-AR,es;q=0.9,en-US;q=0.8,en;q=0.7',
-        'Cache-Control': 'max-age=0',
-        'Sec-Ch-Ua': '"Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122"',
-        'Sec-Ch-Ua-Mobile': '?0',
-        'Sec-Ch-Ua-Platform': '"Windows"',
-        'Sec-Fetch-Dest': 'document',
-        'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-Site': 'none',
-        'Sec-Fetch-User': '?1',
-        'Upgrade-Insecure-Requests': '1'
-      }
-    });
+    const searchUrl = `https://www.cuitonline.com/search.php?q=${cleanCuit}`;
+    const response = await fetch(searchUrl, { headers: fetchHeaders });
 
     if (response.ok) {
-      const html = await response.text();
+      const searchHtml = await response.text();
+      let parsed = parsePadronHtml(searchHtml, cleanCuit);
 
-      // Extract Name / Razón Social
-      let name = '';
-      const metaMatch = html.match(/meta name="description" content="[^"]*?\b([a-zA-Z\sÑñÁÉÍÓÚáéíóú.-]+)\s*-\s*\d{11}/i) ||
-                        html.match(/CuitOnline\.\s*([^-\d<]+)\s*-\s*\d{11}/i);
+      // Check if detail page exists for exact CUIT to pull exact domicilio
+      const detailRegex = new RegExp(`href=["'](detalle/${cleanCuit}/[^"']+\\.html)["']`, 'i');
+      const detailPathMatch = searchHtml.match(detailRegex);
 
-      if (metaMatch && metaMatch[1]) {
-        name = metaMatch[1].replace(/regímenes y actividades con CuitOnline\.?/gi, '').trim();
-      }
-
-      if (!name || name.length < 3 || name.toLowerCase().includes('bloqueador') || name.toLowerCase().includes('sumate')) {
-        const h3Match = html.match(/<h3[^>]*>\s*([a-zA-Z\sÑñÁÉÍÓÚáéíóú.-]+)\s*<\/h3>/i);
-        if (h3Match && h3Match[1] && !h3Match[1].toLowerCase().includes('bloqueador') && !h3Match[1].toLowerCase().includes('sumate')) {
-          name = h3Match[1].trim();
+      if (detailPathMatch) {
+        try {
+          const detailUrl = `https://www.cuitonline.com/${detailPathMatch[1]}`;
+          const detailRes = await fetch(detailUrl, { headers: fetchHeaders });
+          if (detailRes.ok) {
+            const detailHtml = await detailRes.text();
+            const detailParsed = parsePadronHtml(detailHtml, cleanCuit);
+            if (detailParsed) {
+              parsed = {
+                name: detailParsed.name || parsed.name,
+                address: detailParsed.address || parsed.address,
+                location: detailParsed.location || parsed.location,
+                condicionIva: detailParsed.condicionIva || parsed.condicionIva
+              };
+            }
+          }
+        } catch (e) {
+          console.warn('Error fetching detail page in Netlify function:', e.message);
         }
       }
 
-      // Extract Domicilio / Direccion
-      let domicilio = '';
-      const domMatch = html.match(/(?:domicilio|direcci[oó]n)[^:]*:\s*<[^>]+>\s*([^<]+)/i) ||
-                       html.match(/itemprop="streetAddress">([^<]+)/i);
-      if (domMatch) domicilio = domMatch[1].trim();
-
-      // Extract Localidad / Provincia
-      let localidad = '';
-      const provMatch = html.match(/(Santa Fe|Buenos Aires|Córdoba|Cordoba|Mendoza|Entre R[íi]os|Tucum[áa]n|Salta|San Juan|San Luis|Chaco|Corrientes|Misiones|Neuqu[eé]n|R[íi]o Negro|Chubut|Santa Cruz|Jujuy|La Pampa|Formosa|Catamarca|La Rioja|Tierra del Fuego|CABA|Capital Federal)/i);
-      if (provMatch) localidad = provMatch[1];
-
-      // Extract Condición IVA
-      let condicionIva = 'Consumidor Final';
-      if (html.includes('MONOTRIBUTO')) condicionIva = 'Monotributo';
-      else if (html.includes('IVA EXENTO') || html.includes('EXENTO')) condicionIva = 'Exento';
-      else if (html.includes('IVA RESPONSABLE INSCRIPTO') || html.includes('RESPONSABLE INSCRIPTO')) condicionIva = 'Responsable Inscripto';
-      else if (cleanCuit.startsWith('30') || cleanCuit.startsWith('33')) condicionIva = 'Responsable Inscripto';
-
-      if (name) {
+      if (parsed && parsed.name) {
         return {
           statusCode: 200,
           headers,
@@ -118,14 +184,14 @@ export const handler = async (event) => {
             exito: true,
             cuit: cuitFormateado,
             cuitLimpio: cleanCuit,
-            name: name.toUpperCase(),
+            name: parsed.name,
             type: esPersonaFisica ? 'Propietario' : 'Constructora',
             dni: dniExtraido,
-            address: domicilio,
-            location: localidad,
-            condicionIva,
+            address: parsed.address,
+            location: parsed.location,
+            condicionIva: parsed.condicionIva,
             esPersonaFisica,
-            mensaje: `Contribuyente hallado en Padrón ARCA: ${name.toUpperCase()}`
+            mensaje: `Contribuyente hallado en Padrón ARCA: ${parsed.name}`
           })
         };
       }
@@ -134,7 +200,7 @@ export const handler = async (event) => {
     console.error('Error Netlify Function CUIT:', err);
   }
 
-  // Fallback inteligente
+  // Fallback inteligente si no se devolvió el nombre completo desde el scraping
   return {
     statusCode: 200,
     headers,
