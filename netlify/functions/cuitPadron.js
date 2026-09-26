@@ -118,7 +118,7 @@ const parseDuckDuckGoHtml = (html, cleanCuit) => {
     // Check for location after the CUIT
     const fullMatch = html.match(/class=["']result__a["'][^>]*>[^<]+\(\d{2}-\d{8}-\d\),\s*([^<]+)/i);
     if (fullMatch && fullMatch[1]) {
-      location = fullMatch[1].trim();
+      location = fullMatch[1].replace(/-\s*Cuit\s*Online.*/i, '').replace(/\s*-\s*$/, '').trim();
     }
   }
 
