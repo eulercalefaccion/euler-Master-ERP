@@ -195,3 +195,53 @@ Responde ÚNICAMENTE con el objeto JSON válido.
     exitoIA: false
   };
 };
+
+/**
+ * Motor IA OCR para Lectura e Importación Automática de Constancias CUIT (ARCA / AFIP)
+ */
+export const parseConstanciaCuitConIA = async (file) => {
+  const adjuntoUrl = await uploadDocumentToStorage(file, 'constancias_cuit_adjuntos');
+
+  try {
+    if (GEMINI_API_KEY) {
+      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+      const imagePart = await fileToBase64(file);
+
+      const prompt = `
+Eres un asistente contable experto en constancias de CUIT (AFIP / ARCA), documentos de identidad DNI y facturas de Argentina.
+Analiza esta imagen o documento PDF y extrae en formato JSON estricto los siguientes campos del contribuyente:
+
+{
+  "name": "Nombre Completo o Razón Social exacta",
+  "cuit": "CUIT en formato XX-XXXXXXXX-X",
+  "dni": "Número de DNI si es Persona Física",
+  "address": "Domicilio Fiscal / Comercial (Calle, Número, Piso)",
+  "location": "Localidad o Ciudad",
+  "condicionIva": "Responsable Inscripto" | "Monotributo" | "Exento" | "Consumidor Final"
+}
+
+Responde ÚNICAMENTE con el objeto JSON válido sin texto adicional.
+`;
+
+      const result = await model.generateContent([prompt, imagePart]);
+      const responseText = result.response.text().trim();
+      const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+      const parsedData = JSON.parse(cleanJson);
+
+      return {
+        ...parsedData,
+        adjuntoUrl,
+        exitoIA: true
+      };
+    }
+  } catch (err) {
+    console.warn('Fallback Constancia CUIT IA:', err);
+  }
+
+  return {
+    adjuntoUrl,
+    exitoIA: false
+  };
+};

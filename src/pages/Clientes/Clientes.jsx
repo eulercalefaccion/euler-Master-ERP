@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Search, Filter, Plus, FileText, Wrench, MoreVertical, Building, User, Mail, Phone, X, Save, Edit2, Trash2, ExternalLink } from 'lucide-react';
+import { Search, Filter, Plus, FileText, Wrench, MoreVertical, Building, User, Mail, Phone, X, Save, Edit2, Trash2, ExternalLink, Upload, Sparkles } from 'lucide-react';
 import ValidatedInput from '../../components/Form/ValidatedInput';
 import { db } from '../../services/firebaseConfig';
 import { collection, onSnapshot, query, addDoc, updateDoc, deleteDoc, writeBatch, doc } from 'firebase/firestore';
 import { consultarCuitArca } from '../../services/arcaCuitService';
+import { parseConstanciaCuitConIA } from '../../services/aiOcrService';
 
 const Clientes = () => {
   const navigate = useNavigate();
@@ -24,6 +25,7 @@ const Clientes = () => {
   
   // ARCA CUIT Lookup States
   const [isConsultandoArca, setIsConsultandoArca] = useState(false);
+  const [isScanningConstancia, setIsScanningConstancia] = useState(false);
   const [arcaStatusMessage, setArcaStatusMessage] = useState('');
 
   const [formData, setFormData] = useState({
@@ -184,6 +186,46 @@ const Clientes = () => {
       setArcaStatusMessage(`⚠️ ${err.message}`);
     } finally {
       setIsConsultandoArca(false);
+    }
+  };
+
+  const handleConstanciaUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setIsScanningConstancia(true);
+    setArcaStatusMessage("✨ Escaneando documento con IA OCR...");
+
+    try {
+      const res = await parseConstanciaCuitConIA(file);
+      if (res && (res.name || res.cuit)) {
+        setFormData(prev => {
+          const next = {
+            ...prev,
+            name: res.name || prev.name,
+            cuit: res.cuit || prev.cuit,
+            dni: res.dni || prev.dni,
+            address: res.address || prev.address,
+            location: res.location || prev.location,
+          };
+          if (prev.facturacionIgualCliente) {
+            next.facturacionNombre = next.name;
+            next.facturacionCuit = next.cuit;
+            next.facturacionDireccion = next.address;
+            if (next.dni) next.facturacionDni = next.dni;
+          }
+          return next;
+        });
+        setArcaStatusMessage("✅ Datos autocompletados desde el documento por IA OCR.");
+      } else {
+        setArcaStatusMessage("⚠️ No se pudieron extraer datos claros del documento subido.");
+      }
+    } catch (err) {
+      console.error("Error al escanear constancia:", err);
+      setArcaStatusMessage("⚠️ Error procesando documento: " + err.message);
+    } finally {
+      setIsScanningConstancia(false);
+      e.target.value = '';
     }
   };
 
@@ -626,6 +668,22 @@ const Clientes = () => {
           {/* SECCIÓN 1: Identidad del Contacto */}
           <div style={{ borderBottom: '1px solid var(--border-light)', paddingBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <h4 style={{ margin: 0, color: 'var(--primary-700)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Identidad & Rol Comercial</h4>
+
+            {/* Banner IA OCR: Escanear Constancia CUIT / Factura */}
+            <div style={{ padding: '0.875rem', borderRadius: '8px', backgroundColor: 'var(--primary-50)', border: '1px dashed var(--primary-300)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+              <div>
+                <div style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--primary-800)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <Sparkles size={16} color="var(--primary-600)" /> Autocompletar con Documento (IA OCR)
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>
+                  Subí una foto o PDF de la Constancia ARCA, Factura o DNI para llenar todos los campos automáticamente.
+                </div>
+              </div>
+              <label className="btn btn-secondary" style={{ cursor: 'pointer', padding: '0.4rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0, margin: 0 }}>
+                <Upload size={14} /> {isScanningConstancia ? 'Escaneando...' : 'Escanear IA'}
+                <input type="file" accept="image/*,application/pdf" onChange={handleConstanciaUpload} disabled={isScanningConstancia} style={{ display: 'none' }} />
+              </label>
+            </div>
             
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label className="form-label" style={{ fontWeight: '600', color: 'var(--text-primary)' }}>¿Qué rol cumple este contacto?</label>
@@ -732,8 +790,18 @@ const Clientes = () => {
                   errorMsg="Formato esperado: XX-XXXXXXXX-X"
                 />
                 {arcaStatusMessage && (
-                  <div style={{ fontSize: '0.75rem', color: arcaStatusMessage.startsWith('✅') ? '#059669' : 'var(--text-secondary)', marginTop: '0.25rem', fontWeight: '600' }}>
-                    {arcaStatusMessage}
+                  <div style={{ fontSize: '0.75rem', color: arcaStatusMessage.startsWith('✅') ? '#059669' : 'var(--text-secondary)', marginTop: '0.25rem', fontWeight: '600', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <div>{arcaStatusMessage}</div>
+                    {formData.cuit && formData.cuit.replace(/\D/g, '').length === 11 && (
+                      <a
+                        href={`https://www.cuitonline.com/search.php?q=${formData.cuit.replace(/\D/g, '')}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ color: 'var(--primary-600)', textDecoration: 'underline', fontWeight: '600', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
+                      >
+                        <ExternalLink size={12} /> Abrir Ficha Padrón en nueva pestaña
+                      </a>
+                    )}
                   </div>
                 )}
               </div>
