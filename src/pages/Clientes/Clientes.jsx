@@ -16,8 +16,10 @@ const Clientes = () => {
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [rolFiltro, setRolFiltro] = useState('Todos'); // Todos, cliente, proveedor, ambos
   const [formData, setFormData] = useState({
     name: '',
+    rolContacto: 'cliente', // cliente, proveedor, ambos
     type: 'Propietario',
     email: '',
     phone: '',

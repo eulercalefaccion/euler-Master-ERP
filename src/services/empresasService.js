@@ -1,5 +1,5 @@
 import { db } from './firebaseConfig';
-import { collection, getDocs, addDoc, doc, updateDoc, setDoc } from 'firebase/firestore';
+import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
 
 export const EMPRESAS_INICIALES = [
   {
@@ -38,7 +38,6 @@ export const getEmpresas = async () => {
   try {
     const snap = await getDocs(collection(db, 'empresas'));
     if (snap.empty) {
-      // Seed inicial
       for (const emp of EMPRESAS_INICIALES) {
         await setDoc(doc(db, 'empresas', emp.id), emp);
       }
@@ -49,4 +48,21 @@ export const getEmpresas = async () => {
     console.error('Error al obtener empresas:', error);
     return EMPRESAS_INICIALES;
   }
+};
+
+export const crearEmpresa = async (empresaData) => {
+  const docRef = await addDoc(collection(db, 'empresas'), {
+    ...empresaData,
+    activa: true,
+    createdAt: new Date().toISOString()
+  });
+  return { id: docRef.id, ...empresaData };
+};
+
+export const actualizarEmpresa = async (id, empresaData) => {
+  await updateDoc(doc(db, 'empresas', id), empresaData);
+};
+
+export const eliminarEmpresa = async (id) => {
+  await deleteDoc(doc(db, 'empresas', id));
 };
