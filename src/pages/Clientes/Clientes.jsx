@@ -78,6 +78,38 @@ const Clientes = () => {
     return () => unsubscribe();
   }, []);
 
+  // Contadores dinámicos de obras y presupuestos por cliente
+  const [obrasByClient, setObrasByClient] = useState({});
+  const [presByClient, setPresByClient] = useState({});
+
+  useEffect(() => {
+    const unsub = onSnapshot(query(collection(db, 'obras')), (snap) => {
+      const counts = {};
+      snap.docs.forEach(d => {
+        const o = d.data();
+        if (o.deleted) return;
+        const cid = o.clientId || o.clienteId;
+        if (cid) counts[cid] = (counts[cid] || 0) + 1;
+      });
+      setObrasByClient(counts);
+    });
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    const unsub = onSnapshot(query(collection(db, 'presupuestos')), (snap) => {
+      const counts = {};
+      snap.docs.forEach(d => {
+        const p = d.data();
+        if (p.deleted) return;
+        const cid = p.clientId || p.clienteId;
+        if (cid) counts[cid] = (counts[cid] || 0) + 1;
+      });
+      setPresByClient(counts);
+    });
+    return () => unsub();
+  }, []);
+
   // Close menu on outside click
   useEffect(() => {
     const handleClick = () => setOpenMenuId(null);
@@ -577,8 +609,11 @@ const Clientes = () => {
 
                   <td style={{ padding: '1rem' }}>
                     <div style={{ display: 'flex', gap: '0.75rem' }}>
-                      <div title="Obras Vinculadas" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.875rem', color: cliente.obrasCount > 0 ? 'var(--primary-600)' : 'var(--text-tertiary)', fontWeight: '500' }}>
-                        <FileText size={16} /> {cliente.obrasCount || 0}
+                      <div title="Obras Vinculadas" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.875rem', color: (obrasByClient[cliente.id] || 0) > 0 ? 'var(--primary-600)' : 'var(--text-tertiary)', fontWeight: '500' }}>
+                        <FileText size={16} /> {obrasByClient[cliente.id] || 0}
+                      </div>
+                      <div title="Presupuestos CRM" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.875rem', color: (presByClient[cliente.id] || 0) > 0 ? '#059669' : 'var(--text-tertiary)', fontWeight: '500' }}>
+                        📋 {presByClient[cliente.id] || 0}
                       </div>
                       <div title="Servicios Técnicos (SSTT)" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.875rem', color: cliente.ssttCount > 0 ? 'var(--warning)' : 'var(--text-tertiary)', fontWeight: '500' }}>
                         <Wrench size={16} /> {cliente.ssttCount || 0}

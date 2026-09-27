@@ -40,6 +40,36 @@ function calcTotal(materiales, manoObra) {
   return { neto, conIVA: neto * (1 + IVA) };
 }
 
+/** Mapeo de columnas del Kanban CRM a labels y colores visuales */
+const KANBAN_STATUS = {
+  pendiente:         { label: 'Presupuesto Pendiente', bg: '#FEF3C7', color: '#92400E', emoji: '📋' },
+  en_calculo:        { label: 'En Cálculo',           bg: '#DBEAFE', color: '#1E40AF', emoji: '🧮' },
+  listo_para_enviar: { label: 'Listo para Enviar',    bg: '#E0E7FF', color: '#3730A3', emoji: '📨' },
+  enviado:           { label: 'Enviado al Cliente',    bg: '#FEF9C3', color: '#854D0E', emoji: '📤' },
+  seguimiento:       { label: 'Seguimiento Activo',    bg: '#FDE68A', color: '#92400E', emoji: '🔔' },
+  aprobado:          { label: 'Aprobado ✓',            bg: '#D1FAE5', color: '#065F46', emoji: '✅' },
+  rechazado:         { label: 'Rechazado / En Espera', bg: '#FEE2E2', color: '#991B1B', emoji: '❌' },
+};
+function getKanbanBadge(status) {
+  const s = KANBAN_STATUS[status] || { label: status || 'Sin estado', bg: '#F3F4F6', color: '#6B7280', emoji: '❓' };
+  return s;
+}
+
+/** Mapeo de fase+estado de obra a colores */
+function getObraStatusStyle(phase, estado) {
+  if (estado === 'Instalación Finalizada' || (phase === 'Instalación' && estado === 'Finalizada')) {
+    return { label: '✅ Obra Finalizada', bg: '#D1FAE5', color: '#065F46' };
+  }
+  if (phase === 'Instalación') {
+    if (estado === 'En Proceso') return { label: '🔧 Instalación en Proceso', bg: '#DBEAFE', color: '#1E40AF' };
+    return { label: '⏳ Instalación Pendiente', bg: '#FEF3C7', color: '#92400E' };
+  }
+  // phase === 'Obra'
+  if (estado === 'Finalizada') return { label: '✅ Cañería Finalizada', bg: '#D1FAE5', color: '#065F46' };
+  if (estado === 'En Proceso') return { label: '🏗️ Obra en Proceso', bg: '#DBEAFE', color: '#1E40AF' };
+  return { label: '⏳ Pendiente de Inicio', bg: '#FEF3C7', color: '#92400E' };
+}
+
 export default function ClienteDetalleERP() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -1111,37 +1141,93 @@ export default function ClienteDetalleERP() {
               No hay obras vinculadas a este cliente.
             </div>
           ) : (
-            obras.map((o) => (
-              <div key={o.id} style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-light)', borderRadius: '12px', padding: '1.5rem', boxShadow: 'var(--shadow-sm)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+            obras.map((o) => {
+              const statusStyle = getObraStatusStyle(o.phase, o.estado);
+              return (
+              <div key={o.id} style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-light)', borderRadius: '12px', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+                {/* Header con estado */}
+                <div style={{ padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `3px solid ${statusStyle.color}22`, background: `${statusStyle.bg}44` }}>
                   <div>
-                    <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)' }}>{o.name}</h3>
-                    <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
-                      📍 {o.location || 'Sin dirección de obra'} · Sistema: <strong>{o.system || 'No especificado'}</strong>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                      {o.otNumber && <span style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--primary-600)', backgroundColor: 'var(--primary-50)', padding: '0.15rem 0.5rem', borderRadius: '4px' }}>{o.otNumber}</span>}
+                      <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)' }}>{o.name}</h3>
+                    </div>
+                    <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                      📍 {o.location || 'Sin dirección'} · 🔧 {o.system || 'S/D'}
                     </div>
                   </div>
-                  <span style={{ backgroundColor: 'var(--primary-50)', color: 'var(--primary-700)', padding: '0.3rem 0.8rem', borderRadius: '16px', fontSize: '0.75rem', fontWeight: 700 }}>
-                    Fase: {o.phase || 'Obra'} ({o.progress || 0}%)
+                  <span style={{ backgroundColor: statusStyle.bg, color: statusStyle.color, padding: '0.35rem 0.9rem', borderRadius: '16px', fontSize: '0.78rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                    {statusStyle.label}
                   </span>
                 </div>
 
-                {/* Barra de progreso */}
-                <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--border-light)', borderRadius: '4px', overflow: 'hidden', margin: '0.75rem 0' }}>
-                  <div style={{ width: `${o.progress || 0}%`, height: '100%', backgroundColor: 'var(--primary-600)', borderRadius: '4px', transition: 'width 0.3s' }} />
-                </div>
-
-                {/* Últimas anotaciones de la obra */}
-                {o.bitacoraHistory && o.bitacoraHistory.length > 0 && (
-                  <div style={{ marginTop: '0.75rem', backgroundColor: 'var(--bg-surface-hover)', padding: '0.75rem', borderRadius: '8px' }}>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: '0.3rem' }}>Último Avance Registrado</span>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>"{o.bitacoraHistory[o.bitacoraHistory.length - 1]?.texto}"</div>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)', marginTop: '0.2rem' }}>
-                      Por {o.bitacoraHistory[o.bitacoraHistory.length - 1]?.autor || 'Colaborador'} — {formatFecha(o.bitacoraHistory[o.bitacoraHistory.length - 1]?.fecha)}
+                <div style={{ padding: '1rem 1.5rem' }}>
+                  {/* Info row: Fase + Progreso + Fechas */}
+                  <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'center', marginBottom: '0.75rem' }}>
+                    <div style={{ fontSize: '0.82rem' }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>Fase: </span>
+                      <strong>{o.phase || 'Obra'}</strong>
                     </div>
+                    <div style={{ fontSize: '0.82rem' }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>Progreso: </span>
+                      <strong>{o.progress || 0}%</strong>
+                    </div>
+                    {(o.fechaInicioObra || o.fechaInicio) && (
+                      <div style={{ fontSize: '0.82rem' }}>
+                        <span style={{ color: 'var(--text-secondary)' }}>Inicio: </span>
+                        <strong>{o.fechaInicioObra || o.fechaInicio}</strong>
+                      </div>
+                    )}
+                    {(o.fechaFinEstimadaObra || o.fechaFinEstimada) && (
+                      <div style={{ fontSize: '0.82rem' }}>
+                        <span style={{ color: 'var(--text-secondary)' }}>Fin estimado: </span>
+                        <strong>{o.fechaFinEstimadaObra || o.fechaFinEstimada}</strong>
+                      </div>
+                    )}
+                    {o.presupuestoOrigen && (
+                      <div style={{ fontSize: '0.82rem' }}>
+                        <span style={{ color: 'var(--text-secondary)' }}>Presup.: </span>
+                        <strong style={{ color: 'var(--primary-600)' }}>{o.presupuestoOrigen}</strong>
+                      </div>
+                    )}
                   </div>
-                )}
+
+                  {/* Barra de progreso */}
+                  <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--border-light)', borderRadius: '4px', overflow: 'hidden', marginBottom: '0.75rem' }}>
+                    <div style={{ width: `${o.progress || 0}%`, height: '100%', backgroundColor: statusStyle.color, borderRadius: '4px', transition: 'width 0.3s' }} />
+                  </div>
+
+                  {/* Operarios asignados */}
+                  {o.operarios && (
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+                      👷 <strong>Operarios:</strong> {o.operarios}
+                    </div>
+                  )}
+
+                  {/* Últimas anotaciones de la obra */}
+                  {o.bitacoraHistory && o.bitacoraHistory.length > 0 && (
+                    <div style={{ backgroundColor: 'var(--bg-surface-hover)', padding: '0.75rem', borderRadius: '8px', marginTop: '0.5rem' }}>
+                      <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: '0.3rem' }}>Último Avance ({o.bitacoraHistory.length} registros)</span>
+                      <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>"{o.bitacoraHistory[o.bitacoraHistory.length - 1]?.texto}"</div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)', marginTop: '0.2rem' }}>
+                        Por {o.bitacoraHistory[o.bitacoraHistory.length - 1]?.autor || 'Colaborador'} — {formatFecha(o.bitacoraHistory[o.bitacoraHistory.length - 1]?.fecha)}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Ir a la obra */}
+                  <div style={{ marginTop: '0.75rem', textAlign: 'right' }}>
+                    <button
+                      onClick={() => navigate('/obras')}
+                      style={{ background: 'none', border: '1px solid var(--primary-200)', color: 'var(--primary-600)', padding: '0.4rem 1rem', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
+                    >
+                      <ExternalLink size={14} /> Ver en Panel de Obras
+                    </button>
+                  </div>
+                </div>
               </div>
-            ))
+              );
+            })
           )}
         </div>
       )}
@@ -1154,52 +1240,78 @@ export default function ClienteDetalleERP() {
               No hay presupuestos o cotizaciones registrados para este cliente.
             </div>
           ) : (
-            presupuestos.map((p) => (
-              <div key={p.id} style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-light)', borderRadius: '12px', padding: '1.5rem', boxShadow: 'var(--shadow-sm)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+            presupuestos.map((p) => {
+              const kb = getKanbanBadge(p.status);
+              return (
+              <div key={p.id} style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-light)', borderRadius: '12px', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+                {/* Header con estado Kanban */}
+                <div style={{ padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', borderBottom: `3px solid ${kb.color}22`, background: `${kb.bg}44` }}>
                   <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <span style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-                        Presupuesto #{p.presupuestoNumber || p.id.slice(0, 6)}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                        {kb.emoji} {p.presupuestoNumber || `#${p.id.slice(0, 6)}`}
                       </span>
-                      <span style={{ backgroundColor: '#ECFDF5', color: '#059669', padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700 }}>
-                        {(p.status || 'Pendiente').toUpperCase()}
+                      <span style={{ backgroundColor: kb.bg, color: kb.color, padding: '0.25rem 0.7rem', borderRadius: '12px', fontSize: '0.72rem', fontWeight: 700 }}>
+                        {kb.label}
                       </span>
                     </div>
-                    <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
-                      Fecha: {formatFecha(p.createdAt)} · Sistema: <strong>{p.paramSistema || 'S/D'}</strong>
+                    <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '0.3rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                      <span>📅 {formatFecha(p.createdAt)}</span>
+                      <span>🔧 <strong>{p.paramSistema || 'S/D'}</strong></span>
+                      {(p.location || p.direccionObra) && <span>📍 {p.location || p.direccionObra}</span>}
                     </div>
                   </div>
 
                   <div style={{ textAlign: 'right' }}>
                     {p.totalUSD && (
-                      <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#059669' }}>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#059669' }}>
                         USD {formatMoney(p.totalUSD)}
                       </div>
                     )}
                     {p.totalARS && (
-                      <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                      <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
                         ARS $ {formatMoney(p.totalARS)}
                       </div>
                     )}
                   </div>
                 </div>
 
-                {/* Versiones / Revisiones del presupuesto */}
-                {p.revisiones && p.revisiones.length > 0 && (
-                  <div style={{ marginTop: '0.75rem', borderTop: '1px dashed var(--border-light)', paddingTop: '0.5rem' }}>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', display: 'block', marginBottom: '0.25rem' }}>Revisiones Guardadas ({p.revisiones.length})</span>
-                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      {p.revisiones.map((rev, rIdx) => (
-                        <span key={rIdx} style={{ backgroundColor: 'var(--bg-surface-hover)', border: '1px solid var(--border-light)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem' }}>
-                          Rev {rev.numero || rIdx + 1}: {formatFecha(rev.fecha)}
-                        </span>
-                      ))}
+                <div style={{ padding: '0.75rem 1.5rem' }}>
+                  {/* Items cotizados (resumen) */}
+                  {p.quoteItems && p.quoteItems.length > 0 && (
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+                      📦 <strong>{p.quoteItems.length}</strong> ítems cotizados
+                      {p.revision > 0 && <span> · Rev. {p.revision}</span>}
                     </div>
+                  )}
+
+                  {/* Versiones / Revisiones del presupuesto */}
+                  {p.revisiones && p.revisiones.length > 0 && (
+                    <div style={{ borderTop: '1px dashed var(--border-light)', paddingTop: '0.5rem', marginBottom: '0.5rem' }}>
+                      <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>Revisiones ({p.revisiones.length})</span>
+                      <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
+                        {p.revisiones.map((rev, rIdx) => (
+                          <span key={rIdx} style={{ backgroundColor: 'var(--bg-surface-hover)', border: '1px solid var(--border-light)', padding: '0.15rem 0.4rem', borderRadius: '4px', fontSize: '0.72rem' }}>
+                            Rev {rev.numero || rIdx + 1}: {formatFecha(rev.fecha)}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Link al Kanban */}
+                  <div style={{ textAlign: 'right' }}>
+                    <button
+                      onClick={() => navigate('/presupuestos')}
+                      style={{ background: 'none', border: '1px solid var(--primary-200)', color: 'var(--primary-600)', padding: '0.35rem 0.9rem', borderRadius: '8px', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
+                    >
+                      <ExternalLink size={14} /> Ver en Kanban CRM
+                    </button>
                   </div>
-                )}
+                </div>
               </div>
-            ))
+              );
+            })
           )}
         </div>
       )}
