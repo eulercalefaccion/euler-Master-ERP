@@ -88,6 +88,10 @@ export function parseDate(str) {
  * Motor Universal Inteligente para Lectura de Facturas Argentinas (PDF)
  * Diseñado para soportar REHAU, Pronto Distribuidora, AFIP estándar, Tango, Gesdatta, y otros proveedores.
  */
+/**
+ * Motor Universal Inteligente para Lectura de Facturas Argentinas (PDF)
+ * Soportando dinámicamente Triangular S.A. (BAXI), Pronto Distribuidora, REHAU S.A., AFIP estándar, Tango, etc.
+ */
 export async function parsePdfInvoiceBuffer(arrayBuffer) {
   const doc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
   const pages = [];
@@ -105,12 +109,12 @@ export async function parsePdfInvoiceBuffer(arrayBuffer) {
 
     items.sort((a, b) => b.y - a.y || a.x - b.x);
 
-    // Agrupar elementos en líneas por coordenada Y (umbral 5px)
+    // Agrupar elementos en líneas por coordenada Y (umbral 4px)
     const lines = [];
     let curLine = [];
     let curY = null;
     for (const it of items) {
-      if (curY === null || Math.abs(it.y - curY) > 5) {
+      if (curY === null || Math.abs(it.y - curY) > 4) {
         if (curLine.length) {
           curLine.sort((a, b) => a.x - b.x);
           lines.push(curLine);
@@ -127,7 +131,7 @@ export async function parsePdfInvoiceBuffer(arrayBuffer) {
     }
 
     const fullPageText = lines.map(l => l.map(c => c.str).join(' ')).join('\n');
-    // Descartar páginas marcadas como Duplicado o Triplicado para evitar duplicar artículos
+    // Descartar páginas duplicadas/triplicadas si existen originales
     const isDuplicate = /duplicado|triplicado/i.test(fullPageText) && !/original/i.test(fullPageText);
 
     pages.push({ pageNum: p, isDuplicate, lines, fullPageText });
@@ -140,41 +144,62 @@ export async function parsePdfInvoiceBuffer(arrayBuffer) {
 
   const combinedText = originalPages.map(p => p.fullPageText).join('\n');
 
-  // 1. CUIT Emisor
-  let proveedorCuit = '';
-  const cuitMatches = [...combinedText.matchAll(/(?:c\.?u\.?i\.?t\.?|cuit)\s*(?:n[º°]?)?[:\s]*(\d{2}-?\d{8}-?\d{1})/gi)];
-  if (cuitMatches.length > 0) {
-    const rawCuit = cuitMatches[0][1].replace(/\D/g, '');
-    if (rawCuit.length === 11) {
-      proveedorCuit = `${rawCuit.slice(0, 2)}-${rawCuit.slice(2, 10)}-${rawCuit.slice(10)}`;
-    }
+  // 1. Empresa Receptora (Cliente destinatario)
+  // Por requerimiento comercial, todas las facturas formales van dirigidas a AYALA NICOLAS FEDERICO (CUIT 20-31627562-2)
+  let receptorEmpresaId = 'ayala-nicolas';
+  let receptorNombre = 'AYALA NICOLAS FEDERICO';
+  let receptorCuit = '20-31627562-2';
+
+  if (/20-?31627562-?2|AYALA\s*,?\s*NICOLAS\s*FEDERICO/i.test(combinedText)) {
+    receptorEmpresaId = 'ayala-nicolas';
+    receptorNombre = 'AYALA NICOLAS FEDERICO';
+    receptorCuit = '20-31627562-2';
+  } else if (/euler\s*srl/i.test(combinedText) || /30-?71998877-?5/i.test(combinedText)) {
+    receptorEmpresaId = 'euler-general';
+    receptorNombre = 'EULER SRL';
+    receptorCuit = '30-71998877-5';
   }
 
-  // 2. Razón Social / Proveedor
+  // 2. Proveedor Emisor
   let proveedorNombre = '';
-  if (/pronto\s*distribuidora/i.test(combinedText)) {
+  let proveedorCuit = '';
+
+  if (/triangular/i.test(combinedText) || /baxi/i.test(combinedText)) {
+    proveedorNombre = 'TRIANGULAR S.A. (BAXI)';
+    proveedorCuit = '30-60945338-5';
+  } else if (/pronto\s*distribuidora/i.test(combinedText)) {
     proveedorNombre = 'Pronto Distribuidora';
-    if (!proveedorCuit) proveedorCuit = '30-71672725-0';
+    proveedorCuit = '30-71672725-0';
   } else if (/rehau/i.test(combinedText)) {
     proveedorNombre = 'REHAU S.A.';
-    if (!proveedorCuit) proveedorCuit = '30-67657566-5';
+    proveedorCuit = '30-67657566-5';
   } else if (/giacomini/i.test(combinedText)) {
     proveedorNombre = 'GIACOMINI ARGENTINA';
   } else if (/peisa/i.test(combinedText)) {
     proveedorNombre = 'PEISA';
-  } else if (/baxi|triangular/i.test(combinedText)) {
-    proveedorNombre = 'TRIANGULAR S.A. (BAXI)';
   } else if (/caldaia/i.test(combinedText)) {
     proveedorNombre = 'CALDAIA S.A.';
-  } else {
-    // Buscar en la cabecera de la primera página
+  }
+
+  if (!proveedorCuit) {
+    const cuitMatches = [...combinedText.matchAll(/(?:c\.?u\.?i\.?t\.?|cuit)\s*(?:n[º°]?)?[:\s]*(\d{2}-?\d{8}-?\d{1})/gi)];
+    for (const m of cuitMatches) {
+      const rawC = m[1].replace(/\D/g, '');
+      if (rawC.length === 11 && rawC !== '20316275622') {
+        proveedorCuit = `${rawC.slice(0, 2)}-${rawC.slice(2, 10)}-${rawC.slice(10)}`;
+        break;
+      }
+    }
+  }
+
+  if (!proveedorNombre) {
     const firstPage = originalPages[0];
     for (let i = 0; i < Math.min(8, firstPage.lines.length); i++) {
       const line = firstPage.lines[i];
       for (const item of line) {
         if (item.str.length > 3 && 
             !/factura|nota|cod|código|nro|nº|original|duplicado|página|fecha/i.test(item.str) &&
-            !/i\.?v\.?a|responsable|ingresos|cuit|cliente/i.test(item.str)) {
+            !/i\.?v\.?a|responsable|ingresos|cuit|cliente|señor/i.test(item.str)) {
           proveedorNombre = item.str;
           break;
         }
@@ -183,34 +208,49 @@ export async function parsePdfInvoiceBuffer(arrayBuffer) {
     }
   }
 
-  // 3. Tipo de Comprobante (Factura A, B, C, etc.)
+  // 3. Tipo de Comprobante, Punto de Venta y Número
   let tipoComprobante = 'FAA';
-  if (/factura\s+a\b|c[oó]d(?:igo)?\.?\s*0?1\b/i.test(combinedText)) tipoComprobante = 'FAA';
-  else if (/factura\s+b\b|c[oó]d(?:igo)?\.?\s*0?6\b/i.test(combinedText)) tipoComprobante = 'FAB';
-  else if (/factura\s+c\b|c[oó]d(?:igo)?\.?\s*11\b/i.test(combinedText)) tipoComprobante = 'FAC';
-  else if (/nota de cr[eé]dito/i.test(combinedText)) tipoComprobante = 'NCA';
-  else if (/nota de d[eé]bito/i.test(combinedText)) tipoComprobante = 'NDA';
-  else if (/ticket/i.test(combinedText)) tipoComprobante = 'TICKET';
-
-  // 4. Punto de Venta y Número Comprobante (Evitando número de remito)
   let puntoVenta = '1';
   let numeroComprobante = '';
-  const nonRemitoMatch = combinedText.match(/(?<!remito\s*)(?:n[º°]|nro\.?|comp(?:robante)?\.?\s*n[º°]?)\s*[:\s]*(\d{4,5})\s*[-–]\s*(\d{8})/i);
-  if (nonRemitoMatch) {
-    puntoVenta = String(parseInt(nonRemitoMatch[1], 10));
-    numeroComprobante = String(parseInt(nonRemitoMatch[2], 10));
+
+  // Detección de Letra
+  if (/factura\s+a\b|c[oó]d(?:igo)?\.?\s*0?1\b|\bA000/i.test(combinedText)) tipoComprobante = 'FAA';
+  else if (/factura\s+b\b|c[oó]d(?:igo)?\.?\s*0?6\b|\bB000/i.test(combinedText)) tipoComprobante = 'FAB';
+  else if (/factura\s+c\b|c[oó]d(?:igo)?\.?\s*11\b|\bC000/i.test(combinedText)) tipoComprobante = 'FAC';
+  else if (/nota de cr[eé]dito/i.test(combinedText)) tipoComprobante = 'NCA';
+  else if (/nota de d[eé]bito/i.test(combinedText)) tipoComprobante = 'NDA';
+
+  // Buscar Número de Comprobante en todos los formatos argentinos
+  // Formato Triangular / continuo: "Nro. Comp: A000800075096"
+  const mTriangular = combinedText.match(/(?:nro\.?\s*comp\.?|comp(?:robante)?\.?\s*n[º°]?|factura\s*n[º°]?|nro\.?)\s*[:\s]*([A-C|M])\s*(\d{4,5})\s*(\d{8})/i) ||
+                      combinedText.match(/\b([A-C|M])(\d{4})(\d{8})\b/i);
+  if (mTriangular) {
+    const letra = mTriangular[1].toUpperCase();
+    tipoComprobante = letra === 'A' ? 'FAA' : letra === 'B' ? 'FAB' : 'FAC';
+    puntoVenta = String(parseInt(mTriangular[2], 10));
+    numeroComprobante = String(parseInt(mTriangular[3], 10));
   } else {
-    const rawNum = combinedText.match(/\b(\d{4,5})\s*[-–]\s*(\d{8})\b/);
-    if (rawNum) {
-      puntoVenta = String(parseInt(rawNum[1], 10));
-      numeroComprobante = String(parseInt(rawNum[2], 10));
+    // Formato con guión: "Nro: 00009-00009753" o "0015-00311614"
+    const mHyphen = combinedText.match(/(?<!remito\s*)(?:n[º°]|nro\.?|comp(?:robante)?\.?\s*n[º°]?)\s*[:\s]*([A-C|M])?\s*(\d{4,5})\s*[-–]\s*(\d{6,8})/i);
+    if (mHyphen) {
+      if (mHyphen[1]) {
+        tipoComprobante = mHyphen[1].toUpperCase() === 'A' ? 'FAA' : mHyphen[1].toUpperCase() === 'B' ? 'FAB' : 'FAC';
+      }
+      puntoVenta = String(parseInt(mHyphen[2], 10));
+      numeroComprobante = String(parseInt(mHyphen[3], 10));
+    } else {
+      const mRaw = combinedText.match(/\b(\d{4,5})\s*[-–]\s*(\d{6,8})\b/);
+      if (mRaw) {
+        puntoVenta = String(parseInt(mRaw[1], 10));
+        numeroComprobante = String(parseInt(mRaw[2], 10));
+      }
     }
   }
 
-  // 5. Fecha de Emisión
+  // 4. Fecha de Emisión
   const fechaEmision = parseDate(combinedText);
 
-  // 6. Totales
+  // 5. Totales
   let subtotalNeto = 0;
   let totalIva = 0;
   let totalComprobante = 0;
@@ -221,10 +261,10 @@ export async function parsePdfInvoiceBuffer(arrayBuffer) {
   const ivaMatch = combinedText.match(/(?:iva\s*21%|iva\s*gral\.?|total\s*iva)\s*[:\$]?\s*([\d.,]+)/i);
   if (ivaMatch) totalIva = parseNumber(ivaMatch[1]);
 
-  const totalMatch = combinedText.match(/(?:total|importe total)\s*[:\$]?\s*([\d.,]+)(?!\s*\(|\s*d[oó]lares)/i);
+  const totalMatch = combinedText.match(/(?:importe\s*total|total|total\s*factura)\s*[:\$]?\s*([\d.,]+)(?!\s*\(|\s*d[oó]lares)/i);
   if (totalMatch) totalComprobante = parseNumber(totalMatch[1]);
 
-  // 7. Extracción de Artículos / Renglones de la Factura
+  // 6. Extracción Dinámica e Interpretación de Artículos / Renglones
   const lineas = [];
   const seenKeys = new Set();
 
@@ -232,51 +272,78 @@ export async function parsePdfInvoiceBuffer(arrayBuffer) {
     const lines = page.lines;
 
     // Detectar encabezado de la tabla y calcular coordenadas de columnas
-    let tableHeaderIdx = -1;
-    let colDescX = 30;
-    let colCantX = 310;
-    let colPrecioX = 380;
-    let colTotalX = 500;
+    let headerLineIdx = -1;
+    let headerLine2Idx = -1;
 
     for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      const lineStr = line.map(c => c.str).join(' ');
-      if (/(?:descripci[oó]n|art[ií]culo|designaci[oó]n|concepto)/i.test(lineStr) &&
-          /(?:cantidad|cant|precio|importe|total)/i.test(lineStr)) {
-        tableHeaderIdx = i;
-
-        for (const item of line) {
-          if (/descripci[oó]n|art[ií]culo|designaci[oó]n/i.test(item.str)) colDescX = item.x;
-          if (/cantidad|cant/i.test(item.str)) colCantX = item.x;
-          if (/precio|unitario|p\.\s*unit/i.test(item.str)) colPrecioX = item.x;
-          if (/total|importe/i.test(item.str)) colTotalX = item.x;
+      const lineStr = lines[i].map(c => c.str).join(' ');
+      if (/(?:c[oó]digo|descripci[oó]n|art[ií]culo|concepto|designaci[oó]n)/i.test(lineStr) &&
+          /(?:cant|precio|dto|importe|total)/i.test(lineStr)) {
+        headerLineIdx = i;
+        if (i > 0 && /(?:precio|unitario|dto|desc|u\.?m|medida)/i.test(lines[i - 1].map(c => c.str).join(' '))) {
+          headerLine2Idx = i - 1;
+        } else if (i + 1 < lines.length && /(?:unitario|desc|bonif|importe)/i.test(lines[i + 1].map(c => c.str).join(' '))) {
+          headerLine2Idx = i + 1;
         }
         break;
       }
     }
 
-    // Puntos de corte entre columnas
-    const boundCant = (colDescX + colCantX) / 2 + 30;
-    const boundPrecio = (colCantX + colPrecioX) / 2;
-    const boundTotal = (colPrecioX + colTotalX) / 2;
+    const headerTokens = [];
+    if (headerLineIdx !== -1) {
+      headerTokens.push(...lines[headerLineIdx]);
+      if (headerLine2Idx !== -1) {
+        headerTokens.push(...lines[headerLine2Idx]);
+      }
+    }
 
-    const startIdx = tableHeaderIdx !== -1 ? tableHeaderIdx + 1 : 0;
+    // Mapeo dinámico de columnas por coordenadas X
+    const detectedCols = [];
+    const findHeaderX = (regex) => {
+      const match = headerTokens.find(t => regex.test(t.str));
+      return match ? match.x : null;
+    };
+
+    const xCod = findHeaderX(/^c[oó]d/i);
+    const xDesc = findHeaderX(/descrip|art[ií]c|concepto/i);
+    const xUm = findHeaderX(/unidad|u\.?m|medida/i);
+    const xPNeto = findHeaderX(/con\s*dto|c\/dto|p\.neto/i);
+    const xPUnit = findHeaderX(/unitario|precio|p\.unit/i);
+    const xDto = findHeaderX(/(?:^|\s)(?:%?\s*dto\b|desc\b|desc\.|\bdescuento\b|\bbonif\b)/i);
+    const xCant = findHeaderX(/cant/i);
+    const xIva = findHeaderX(/iva/i);
+    const xTotal = findHeaderX(/importe|total|subtotal/i);
+
+    if (xCod !== null) detectedCols.push({ id: 'codigo', x: xCod });
+    if (xDesc !== null) detectedCols.push({ id: 'descripcion', x: xDesc });
+    if (xUm !== null) detectedCols.push({ id: 'unidad', x: xUm });
+    if (xCant !== null) detectedCols.push({ id: 'cantidad', x: xCant });
+    if (xPUnit !== null) detectedCols.push({ id: 'precioUnitario', x: xPUnit });
+    if (xDto !== null) detectedCols.push({ id: 'descuentoPorc', x: xDto });
+    if (xPNeto !== null) detectedCols.push({ id: 'precioConDto', x: xPNeto });
+    if (xIva !== null) detectedCols.push({ id: 'iva', x: xIva });
+    if (xTotal !== null) detectedCols.push({ id: 'total', x: xTotal });
+
+    detectedCols.sort((a, b) => a.x - b.x);
+
+    // Calcular límites de corte entre columnas
+    const colBounds = [];
+    for (let c = 0; c < detectedCols.length; c++) {
+      const left = c === 0 ? 0 : (detectedCols[c - 1].x + detectedCols[c].x) / 2;
+      const right = c === detectedCols.length - 1 ? 9999 : (detectedCols[c].x + detectedCols[c + 1].x) / 2;
+      colBounds.push({ id: detectedCols[c].id, left, right, x: detectedCols[c].x });
+    }
+
+    const startIdx = Math.max(headerLineIdx, headerLine2Idx) !== -1 ? Math.max(headerLineIdx, headerLine2Idx) + 1 : 0;
     let currentItem = null;
 
     for (let i = startIdx; i < lines.length; i++) {
       const line = lines[i];
       const lineStr = line.map(c => c.str).join(' ');
 
-      // Filtro de filas de pie de página / subtotales / condiciones
-      if (/(?:hoja\s*\d+\s*\/\s*\d+|base imponible|subtotal|transporte|son pesos|plazo de pago|condiciones de venta|cuenta bancaria|garant[ií]a|aviso de pago|observaciones|cae:?\s*\d+|vencimiento|a partir del)/i.test(lineStr) &&
-          !/(?:tubo|colector|valvula|detentor|radiador|armario|casquillo|pieza|adaptador)/i.test(lineStr)) {
-        if (/^transporte\s+[\d.,]+$/i.test(lineStr.trim())) {
-          if (currentItem) {
-            pushItem(currentItem);
-            currentItem = null;
-          }
-          continue;
-        }
+      // Filtro estricto de fin de tabla (subtotales, impuestos, pie de página)
+      if (/(?:detalle de impuestos|base imponible|subtotal|importe total|transporte|son pesos|plazo de pago|condiciones de venta|cuenta bancaria|garant[ií]a|aviso de pago|observaciones|cae:?\s*\d+|vencimiento|a partir del|hoja\s*\d+\s*\/\s*\d+)/i.test(lineStr) &&
+          !/(?:caldera|tubo|colector|valvula|detentor|radiador|armario|casquillo|pieza|adaptador|combo|kit)/i.test(lineStr)) {
         if (currentItem) {
           pushItem(currentItem);
           currentItem = null;
@@ -284,75 +351,135 @@ export async function parsePdfInvoiceBuffer(arrayBuffer) {
         break;
       }
 
-      // 1. Probar formato REHAU (con número de artículo y "Pedido del")
+      // 1. REHAU formato específico
       const rehauMatch = lineStr.match(/^(\d{6}\.\d{3})\s*(?:\/\s*\d+)?\s+(.+?)\s+Pedido del\s+\d{2}\/\d{2}\/\d{2}\s+([\d.,]+)\s+([\d.,]+)\s*(?:\/\d+)?\s+([\d.,]+)$/i);
       if (rehauMatch) {
         if (currentItem) pushItem(currentItem);
+        const q = parseNumber(rehauMatch[3]);
+        const pu = parseNumber(rehauMatch[4]);
+        const tot = parseNumber(rehauMatch[5]);
         currentItem = {
           codigoArticulo: rehauMatch[1],
           descripcion: rehauMatch[2].replace(/\s+/g, ' ').trim(),
-          cantidad: parseNumber(rehauMatch[3]),
-          precioUnitario: parseNumber(rehauMatch[4]),
-          total: parseNumber(rehauMatch[5]),
+          unidad: 'UN',
+          cantidad: q,
+          precioUnitario: pu,
+          descuentoPorc: 0,
+          precioConDto: pu,
+          total: tot,
           alicuotaIva: 0.21
         };
         continue;
       }
 
-      // 2. Probar formato Universal basado en Columnas Geométricas X (Pronto, AFIP, etc.)
-      const descTokens = [];
-      const cantTokens = [];
-      const precioTokens = [];
-      const totalTokens = [];
+      // 2. Mapeo Universal de columnas por coordenadas geométricas
+      const buckets = {
+        codigo: [],
+        descripcion: [],
+        unidad: [],
+        precioUnitario: [],
+        descuentoPorc: [],
+        precioConDto: [],
+        cantidad: [],
+        iva: [],
+        total: []
+      };
 
       for (const it of line) {
-        if (/^(?:unidad\(es\)|unidades|mts|kg|iva|21%|10\.5%|10,5%|\$|desc\.?|\(%?\))$/i.test(it.str)) {
-          continue;
-        }
+        if (/^(?:\$|%|\(%?\))$/i.test(it.str)) continue;
 
-        const subParts = it.str.split(/\s+/).filter(Boolean);
+        // Desarmar tokens agrupados con espacios para no mezclar números con texto
+        const parts = it.str.split(/\s+/).filter(Boolean);
+        for (const sub of parts) {
+          if (/^(?:\$|%|\(%?\))$/i.test(sub)) continue;
 
-        for (const sub of subParts) {
-          if (/^(?:unidad\(es\)|unidades|mts|kg|iva|21%|10\.5%|10,5%|\$|desc\.?|\(%?\))$/i.test(sub)) {
-            continue;
+          let matchedColId = null;
+          for (const b of colBounds) {
+            if (it.x >= b.left && it.x < b.right) {
+              matchedColId = b.id;
+              break;
+            }
           }
 
-          if (it.x < boundCant) {
-            descTokens.push(sub);
-          } else if (it.x >= boundCant && it.x < boundPrecio) {
-            cantTokens.push(sub);
-          } else if (it.x >= boundPrecio && it.x < boundTotal) {
-            precioTokens.push(sub);
+          if (matchedColId && buckets[matchedColId]) {
+            buckets[matchedColId].push(sub);
           } else {
-            totalTokens.push(sub);
+            buckets.descripcion.push(sub);
           }
         }
       }
 
-      const cantVal = cantTokens.map(parseNumber).find(n => n > 0);
-      const precioVal = precioTokens.map(parseNumber).find(n => n > 0);
-      const totalVal = totalTokens.map(parseNumber).find(n => n >= 0);
+      // Extraer y validar valores numéricos
+      let valCant = buckets.cantidad.map(parseNumber).find(n => n > 0);
+      let valPUnit = buckets.precioUnitario.map(parseNumber).find(n => n >= 0);
+      let valDto = buckets.descuentoPorc.map(parseNumber).find(n => n >= 0);
+      let valPNeto = buckets.precioConDto.map(parseNumber).find(n => n >= 0);
+      let valTotal = buckets.total.map(parseNumber).find(n => n >= 0);
+      let valIva = buckets.iva.map(parseNumber).find(n => n > 0);
 
-      if (cantVal && (precioVal || totalVal !== undefined)) {
+      // Si no hubo IVA explícito por columna, detectar tasa estándar
+      let alicuotaIva = 0.21;
+      if (valIva === 10.5 || /10[,.]5/i.test(buckets.iva.join(' '))) alicuotaIva = 0.105;
+      else if (valIva === 0) alicuotaIva = 0;
+
+      // RESOLUCIÓN MATEMÁTICA Y DE SANIDAD (Interpretación Real de Factura)
+      if (valTotal !== undefined || (valCant && valPUnit !== undefined)) {
+        // Sanity Check: si la cantidad y el precio unitario quedaron invertidos
+        // (por ejemplo si un precio de $ 4.135.950 quedó en cantidad y 10 en precio)
+        if (valCant > 5000 && valPUnit !== undefined && valPUnit > 0 && valPUnit <= 100) {
+          const tmp = valCant;
+          valCant = valPUnit;
+          valPUnit = tmp;
+        }
+
+        // Si tenemos precio unitario y descuento pero no precio con descuento
+        if (valPUnit !== undefined && valDto !== undefined && valPNeto === undefined) {
+          valPNeto = Math.round(valPUnit * (1 - (valDto || 0) / 100) * 100) / 100;
+        } else if (valPUnit && valPNeto !== undefined && (!valDto || valDto === 0) && valPNeto < valPUnit) {
+          valDto = Math.round((1 - valPNeto / valPUnit) * 10000) / 100;
+        }
+
+        const effectiveNetPrice = valPNeto !== undefined ? valPNeto : (valPUnit || 0);
+
+        // Si total falta o es inconsistente, calcularlo: Total = Cantidad * Precio con Descuento
+        if (valTotal === undefined && valCant) {
+          valTotal = Math.round(valCant * effectiveNetPrice * 100) / 100;
+        }
+
+        // Verificar consistencia matemática: si cant * pUnit == total (sin descuento)
+        if (valCant && effectiveNetPrice && valTotal !== undefined) {
+          const expectedTotal = valCant * effectiveNetPrice;
+          if (Math.abs(expectedTotal - valTotal) > Math.max(1, valTotal * 0.05)) {
+            if (valPUnit && Math.abs(valCant * valPUnit - valTotal) < Math.max(1, valTotal * 0.01)) {
+              valPNeto = valPUnit;
+              valDto = 0;
+            }
+          }
+        }
+
         if (currentItem) pushItem(currentItem);
 
-        const desc = descTokens.join(' ').replace(/-\s*$/, '').trim();
-        const codeMatch = desc.match(/\b([A-Z0-9]{5,12})\b/);
-        const codigoArticulo = codeMatch ? codeMatch[1] : '';
-
-        const pUnit = precioVal || (cantVal > 0 ? (totalVal || 0) / cantVal : 0);
-        const tVal = totalVal !== undefined ? totalVal : Math.round(cantVal * pUnit * 100) / 100;
+        const rawDesc = buckets.descripcion.join(' ').replace(/-\s*$/, '').trim();
+        const code = buckets.codigo.join(' ').trim() || (rawDesc.match(/\b([A-Z0-9]{5,12})\b/) || [])[1] || '';
+        const unidad = buckets.unidad.join(' ').trim() || 'UN';
 
         currentItem = {
-          codigoArticulo,
-          descripcion: desc,
-          cantidad: cantVal,
-          precioUnitario: pUnit,
-          total: tVal,
-          alicuotaIva: 0.21
+          codigoArticulo: code,
+          descripcion: rawDesc,
+          unidad: unidad,
+          cantidad: valCant || 1,
+          precioUnitario: valPUnit || 0,
+          descuentoPorc: valDto || 0,
+          precioConDto: effectiveNetPrice,
+          total: valTotal !== undefined ? valTotal : (valCant || 1) * effectiveNetPrice,
+          alicuotaIva: alicuotaIva
         };
-      } else if (currentItem && descTokens.length > 0 && !cantVal && !precioVal) {
-        currentItem.descripcion += ' ' + descTokens.join(' ').trim();
+      } else if (currentItem && buckets.descripcion.length > 0 && !valCant && valPUnit === undefined) {
+        // Línea secundaria de descripción (como en Pronto Distribuidora)
+        currentItem.descripcion += ' ' + buckets.descripcion.join(' ').trim();
+        if (buckets.unidad.length > 0 && currentItem.unidad === 'UN') {
+          currentItem.unidad = buckets.unidad.join(' ').trim();
+        }
       }
     }
 
@@ -363,10 +490,13 @@ export async function parsePdfInvoiceBuffer(arrayBuffer) {
 
   function pushItem(it) {
     it.descripcion = it.descripcion.replace(/\s+/g, ' ').replace(/\s+-\s*$/, '').trim();
-    if (/^(?:hoja\s*\d+|subtotal|total|\(\*\))/i.test(it.descripcion)) return;
+    if (/^(?:hoja\s*\d+|subtotal|total|\(\*\)|detalle de impuestos)/i.test(it.descripcion)) return;
     if (it.descripcion.length < 3) return;
 
-    const key = `${it.descripcion}_${it.cantidad}_${it.precioUnitario}`;
+    // Limpiar coletillas comunes en descripción (como UN al final)
+    it.descripcion = it.descripcion.replace(/\s+(?:UN|Unidad\(es\)|Unidad|mts)\s*$/i, '').trim();
+
+    const key = `${it.codigoArticulo}_${it.descripcion}_${it.cantidad}_${it.precioUnitario}`;
     if (!seenKeys.has(key)) {
       seenKeys.add(key);
       lineas.push({
@@ -380,7 +510,7 @@ export async function parsePdfInvoiceBuffer(arrayBuffer) {
 
   // Recalcular subtotales si no vinieron en la cabecera
   if (!subtotalNeto && lineas.length > 0) {
-    subtotalNeto = Math.round(lineas.reduce((acc, l) => acc + l.total, 0) * 100) / 100;
+    subtotalNeto = Math.round(lineas.reduce((acc, l) => acc + (l.total || 0), 0) * 100) / 100;
   }
   if (!totalIva && subtotalNeto > 0) {
     totalIva = Math.round(subtotalNeto * 0.21 * 100) / 100;
@@ -390,6 +520,9 @@ export async function parsePdfInvoiceBuffer(arrayBuffer) {
   }
 
   return {
+    empresaId: receptorEmpresaId,
+    receptorNombre,
+    receptorCuit,
     proveedorNombre,
     proveedorCuit,
     tipoComprobante,
@@ -405,15 +538,15 @@ export async function parsePdfInvoiceBuffer(arrayBuffer) {
 }
 
 /**
- * Motor de Lectura Inteligente de Facturas y Comprobantes de Compra
+ * Motor de Lectura Inteligente de Facturas y Comprobantes de Compra (PDF o Visión IA)
  */
 export const parseFacturaConIA = async (file) => {
-  // 1. Subir a Storage para almacenamiento permanente
+  // 1. Subir a Storage para almacenamiento permanente del comprobante
   const adjuntoUrl = await uploadDocumentToStorage(file, 'comprobantes_compra_adjuntos');
 
   const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
 
-  // Si es un archivo PDF, usamos el motor nativo universal
+  // Si es un archivo PDF, usamos el motor nativo universal matemático
   if (isPdf) {
     try {
       const buffer = await file.arrayBuffer();
@@ -430,7 +563,7 @@ export const parseFacturaConIA = async (file) => {
     }
   }
 
-  // Si es imagen o el PDF no tenía texto seleccionable, intentar Gemini AI
+  // Si es imagen o el PDF no tenía texto seleccionable, intentar Gemini AI Vision
   const geminiKey = getGeminiKey();
   if (geminiKey) {
     try {
@@ -440,10 +573,13 @@ export const parseFacturaConIA = async (file) => {
 
       const prompt = `
 Eres un asistente contable experto en facturas y comprobantes fiscales de Argentina (AFIP / ARCA).
-Analiza este documento y extrae en formato JSON estricto con todos los artículos y renglones:
+Analiza este comprobante comercial o factura y extrae en formato JSON estricto con todos los datos y renglones:
 {
-  "proveedorNombre": "Nombre o Razón Social del emisor",
-  "proveedorCuit": "CUIT en formato XX-XXXXXXXX-X",
+  "empresaId": "ayala-nicolas",
+  "receptorNombre": "Nombre de la empresa receptora o cliente (usualmente AYALA NICOLAS FEDERICO)",
+  "receptorCuit": "CUIT del receptor (usualmente 20-31627562-2)",
+  "proveedorNombre": "Nombre o Razón Social del emisor / proveedor (ej: TRIANGULAR S.A., REHAU, Pronto Distribuidora)",
+  "proveedorCuit": "CUIT del proveedor en formato XX-XXXXXXXX-X",
   "tipoComprobante": "FAA" | "FAB" | "FAC" | "TICKET" | "NCA" | "NDA",
   "puntoVenta": 1,
   "numeroComprobante": 12345,
@@ -453,16 +589,25 @@ Analiza este documento y extrae en formato JSON estricto con todos los artículo
   "totalComprobante": 0.00,
   "lineas": [
     {
-      "codigoArticulo": "Código o referencia del artículo si existe",
-      "descripcion": "Descripción detallada del artículo o servicio",
-      "cantidad": 1,
+      "codigoArticulo": "Código o referencia del artículo si figura en la factura",
+      "descripcion": "Descripción clara del artículo",
+      "unidad": "UN / Unidad / mts",
       "precioUnitario": 0.00,
-      "total": 0.00,
+      "descuentoPorc": 0.00,
+      "precioConDto": 0.00,
+      "cantidad": 1,
       "alicuotaIva": 0.21,
+      "total": 0.00,
       "centroCosto": "COSTO VARIABLE"
     }
   ]
 }
+IMPORTANTE:
+- "precioUnitario" es el precio antes de descuento.
+- "descuentoPorc" es el % de descuento (ej: 50 o 7).
+- "precioConDto" es el precio unitario neto con descuento.
+- "total" es la multiplicación de cantidad * precioConDto.
+- Si hay renglones despiece del combo con precio 0.00, inclúyelos con su cantidad real.
 Responde ÚNICAMENTE con el objeto JSON válido.
 `;
 
@@ -473,6 +618,7 @@ Responde ÚNICAMENTE con el objeto JSON válido.
 
       return {
         ...parsedData,
+        empresaId: parsedData.empresaId || (parsedData.receptorCuit?.includes('20316275622') || parsedData.receptorNombre?.includes('AYALA') ? 'ayala-nicolas' : 'ayala-nicolas'),
         adjuntoUrl,
         exitoIA: true
       };
@@ -482,6 +628,7 @@ Responde ÚNICAMENTE con el objeto JSON válido.
   }
 
   return {
+    empresaId: 'ayala-nicolas',
     proveedorNombre: '',
     proveedorCuit: '',
     tipoComprobante: 'FAA',

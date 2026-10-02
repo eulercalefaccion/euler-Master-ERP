@@ -3,22 +3,22 @@ import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, setDoc } from '
 
 export const EMPRESAS_INICIALES = [
   {
-    id: 'euler-calefaccion',
-    nombre: 'EULER CALEFACCIÓN',
-    razonSocial: 'Euler Calefacción S.A.S.',
-    cuit: '30-71654321-9',
+    id: 'ayala-nicolas',
+    nombre: 'AYALA NICOLAS FEDERICO',
+    razonSocial: 'AYALA NICOLAS FEDERICO',
+    cuit: '20-31627562-2',
     condicionFiscal: 'Responsable Inscripto',
-    puntosVenta: [1, 6, 15],
-    direccion: 'Rosario, Santa Fe',
+    puntosVenta: [1, 2],
+    direccion: 'San Marcos 2760 M:24, Roldán, Santa Fe',
     activa: true
   },
   {
-    id: 'ayala-nicolas',
-    nombre: 'Ayala Nicolas Federico',
-    razonSocial: 'Ayala Nicolas Federico',
-    cuit: '20-33445566-7',
-    condicionFiscal: 'Responsable Inscripto',
-    puntosVenta: [1, 2],
+    id: 'euler-calefaccion',
+    nombre: 'EULER CALEFACCIÓN (Canal 2 / Informal)',
+    razonSocial: 'Euler Calefacción',
+    cuit: '',
+    condicionFiscal: 'Consumidor Final / Informal',
+    puntosVenta: [1],
     direccion: 'Rosario, Santa Fe',
     activa: true
   },
@@ -43,7 +43,24 @@ export const getEmpresas = async () => {
       }
       return EMPRESAS_INICIALES;
     }
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    // Asegurar que Ayala Nicolas Federico tenga el CUIT real 20-31627562-2 y esté prioritario
+    const ayala = docs.find(d => d.id === 'ayala-nicolas' || /ayala/i.test(d.nombre));
+    if (ayala && ayala.cuit !== '20-31627562-2') {
+      ayala.cuit = '20-31627562-2';
+      ayala.nombre = 'AYALA NICOLAS FEDERICO';
+      ayala.razonSocial = 'AYALA NICOLAS FEDERICO';
+      updateDoc(doc(db, 'empresas', ayala.id), { 
+        cuit: '20-31627562-2', 
+        nombre: 'AYALA NICOLAS FEDERICO',
+        razonSocial: 'AYALA NICOLAS FEDERICO'
+      }).catch(console.warn);
+    }
+
+    // Ordenar para que AYALA NICOLAS FEDERICO figure primero por defecto
+    docs.sort((a, b) => (a.id === 'ayala-nicolas' ? -1 : b.id === 'ayala-nicolas' ? 1 : 0));
+    return docs;
   } catch (error) {
     console.error('Error al obtener empresas:', error);
     return EMPRESAS_INICIALES;

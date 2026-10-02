@@ -42,7 +42,7 @@ const Compras = () => {
 
   // Form State
   const initialForm = {
-    empresaId: 'euler-calefaccion',
+    empresaId: 'ayala-nicolas',
     proveedorNombre: '',
     proveedorCuit: '',
     tipoComprobante: 'FAA',
@@ -124,12 +124,23 @@ const Compras = () => {
         itemId = match.item.id;
       }
 
+      const cant = Number(linea.cantidad !== undefined ? linea.cantidad : 1);
+      const pu = Number(linea.precioUnitario || 0);
+      const dto = Number(linea.descuentoPorc || 0);
+      const pNeto = Number(linea.precioConDto !== undefined ? linea.precioConDto : Math.round(pu * (1 - dto / 100) * 100) / 100);
+      const tot = Number(linea.total !== undefined ? linea.total : Math.round(cant * pNeto * 100) / 100);
+
       return {
         ...linea,
-        cantidad: Number(linea.cantidad) || 1,
-        precioUnitario: Number(linea.precioUnitario) || 0,
-        total: Number(linea.total) || (Number(linea.cantidad || 1) * Number(linea.precioUnitario || 0)),
-        alicuotaIva: Number(linea.alicuotaIva) || 0.21,
+        codigoArticulo: linea.codigoArticulo || '',
+        descripcion: linea.descripcion || '',
+        unidad: linea.unidad || 'UN',
+        cantidad: cant,
+        precioUnitario: pu,
+        descuentoPorc: dto,
+        precioConDto: pNeto,
+        total: tot,
+        alicuotaIva: Number(linea.alicuotaIva !== undefined ? linea.alicuotaIva : 0.21),
         cuentaCodigo: linea.cuentaCodigo || '5.1.01',
         centroCosto: linea.centroCosto || 'COSTO VARIABLE',
         obraId: linea.obraId || '',
@@ -158,6 +169,7 @@ const Compras = () => {
 
       setFormData(prev => ({
         ...prev,
+        empresaId: parsedData.empresaId || prev.empresaId || 'ayala-nicolas',
         proveedorNombre: parsedData.proveedorNombre || prev.proveedorNombre,
         proveedorCuit: parsedData.proveedorCuit || prev.proveedorCuit,
         tipoComprobante: parsedData.tipoComprobante || prev.tipoComprobante,
@@ -221,12 +233,15 @@ const Compras = () => {
       lineas: [
         ...prev.lineas,
         {
-          descripcion: '',
           codigoArticulo: '',
-          cantidad: 1,
+          descripcion: '',
+          unidad: 'UN',
           precioUnitario: 0,
-          total: 0,
+          descuentoPorc: 0,
+          precioConDto: 0,
+          cantidad: 1,
           alicuotaIva: 0.21,
+          total: 0,
           cuentaCodigo: '5.1.01',
           centroCosto: 'COSTO VARIABLE',
           obraId: '',
@@ -250,10 +265,25 @@ const Compras = () => {
     setFormData(prev => {
       const lineas = [...prev.lineas];
       lineas[idx] = { ...lineas[idx], [field]: val };
-      if (field === 'cantidad' || field === 'precioUnitario') {
+      
+      if (field === 'cantidad' || field === 'precioUnitario' || field === 'descuentoPorc' || field === 'precioConDto') {
         const cant = Number(field === 'cantidad' ? val : lineas[idx].cantidad) || 0;
-        const pu = Number(field === 'precioUnitario' ? val : lineas[idx].precioUnitario) || 0;
-        lineas[idx].total = Math.round(cant * pu * 100) / 100;
+        let pu = Number(field === 'precioUnitario' ? val : lineas[idx].precioUnitario) || 0;
+        let dto = Number(field === 'descuentoPorc' ? val : lineas[idx].descuentoPorc) || 0;
+        let pNeto = Number(field === 'precioConDto' ? val : lineas[idx].precioConDto) || 0;
+
+        if (field === 'precioUnitario' || field === 'descuentoPorc') {
+          pNeto = Math.round(pu * (1 - dto / 100) * 100) / 100;
+          lineas[idx].precioConDto = pNeto;
+        } else if (field === 'precioConDto') {
+          if (pu > 0) {
+            dto = Math.round((1 - pNeto / pu) * 10000) / 100;
+            lineas[idx].descuentoPorc = dto;
+          }
+        }
+
+        const effectiveNet = field === 'precioConDto' ? pNeto : (pNeto !== undefined ? pNeto : pu);
+        lineas[idx].total = Math.round(cant * effectiveNet * 100) / 100;
       }
       return { ...prev, lineas };
     });
@@ -332,10 +362,10 @@ const Compras = () => {
 
     formData.lineas.forEach(l => {
       const cant = Number(l.cantidad) || 0;
-      const pu = Number(l.precioUnitario) || 0;
-      const net = cant * pu;
-      subtotalNeto += net;
-      totalIva += net * (Number(l.alicuotaIva) || 0.21);
+      const pNeto = Number(l.precioConDto !== undefined ? l.precioConDto : l.precioUnitario) || 0;
+      const tot = Number(l.total !== undefined ? l.total : cant * pNeto);
+      subtotalNeto += tot;
+      totalIva += tot * (Number(l.alicuotaIva !== undefined ? l.alicuotaIva : 0.21));
     });
 
     subtotalNeto = Math.round(subtotalNeto * 100) / 100;
@@ -385,17 +415,19 @@ const Compras = () => {
             descripcion: l.descripcion,
             codigoGesdatta: l.codigoArticulo || null,
             proveedor: formData.proveedorNombre,
-            categoria: l.nuevoArticuloData?.categoria,
-            unidad: l.nuevoArticuloData?.unidad || 'unidad',
+            categoria: l.nuevoArticuloData?.categoria || 'Insumos e Instalaciones',
+            unidad: l.unidad || l.nuevoArticuloData?.unidad || 'UN',
             tipo: 'material',
             markup: 1.35,
             stockInicial: formData.ingresaStock ? Number(l.cantidad || 0) : 0,
             stockMinimo: 5
           };
 
+          const costoReal = Number(l.precioConDto !== undefined && l.precioConDto !== null && l.precioConDto > 0 ? l.precioConDto : l.precioUnitario || 0);
+
           const nuevoItemCreado = await crearArticuloEnERP(
             nuevoArticuloData,
-            Number(l.precioUnitario || 0),
+            costoReal,
             tipoCambio
           );
 
@@ -820,16 +852,20 @@ const Compras = () => {
 
                 {/* TABLA DE LÍNEAS / ARTÍCULOS DETECTADOS - CON SCROLL REAL Y VISIBILIDAD COMPLETA */}
                 <div className="lines-table-container">
-                  <table className="lines-table">
+                  <table className="lines-table" style={{ minWidth: '1350px' }}>
                     <thead>
                       <tr>
                         <th style={{ width: '32px' }}>#</th>
-                        <th style={{ width: '28%' }}>Artículo en Factura</th>
-                        <th style={{ width: '32%' }}>Estado en ERP (Stock / Lista de Precios)</th>
+                        <th style={{ width: '110px' }}>Código</th>
+                        <th style={{ minWidth: '220px' }}>Artículo en Factura</th>
+                        <th style={{ minWidth: '240px' }}>Estado en ERP (Stock / Precios)</th>
+                        <th style={{ width: '65px', textAlign: 'center' }}>U.M.</th>
+                        <th style={{ width: '110px', textAlign: 'right' }}>Precio Unit. ($)</th>
+                        <th style={{ width: '75px', textAlign: 'right' }}>% Dto</th>
+                        <th style={{ width: '115px', textAlign: 'right' }}>Precio c/Dto ($)</th>
                         <th style={{ width: '70px', textAlign: 'right' }}>Cant.</th>
-                        <th style={{ width: '100px', textAlign: 'right' }}>Precio U. ($)</th>
-                        <th style={{ width: '100px', textAlign: 'right' }}>Total ($)</th>
-                        <th style={{ width: '80px' }}>IVA</th>
+                        <th style={{ width: '75px' }}>IVA</th>
+                        <th style={{ width: '120px', textAlign: 'right' }}>Importe ($)</th>
                         <th style={{ width: '130px' }}>Centro Costo</th>
                         <th style={{ width: '120px' }}>Obra</th>
                         <th style={{ width: '36px' }}></th>
@@ -838,7 +874,7 @@ const Compras = () => {
                     <tbody>
                       {formData.lineas.length === 0 ? (
                         <tr>
-                          <td colSpan="10" style={{ padding: '3.5rem 1rem', textAlign: 'center', color: '#64748b' }}>
+                          <td colSpan="14" style={{ padding: '3.5rem 1rem', textAlign: 'center', color: '#64748b' }}>
                             <FileText size={36} style={{ margin: '0 auto 0.5rem', color: '#cbd5e1' }} />
                             <div style={{ fontSize: '0.95rem', fontWeight: '600' }}>No hay artículos cargados todavía.</div>
                             <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '0.25rem' }}>
@@ -851,21 +887,28 @@ const Compras = () => {
                           <tr key={idx}>
                             <td style={{ color: '#94a3b8', fontWeight: '600', textAlign: 'center' }}>{idx + 1}</td>
                             
-                            {/* Artículo de la factura */}
+                            {/* Código de Artículo */}
                             <td>
                               <input 
                                 type="text" 
                                 className="input-field" 
-                                style={{ fontSize: '0.8rem', padding: '0.3rem 0.5rem', width: '100%' }}
+                                style={{ fontSize: '0.775rem', padding: '0.25rem 0.4rem', width: '100%' }}
+                                value={linea.codigoArticulo || ''} 
+                                onChange={e => handleLineaChange(idx, 'codigoArticulo', e.target.value)} 
+                                placeholder="Cód..."
+                              />
+                            </td>
+
+                            {/* Descripción del Artículo en la Factura */}
+                            <td>
+                              <input 
+                                type="text" 
+                                className="input-field" 
+                                style={{ fontSize: '0.8rem', padding: '0.25rem 0.5rem', width: '100%' }}
                                 value={linea.descripcion} 
                                 onChange={e => handleLineaChange(idx, 'descripcion', e.target.value)} 
                                 required 
                               />
-                              {linea.codigoArticulo && (
-                                <span style={{ fontSize: '0.675rem', color: '#64748b', display: 'inline-block', marginTop: '2px' }}>
-                                  Ref: <strong>{linea.codigoArticulo}</strong>
-                                </span>
-                              )}
                             </td>
 
                             {/* Estado en ERP / Pregunta interactiva */}
@@ -950,17 +993,15 @@ const Compras = () => {
                               )}
                             </td>
 
-                            {/* Cantidad */}
+                            {/* Unidad de Medida */}
                             <td>
                               <input 
-                                type="number" 
+                                type="text" 
                                 className="input-field" 
-                                style={{ fontSize: '0.8rem', padding: '0.3rem 0.5rem', width: '100%', textAlign: 'right' }}
-                                value={linea.cantidad} 
-                                onChange={e => handleLineaChange(idx, 'cantidad', e.target.value)} 
-                                min="0.01" 
-                                step="any"
-                                required 
+                                style={{ fontSize: '0.775rem', padding: '0.25rem 0.25rem', width: '100%', textAlign: 'center' }}
+                                value={linea.unidad || 'UN'} 
+                                onChange={e => handleLineaChange(idx, 'unidad', e.target.value)} 
+                                placeholder="UN"
                               />
                             </td>
 
@@ -969,37 +1010,78 @@ const Compras = () => {
                               <input 
                                 type="number" 
                                 className="input-field" 
-                                style={{ fontSize: '0.8rem', padding: '0.3rem 0.5rem', width: '100%', textAlign: 'right' }}
+                                style={{ fontSize: '0.8rem', padding: '0.25rem 0.4rem', width: '100%', textAlign: 'right' }}
                                 value={linea.precioUnitario} 
                                 onChange={e => handleLineaChange(idx, 'precioUnitario', e.target.value)} 
                                 min="0" 
-                                step="0.0001"
+                                step="any" 
                                 required 
                               />
                             </td>
 
-                            {/* Total Línea */}
-                            <td style={{ textAlign: 'right', fontWeight: '700', color: '#1e293b', whiteSpace: 'nowrap' }}>
-                              $ {Number(linea.total || (linea.cantidad * linea.precioUnitario)).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {/* % Descuento */}
+                            <td>
+                              <input 
+                                type="number" 
+                                className="input-field" 
+                                style={{ fontSize: '0.8rem', padding: '0.25rem 0.3rem', width: '100%', textAlign: 'right' }}
+                                value={linea.descuentoPorc !== undefined ? linea.descuentoPorc : 0} 
+                                onChange={e => handleLineaChange(idx, 'descuentoPorc', e.target.value)} 
+                                min="0" 
+                                max="100" 
+                                step="any" 
+                              />
+                            </td>
+
+                            {/* Precio Con Descuento */}
+                            <td>
+                              <input 
+                                type="number" 
+                                className="input-field" 
+                                style={{ fontSize: '0.8rem', padding: '0.25rem 0.4rem', width: '100%', textAlign: 'right', fontWeight: '600', color: '#1e3a8a', backgroundColor: '#f0f9ff' }}
+                                value={linea.precioConDto !== undefined ? linea.precioConDto : linea.precioUnitario} 
+                                onChange={e => handleLineaChange(idx, 'precioConDto', e.target.value)} 
+                                min="0" 
+                                step="any" 
+                              />
+                            </td>
+
+                            {/* Cantidad */}
+                            <td>
+                              <input 
+                                type="number" 
+                                className="input-field" 
+                                style={{ fontSize: '0.8rem', padding: '0.25rem 0.4rem', width: '100%', textAlign: 'right', fontWeight: '700' }}
+                                value={linea.cantidad} 
+                                onChange={e => handleLineaChange(idx, 'cantidad', e.target.value)} 
+                                min="0.001" 
+                                step="any" 
+                                required 
+                              />
                             </td>
 
                             {/* Alícuota IVA */}
                             <td>
                               <select 
                                 className="input-field" 
-                                style={{ fontSize: '0.775rem', padding: '0.3rem 0.25rem', width: '100%' }}
-                                value={linea.alicuotaIva} 
+                                style={{ fontSize: '0.75rem', padding: '0.25rem 0.2rem', width: '100%' }}
+                                value={linea.alicuotaIva !== undefined ? linea.alicuotaIva : 0.21} 
                                 onChange={e => handleLineaChange(idx, 'alicuotaIva', Number(e.target.value))}
                               >
                                 {ALICUOTAS_IVA.map(a => <option key={a.val} value={a.val}>{a.label}</option>)}
                               </select>
                             </td>
 
+                            {/* Total / Importe Línea */}
+                            <td style={{ textAlign: 'right', fontWeight: '700', color: '#1e293b', whiteSpace: 'nowrap', fontSize: '0.825rem' }}>
+                              $ {Number(linea.total !== undefined ? linea.total : (linea.cantidad * (linea.precioConDto || linea.precioUnitario))).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+
                             {/* Centro de Costo */}
                             <td>
                               <select 
                                 className="input-field" 
-                                style={{ fontSize: '0.775rem', padding: '0.3rem 0.25rem', width: '100%' }}
+                                style={{ fontSize: '0.75rem', padding: '0.25rem 0.25rem', width: '100%' }}
                                 value={linea.centroCosto} 
                                 onChange={e => handleLineaChange(idx, 'centroCosto', e.target.value)}
                               >
@@ -1011,7 +1093,7 @@ const Compras = () => {
                             <td>
                               <select 
                                 className="input-field" 
-                                style={{ fontSize: '0.775rem', padding: '0.3rem 0.25rem', width: '100%' }}
+                                style={{ fontSize: '0.75rem', padding: '0.25rem 0.25rem', width: '100%' }}
                                 value={linea.obraId} 
                                 onChange={e => handleLineaChange(idx, 'obraId', e.target.value)}
                               >
