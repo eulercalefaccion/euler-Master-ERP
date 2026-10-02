@@ -4,7 +4,7 @@ import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
 
-// Configurar worker de pdfjs para ejecución en Vite / Navegador
+// Configurar worker de pdfjs para Vite / Navegador
 if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions) {
   pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 }
@@ -57,9 +57,9 @@ export const uploadDocumentToStorage = async (file, folder = 'comprobantes_compr
 };
 
 /**
- * Normalizadores auxiliares
+ * Parseo numérico robusto para formatos argentinos (1.234,56 o 1,234.56 o 1234.56)
  */
-function parseNumber(str) {
+export function parseNumber(str) {
   if (!str) return 0;
   str = String(str).replace(/[^0-9.,]/g, '').trim();
   if (!str) return 0;
@@ -73,7 +73,7 @@ function parseNumber(str) {
   return parseFloat(str) || 0;
 }
 
-function parseDate(str) {
+export function parseDate(str) {
   if (!str) return new Date().toISOString().split('T')[0];
   const m = str.match(/(\d{1,2})[\/\.-](\d{1,2})[\/\.-](\d{2,4})/);
   if (!m) return new Date().toISOString().split('T')[0];
@@ -85,50 +85,52 @@ function parseDate(str) {
 }
 
 /**
- * Parser de Facturas Argentinas (AFIP / ARCA / REHAU / Proveedores Industriales) directamente desde PDF
+ * Motor Universal Inteligente para Lectura de Facturas Argentinas (PDF)
+ * Diseñado para soportar REHAU, Pronto Distribuidora, AFIP estándar, Tango, Gesdatta, y otros proveedores.
  */
 export async function parsePdfInvoiceBuffer(arrayBuffer) {
   const doc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
   const pages = [];
 
-  for (let i = 1; i <= doc.numPages; i++) {
-    const page = await doc.getPage(i);
+  for (let p = 1; p <= doc.numPages; p++) {
+    const page = await doc.getPage(p);
     const content = await page.getTextContent();
     const items = content.items.map(it => ({
       str: it.str.trim(),
-      x: it.transform[4],
-      y: it.transform[5],
-      w: it.width,
-      h: it.height
+      x: Math.round(it.transform[4]),
+      y: Math.round(it.transform[5]),
+      w: Math.round(it.width),
+      h: Math.round(it.height)
     })).filter(it => it.str.length > 0);
 
     items.sort((a, b) => b.y - a.y || a.x - b.x);
 
+    // Agrupar elementos en líneas por coordenada Y (umbral 5px)
     const lines = [];
-    let currentLine = [];
-    let currentY = null;
+    let curLine = [];
+    let curY = null;
     for (const it of items) {
-      if (currentY === null || Math.abs(it.y - currentY) > 4) {
-        if (currentLine.length) {
-          currentLine.sort((a, b) => a.x - b.x);
-          lines.push(currentLine);
+      if (curY === null || Math.abs(it.y - curY) > 5) {
+        if (curLine.length) {
+          curLine.sort((a, b) => a.x - b.x);
+          lines.push(curLine);
         }
-        currentLine = [it];
-        currentY = it.y;
+        curLine = [it];
+        curY = it.y;
       } else {
-        currentLine.push(it);
+        curLine.push(it);
       }
     }
-    if (currentLine.length) {
-      currentLine.sort((a, b) => a.x - b.x);
-      lines.push(currentLine);
+    if (curLine.length) {
+      curLine.sort((a, b) => a.x - b.x);
+      lines.push(curLine);
     }
 
     const fullPageText = lines.map(l => l.map(c => c.str).join(' ')).join('\n');
-    // Filtrar páginas duplicadas / triplicadas para no duplicar los ítems
+    // Descartar páginas marcadas como Duplicado o Triplicado para evitar duplicar artículos
     const isDuplicate = /duplicado|triplicado/i.test(fullPageText) && !/original/i.test(fullPageText);
 
-    pages.push({ pageNum: i, isDuplicate, lines, fullPageText });
+    pages.push({ pageNum: p, isDuplicate, lines, fullPageText });
   }
 
   // Usar páginas originales (o todas si no están rotuladas)
@@ -148,26 +150,32 @@ export async function parsePdfInvoiceBuffer(arrayBuffer) {
     }
   }
 
-  // 2. Razón Social Proveedor
+  // 2. Razón Social / Proveedor
   let proveedorNombre = '';
-  if (/rehau/i.test(combinedText)) {
+  if (/pronto\s*distribuidora/i.test(combinedText)) {
+    proveedorNombre = 'Pronto Distribuidora';
+    if (!proveedorCuit) proveedorCuit = '30-71672725-0';
+  } else if (/rehau/i.test(combinedText)) {
     proveedorNombre = 'REHAU S.A.';
     if (!proveedorCuit) proveedorCuit = '30-67657566-5';
+  } else if (/giacomini/i.test(combinedText)) {
+    proveedorNombre = 'GIACOMINI ARGENTINA';
   } else if (/peisa/i.test(combinedText)) {
     proveedorNombre = 'PEISA';
   } else if (/baxi|triangular/i.test(combinedText)) {
     proveedorNombre = 'TRIANGULAR S.A. (BAXI)';
   } else if (/caldaia/i.test(combinedText)) {
     proveedorNombre = 'CALDAIA S.A.';
-  } else if (/giacomini/i.test(combinedText)) {
-    proveedorNombre = 'GIACOMINI ARGENTINA';
   } else {
-    // Buscar primera línea destacada
-    for (const page of originalPages) {
-      for (const line of page.lines) {
-        const text = line.map(c => c.str).join(' ');
-        if (text.length > 3 && !/factura|nota de|código|nº|fecha|c\.?u\.?i\.?t|ingresos brutos|i\.?v\.?a/i.test(text)) {
-          proveedorNombre = text;
+    // Buscar en la cabecera de la primera página
+    const firstPage = originalPages[0];
+    for (let i = 0; i < Math.min(8, firstPage.lines.length); i++) {
+      const line = firstPage.lines[i];
+      for (const item of line) {
+        if (item.str.length > 3 && 
+            !/factura|nota|cod|código|nro|nº|original|duplicado|página|fecha/i.test(item.str) &&
+            !/i\.?v\.?a|responsable|ingresos|cuit|cliente/i.test(item.str)) {
+          proveedorNombre = item.str;
           break;
         }
       }
@@ -175,104 +183,211 @@ export async function parsePdfInvoiceBuffer(arrayBuffer) {
     }
   }
 
-  // 3. Tipo de Comprobante
+  // 3. Tipo de Comprobante (Factura A, B, C, etc.)
   let tipoComprobante = 'FAA';
-  if (/factura\s+a\b|código:?\s*0?1\b/i.test(combinedText)) tipoComprobante = 'FAA';
-  else if (/factura\s+b\b|código:?\s*0?6\b/i.test(combinedText)) tipoComprobante = 'FAB';
-  else if (/factura\s+c\b|código:?\s*11\b/i.test(combinedText)) tipoComprobante = 'FAC';
-  else if (/nota de cr[eé]dito\s+a/i.test(combinedText)) tipoComprobante = 'NCA';
-  else if (/nota de d[eé]bito\s+a/i.test(combinedText)) tipoComprobante = 'NDA';
+  if (/factura\s+a\b|c[oó]d(?:igo)?\.?\s*0?1\b/i.test(combinedText)) tipoComprobante = 'FAA';
+  else if (/factura\s+b\b|c[oó]d(?:igo)?\.?\s*0?6\b/i.test(combinedText)) tipoComprobante = 'FAB';
+  else if (/factura\s+c\b|c[oó]d(?:igo)?\.?\s*11\b/i.test(combinedText)) tipoComprobante = 'FAC';
+  else if (/nota de cr[eé]dito/i.test(combinedText)) tipoComprobante = 'NCA';
+  else if (/nota de d[eé]bito/i.test(combinedText)) tipoComprobante = 'NDA';
   else if (/ticket/i.test(combinedText)) tipoComprobante = 'TICKET';
 
-  // 4. Punto de Venta y Número
+  // 4. Punto de Venta y Número Comprobante (Evitando número de remito)
   let puntoVenta = '1';
   let numeroComprobante = '';
-  const numMatch = combinedText.match(/(?:n[º°]|comp(?:robante)?\.?\s*n[º°]?)\s*[:\s]*(\d{4,5})\s*[-–]\s*(\d{8})/i);
-  if (numMatch) {
-    puntoVenta = String(parseInt(numMatch[1], 10));
-    numeroComprobante = String(parseInt(numMatch[2], 10));
+  const nonRemitoMatch = combinedText.match(/(?<!remito\s*)(?:n[º°]|nro\.?|comp(?:robante)?\.?\s*n[º°]?)\s*[:\s]*(\d{4,5})\s*[-–]\s*(\d{8})/i);
+  if (nonRemitoMatch) {
+    puntoVenta = String(parseInt(nonRemitoMatch[1], 10));
+    numeroComprobante = String(parseInt(nonRemitoMatch[2], 10));
   } else {
-    const singleNum = combinedText.match(/n[º°]\s*(\d{1,8})/i);
-    if (singleNum) numeroComprobante = singleNum[1];
-  }
-
-  // 5. Fecha
-  const fechaEmision = parseDate(combinedText);
-
-  // 6. Extracción de Artículos / Líneas
-  const lineas = [];
-  const seenLineKeys = new Set();
-
-  for (const page of originalPages) {
-    for (const line of page.lines) {
-      const lineItems = line.map(c => c.str);
-      const lineStr = lineItems.join(' ');
-
-      // Formato específico REHAU (con código de artículo, descripción, pedido, cantidad, precio unitario y total)
-      const rehauMatch = lineStr.match(/^(\d{6}\.\d{3})\s*(?:\/\s*\d+)?\s+(.+?)\s+Pedido del\s+\d{2}\/\d{2}\/\d{2}\s+([\d.,]+)\s+([\d.,]+)\s*(?:\/\d+)?\s+([\d.,]+)$/i);
-      if (rehauMatch) {
-        const codigoArticulo = rehauMatch[1];
-        const rawDesc = rehauMatch[2].replace(/\s+/g, ' ').trim();
-        const cantidad = parseNumber(rehauMatch[3]);
-        const precioUnitario = parseNumber(rehauMatch[4]);
-        const total = parseNumber(rehauMatch[5]);
-
-        const key = `${codigoArticulo}_${cantidad}_${precioUnitario}`;
-        if (!seenLineKeys.has(key)) {
-          seenLineKeys.add(key);
-          lineas.push({
-            codigoArticulo,
-            descripcion: rawDesc,
-            cantidad,
-            precioUnitario,
-            total,
-            alicuotaIva: 0.21,
-            cuentaCodigo: '5.1.01',
-            centroCosto: 'COSTO VARIABLE',
-            obraId: ''
-          });
-        }
-        continue;
-      }
-
-      // Formato General AFIP / Proveedor estándar (Cantidad, Precio Unitario, Total)
-      if (lineItems.length >= 3) {
-        const last1 = parseNumber(lineItems[lineItems.length - 1]);
-        const last2 = parseNumber(lineItems[lineItems.length - 2]);
-        const last3 = lineItems.length >= 4 ? parseNumber(lineItems[lineItems.length - 3]) : 0;
-
-        if (last1 > 0 && last2 > 0 && last3 > 0) {
-          const diff = Math.abs(last2 * last3 - last1);
-          if (diff <= Math.max(1, last1 * 0.05)) {
-            const desc = lineItems.slice(0, lineItems.length - 3).join(' ').trim();
-            if (desc.length >= 3 && !/subtotal|total|transporte|cae|p[aá]gina|i\.?v\.?a/i.test(desc)) {
-              const key = `${desc}_${last3}_${last2}`;
-              if (!seenLineKeys.has(key)) {
-                seenLineKeys.add(key);
-                lineas.push({
-                  codigoArticulo: '',
-                  descripcion: desc,
-                  cantidad: last3,
-                  precioUnitario: last2,
-                  total: last1,
-                  alicuotaIva: 0.21,
-                  cuentaCodigo: '5.1.01',
-                  centroCosto: 'COSTO VARIABLE',
-                  obraId: ''
-                });
-              }
-              continue;
-            }
-          }
-        }
-      }
+    const rawNum = combinedText.match(/\b(\d{4,5})\s*[-–]\s*(\d{8})\b/);
+    if (rawNum) {
+      puntoVenta = String(parseInt(rawNum[1], 10));
+      numeroComprobante = String(parseInt(rawNum[2], 10));
     }
   }
 
-  // Totales
-  const subtotalNeto = lineas.reduce((acc, l) => acc + (l.total || (l.cantidad * l.precioUnitario)), 0);
-  const totalIva = Math.round(subtotalNeto * 0.21 * 100) / 100;
-  const totalComprobante = Math.round((subtotalNeto + totalIva) * 100) / 100;
+  // 5. Fecha de Emisión
+  const fechaEmision = parseDate(combinedText);
+
+  // 6. Totales
+  let subtotalNeto = 0;
+  let totalIva = 0;
+  let totalComprobante = 0;
+
+  const baseMatch = combinedText.match(/(?:base imponible|subtotal gravado|neto gravado)\s*[:\$]?\s*([\d.,]+)/i);
+  if (baseMatch) subtotalNeto = parseNumber(baseMatch[1]);
+
+  const ivaMatch = combinedText.match(/(?:iva\s*21%|iva\s*gral\.?|total\s*iva)\s*[:\$]?\s*([\d.,]+)/i);
+  if (ivaMatch) totalIva = parseNumber(ivaMatch[1]);
+
+  const totalMatch = combinedText.match(/(?:total|importe total)\s*[:\$]?\s*([\d.,]+)(?!\s*\(|\s*d[oó]lares)/i);
+  if (totalMatch) totalComprobante = parseNumber(totalMatch[1]);
+
+  // 7. Extracción de Artículos / Renglones de la Factura
+  const lineas = [];
+  const seenKeys = new Set();
+
+  for (const page of originalPages) {
+    const lines = page.lines;
+
+    // Detectar encabezado de la tabla y calcular coordenadas de columnas
+    let tableHeaderIdx = -1;
+    let colDescX = 30;
+    let colCantX = 310;
+    let colPrecioX = 380;
+    let colTotalX = 500;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const lineStr = line.map(c => c.str).join(' ');
+      if (/(?:descripci[oó]n|art[ií]culo|designaci[oó]n|concepto)/i.test(lineStr) &&
+          /(?:cantidad|cant|precio|importe|total)/i.test(lineStr)) {
+        tableHeaderIdx = i;
+
+        for (const item of line) {
+          if (/descripci[oó]n|art[ií]culo|designaci[oó]n/i.test(item.str)) colDescX = item.x;
+          if (/cantidad|cant/i.test(item.str)) colCantX = item.x;
+          if (/precio|unitario|p\.\s*unit/i.test(item.str)) colPrecioX = item.x;
+          if (/total|importe/i.test(item.str)) colTotalX = item.x;
+        }
+        break;
+      }
+    }
+
+    // Puntos de corte entre columnas
+    const boundCant = (colDescX + colCantX) / 2 + 30;
+    const boundPrecio = (colCantX + colPrecioX) / 2;
+    const boundTotal = (colPrecioX + colTotalX) / 2;
+
+    const startIdx = tableHeaderIdx !== -1 ? tableHeaderIdx + 1 : 0;
+    let currentItem = null;
+
+    for (let i = startIdx; i < lines.length; i++) {
+      const line = lines[i];
+      const lineStr = line.map(c => c.str).join(' ');
+
+      // Filtro de filas de pie de página / subtotales / condiciones
+      if (/(?:hoja\s*\d+\s*\/\s*\d+|base imponible|subtotal|transporte|son pesos|plazo de pago|condiciones de venta|cuenta bancaria|garant[ií]a|aviso de pago|observaciones|cae:?\s*\d+|vencimiento|a partir del)/i.test(lineStr) &&
+          !/(?:tubo|colector|valvula|detentor|radiador|armario|casquillo|pieza|adaptador)/i.test(lineStr)) {
+        if (/^transporte\s+[\d.,]+$/i.test(lineStr.trim())) {
+          if (currentItem) {
+            pushItem(currentItem);
+            currentItem = null;
+          }
+          continue;
+        }
+        if (currentItem) {
+          pushItem(currentItem);
+          currentItem = null;
+        }
+        break;
+      }
+
+      // 1. Probar formato REHAU (con número de artículo y "Pedido del")
+      const rehauMatch = lineStr.match(/^(\d{6}\.\d{3})\s*(?:\/\s*\d+)?\s+(.+?)\s+Pedido del\s+\d{2}\/\d{2}\/\d{2}\s+([\d.,]+)\s+([\d.,]+)\s*(?:\/\d+)?\s+([\d.,]+)$/i);
+      if (rehauMatch) {
+        if (currentItem) pushItem(currentItem);
+        currentItem = {
+          codigoArticulo: rehauMatch[1],
+          descripcion: rehauMatch[2].replace(/\s+/g, ' ').trim(),
+          cantidad: parseNumber(rehauMatch[3]),
+          precioUnitario: parseNumber(rehauMatch[4]),
+          total: parseNumber(rehauMatch[5]),
+          alicuotaIva: 0.21
+        };
+        continue;
+      }
+
+      // 2. Probar formato Universal basado en Columnas Geométricas X (Pronto, AFIP, etc.)
+      const descTokens = [];
+      const cantTokens = [];
+      const precioTokens = [];
+      const totalTokens = [];
+
+      for (const it of line) {
+        if (/^(?:unidad\(es\)|unidades|mts|kg|iva|21%|10\.5%|10,5%|\$|desc\.?|\(%?\))$/i.test(it.str)) {
+          continue;
+        }
+
+        const subParts = it.str.split(/\s+/).filter(Boolean);
+
+        for (const sub of subParts) {
+          if (/^(?:unidad\(es\)|unidades|mts|kg|iva|21%|10\.5%|10,5%|\$|desc\.?|\(%?\))$/i.test(sub)) {
+            continue;
+          }
+
+          if (it.x < boundCant) {
+            descTokens.push(sub);
+          } else if (it.x >= boundCant && it.x < boundPrecio) {
+            cantTokens.push(sub);
+          } else if (it.x >= boundPrecio && it.x < boundTotal) {
+            precioTokens.push(sub);
+          } else {
+            totalTokens.push(sub);
+          }
+        }
+      }
+
+      const cantVal = cantTokens.map(parseNumber).find(n => n > 0);
+      const precioVal = precioTokens.map(parseNumber).find(n => n > 0);
+      const totalVal = totalTokens.map(parseNumber).find(n => n >= 0);
+
+      if (cantVal && (precioVal || totalVal !== undefined)) {
+        if (currentItem) pushItem(currentItem);
+
+        const desc = descTokens.join(' ').replace(/-\s*$/, '').trim();
+        const codeMatch = desc.match(/\b([A-Z0-9]{5,12})\b/);
+        const codigoArticulo = codeMatch ? codeMatch[1] : '';
+
+        const pUnit = precioVal || (cantVal > 0 ? (totalVal || 0) / cantVal : 0);
+        const tVal = totalVal !== undefined ? totalVal : Math.round(cantVal * pUnit * 100) / 100;
+
+        currentItem = {
+          codigoArticulo,
+          descripcion: desc,
+          cantidad: cantVal,
+          precioUnitario: pUnit,
+          total: tVal,
+          alicuotaIva: 0.21
+        };
+      } else if (currentItem && descTokens.length > 0 && !cantVal && !precioVal) {
+        currentItem.descripcion += ' ' + descTokens.join(' ').trim();
+      }
+    }
+
+    if (currentItem) {
+      pushItem(currentItem);
+    }
+  }
+
+  function pushItem(it) {
+    it.descripcion = it.descripcion.replace(/\s+/g, ' ').replace(/\s+-\s*$/, '').trim();
+    if (/^(?:hoja\s*\d+|subtotal|total|\(\*\))/i.test(it.descripcion)) return;
+    if (it.descripcion.length < 3) return;
+
+    const key = `${it.descripcion}_${it.cantidad}_${it.precioUnitario}`;
+    if (!seenKeys.has(key)) {
+      seenKeys.add(key);
+      lineas.push({
+        ...it,
+        cuentaCodigo: '5.1.01',
+        centroCosto: 'COSTO VARIABLE',
+        obraId: ''
+      });
+    }
+  }
+
+  // Recalcular subtotales si no vinieron en la cabecera
+  if (!subtotalNeto && lineas.length > 0) {
+    subtotalNeto = Math.round(lineas.reduce((acc, l) => acc + l.total, 0) * 100) / 100;
+  }
+  if (!totalIva && subtotalNeto > 0) {
+    totalIva = Math.round(subtotalNeto * 0.21 * 100) / 100;
+  }
+  if (!totalComprobante && subtotalNeto > 0) {
+    totalComprobante = Math.round((subtotalNeto + totalIva) * 100) / 100;
+  }
 
   return {
     proveedorNombre,
@@ -298,7 +413,7 @@ export const parseFacturaConIA = async (file) => {
 
   const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
 
-  // Si es un archivo PDF, usamos el motor nativo de alta precisión
+  // Si es un archivo PDF, usamos el motor nativo universal
   if (isPdf) {
     try {
       const buffer = await file.arrayBuffer();
@@ -366,8 +481,6 @@ Responde ÚNICAMENTE con el objeto JSON válido.
     }
   }
 
-  // Si falló y no pudimos extraer los ítems, retornamos datos básicos reales del archivo
-  // SIN inventar líneas falsas ni datos inventados
   return {
     proveedorNombre: '',
     proveedorCuit: '',

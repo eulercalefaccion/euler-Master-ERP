@@ -29,6 +29,7 @@ const Compras = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isScanningIA, setIsScanningIA] = useState(false);
   const [scanMessage, setScanMessage] = useState('');
+  const [uploadedFileName, setUploadedFileName] = useState('');
   const [isDragging, setIsDragging] = useState(false);
 
   // Selector manual de artículo para enlazar
@@ -82,7 +83,7 @@ const Compras = () => {
     getTipoCambio().then(setTipoCambio).catch(console.error);
   }, []);
 
-  // Suscripción en tiempo real a Obras, Proveedores y Lista de Precios / Stock
+  // Suscripción a Obras y Lista de Precios / Stock
   useEffect(() => {
     const unsubO = onSnapshot(collection(db, 'obras'), snap => {
       setObras(snap.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -93,7 +94,6 @@ const Compras = () => {
       if (items.length > 0) {
         setCatalogoArticulos(items);
       } else {
-        // Fallback a los 510 datos iniciales si la colección aún no tiene docs
         setCatalogoArticulos(datosIniciales.map((it, idx) => ({ id: `init_${idx}`, ...it })));
       }
     }, err => {
@@ -107,19 +107,18 @@ const Compras = () => {
     };
   }, []);
 
-  // Catálogo unificado para cotejar
   const catalogoDisponible = useMemo(() => {
     if (catalogoArticulos && catalogoArticulos.length > 0) return catalogoArticulos;
     return datosIniciales.map((it, idx) => ({ id: `init_${idx}`, ...it }));
   }, [catalogoArticulos]);
 
-  // Ejecutar cotejo inteligente sobre una lista de líneas extraídas
+  // Cotejo inteligente con el catálogo
   const cotejarLineasConERP = (lineasExtraidas, catalogo) => {
     return lineasExtraidas.map(linea => {
       const match = matchArticleWithCatalog(linea.descripcion, linea.codigoArticulo, catalogo);
 
       let itemId = null;
-      let matchStatus = match.status; // 'EXACT' | 'SIMILAR' | 'NONE'
+      let matchStatus = match.status;
 
       if (match.status === 'EXACT' && match.item) {
         itemId = match.item.id;
@@ -144,17 +143,17 @@ const Compras = () => {
     });
   };
 
-  // Procesar archivo con motor IA / OCR
+  // Procesar archivo de factura
   const procesarArchivoFactura = async (file) => {
     if (!file) return;
 
     setIsScanningIA(true);
-    setScanMessage('Extrayendo datos de la factura con motor inteligente...');
+    setScanMessage('Extrayendo artículos y datos de la factura con motor inteligente...');
+    setUploadedFileName(file.name);
 
     try {
       const parsedData = await parseFacturaConIA(file);
 
-      // Cotejar automáticamente las líneas detectadas con la Lista de Precios / Stock del ERP
       const lineasCotejadas = cotejarLineasConERP(parsedData.lineas || [], catalogoDisponible);
 
       setFormData(prev => ({
@@ -173,7 +172,11 @@ const Compras = () => {
       const similares = lineasCotejadas.filter(l => l.matchStatus === 'SIMILAR').length;
       const nuevos = lineasCotejadas.filter(l => l.matchStatus === 'NONE').length;
 
-      setScanMessage(`✓ Factura analizada: ${lineasCotejadas.length} artículos leídos (${exactos} coincidentes, ${similares} sugeridos, ${nuevos} nuevos).`);
+      if (lineasCotejadas.length > 0) {
+        setScanMessage(`✓ Factura analizada: ${lineasCotejadas.length} artículos detectados (${exactos} coincidentes, ${similares} sugeridos, ${nuevos} nuevos).`);
+      } else {
+        setScanMessage('⚠️ No se detectaron líneas de artículos automáticamente en este archivo.');
+      }
     } catch (err) {
       console.error('Error al procesar archivo:', err);
       alert('Hubo un inconveniente al analizar la factura: ' + err.message);
@@ -211,7 +214,7 @@ const Compras = () => {
     }
   };
 
-  // Acciones sobre líneas individuales
+  // Acciones sobre líneas
   const handleAddLinea = () => {
     setFormData(prev => ({
       ...prev,
@@ -256,7 +259,6 @@ const Compras = () => {
     });
   };
 
-  // Resolver coincidencia similar: Confirmar sugerido
   const handleConfirmarSimilar = (idx) => {
     setFormData(prev => {
       const lineas = [...prev.lineas];
@@ -272,7 +274,6 @@ const Compras = () => {
     });
   };
 
-  // Marcar como artículo nuevo a crear
   const handleMarcarComoNuevo = (idx) => {
     setFormData(prev => {
       const lineas = [...prev.lineas];
@@ -285,7 +286,6 @@ const Compras = () => {
     });
   };
 
-  // Asignar manualmente artículo del catálogo
   const handleAsignarArticuloManual = (idx, item) => {
     setFormData(prev => {
       const lineas = [...prev.lineas];
@@ -301,7 +301,6 @@ const Compras = () => {
     setCatalogSearchTerm('');
   };
 
-  // Acciones masivas
   const handleConfirmarTodosSimilares = () => {
     setFormData(prev => {
       const lineas = prev.lineas.map(l => {
@@ -326,7 +325,7 @@ const Compras = () => {
     });
   };
 
-  // Totales calculados en tiempo real
+  // Totales
   const totalesCalculados = useMemo(() => {
     let subtotalNeto = 0;
     let totalIva = 0;
@@ -346,7 +345,6 @@ const Compras = () => {
     return { subtotalNeto, totalIva, totalComprobante };
   }, [formData.lineas]);
 
-  // Conteo de estados de cotejo
   const conteoEstados = useMemo(() => {
     const exactos = formData.lineas.filter(l => l.matchStatus === 'EXACT').length;
     const confirmados = formData.lineas.filter(l => l.matchStatus === 'CONFIRMED').length;
@@ -355,7 +353,7 @@ const Compras = () => {
     return { exactos, confirmados, similares, nuevos };
   }, [formData.lineas]);
 
-  // Guardar factura en Firestore
+  // Guardar factura
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.proveedorNombre || !formData.numeroComprobante) {
@@ -368,7 +366,6 @@ const Compras = () => {
       return;
     }
 
-    // Verificar si hay similares sin confirmar
     if (conteoEstados.similares > 0) {
       const confirmContinue = window.confirm(
         `Hay ${conteoEstados.similares} artículo(s) similares pendientes de revisión. ¿Desea continuar de todos modos?`
@@ -381,7 +378,6 @@ const Compras = () => {
       const lineasFinales = [...formData.lineas];
       let articulosCreadosCount = 0;
 
-      // 1. Dar de alta en Lista de Precios / Stock a los artículos nuevos confirmados
       for (let i = 0; i < lineasFinales.length; i++) {
         const l = lineasFinales[i];
         if (!l.itemId && (l.matchStatus === 'NEW_PENDING' || l.matchStatus === 'NONE')) {
@@ -408,7 +404,6 @@ const Compras = () => {
         }
       }
 
-      // 2. Registrar comprobante en comprobantes_compra y generar asiento contable
       const compraPayload = {
         ...formData,
         subtotalNeto: totalesCalculados.subtotalNeto,
@@ -421,6 +416,8 @@ const Compras = () => {
 
       setIsModalOpen(false);
       setFormData(initialForm);
+      setUploadedFileName('');
+      setScanMessage('');
       await cargarDatos();
 
       let msg = '✓ Factura de compra registrada con éxito en el sistema.';
@@ -439,7 +436,6 @@ const Compras = () => {
     }
   };
 
-  // Modal de clave Gemini
   const handleSaveGeminiKey = () => {
     if (geminiApiKeyInput.trim()) {
       localStorage.setItem('gemini_api_key', geminiApiKeyInput.trim());
@@ -487,6 +483,8 @@ const Compras = () => {
           <button 
             onClick={() => {
               setFormData(initialForm);
+              setUploadedFileName('');
+              setScanMessage('');
               setIsModalOpen(true);
             }} 
             className="btn btn-primary" 
@@ -593,9 +591,9 @@ const Compras = () => {
             <div className="compras-modal-header">
               <div>
                 <h3 className="compras-modal-title">
-                  <Sparkles size={22} color="#2563eb" /> Lector Inteligente de Facturas con IA & Cotejo ERP
+                  <Sparkles size={20} color="#2563eb" /> Lector Inteligente de Facturas con IA & Cotejo ERP
                 </h3>
-                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                <span style={{ fontSize: '0.775rem', color: '#64748b' }}>
                   Arrastrá tu factura en PDF o imagen para lectura automática, cotejo de stock y carga en tiempo real.
                 </span>
               </div>
@@ -607,423 +605,447 @@ const Compras = () => {
               </button>
             </div>
 
-            {/* Cuerpo del Modal */}
-            <form onSubmit={handleSubmit} className="compras-modal-body">
+            {/* Formulario */}
+            <form onSubmit={handleSubmit} className="compras-modal-form">
               
-              {/* ZONA DE ARRASTRE (DRAG & DROP) & FOTO */}
-              <div 
-                className={`drag-drop-zone ${isDragging ? 'dragging' : ''}`}
-                onDragEnter={handleDragEnter}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <div className="drag-drop-content">
-                  <div className="drag-drop-icon">
-                    {isScanningIA ? <RefreshCw size={24} className="animate-spin" /> : <Upload size={24} />}
-                  </div>
-                  <div style={{ fontSize: '1.05rem', fontWeight: '700', color: '#1e3a8a' }}>
-                    {isDragging ? '¡Soltá tu factura acá!' : 'Arrastrá el archivo de la factura acá o hacé clic para buscar'}
-                  </div>
-                  <div style={{ fontSize: '0.825rem', color: '#475569' }}>
-                    Soporta facturas en <strong>PDF (AFIP / Proveedores)</strong> e imágenes <strong>JPG / PNG</strong>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }} onClick={e => e.stopPropagation()}>
-                    <button 
-                      type="button" 
-                      onClick={() => fileInputRef.current?.click()} 
-                      className="btn btn-primary" 
-                      style={{ fontSize: '0.8rem', padding: '0.35rem 0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
-                      disabled={isScanningIA}
-                    >
-                      <Upload size={14} /> Seleccionar Archivo PDF / Foto
-                    </button>
-                    <button 
-                      type="button" 
-                      onClick={() => cameraInputRef.current?.click()} 
-                      className="btn btn-secondary" 
-                      style={{ fontSize: '0.8rem', padding: '0.35rem 0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
-                      disabled={isScanningIA}
-                    >
-                      <Camera size={14} /> Sacar Foto
-                    </button>
-                  </div>
-
-                  <input 
-                    ref={fileInputRef} 
-                    type="file" 
-                    accept="application/pdf,image/*" 
-                    style={{ display: 'none' }} 
-                    onChange={e => e.target.files?.[0] && procesarArchivoFactura(e.target.files[0])} 
-                  />
-                  <input 
-                    ref={cameraInputRef} 
-                    type="file" 
-                    accept="image/*" 
-                    capture="environment" 
-                    style={{ display: 'none' }} 
-                    onChange={e => e.target.files?.[0] && procesarArchivoFactura(e.target.files[0])} 
-                  />
-
-                  {scanMessage && (
-                    <div style={{ marginTop: '0.5rem', fontSize: '0.825rem', color: '#1d4ed8', fontWeight: '600' }}>
-                      {scanMessage}
+              <div className="compras-modal-body">
+                
+                {/* ZONA DE ARRASTRE COMPACTA O BANNER DE ARCHIVO YA SUBIDO */}
+                {!formData.adjuntoUrl && !isScanningIA ? (
+                  <div 
+                    className={`drag-drop-zone-compact ${isDragging ? 'dragging' : ''}`}
+                    onDragEnter={handleDragEnter}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <div className="drag-drop-left">
+                      <div className="drag-drop-icon-small">
+                        <Upload size={18} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '0.9rem', fontWeight: '700', color: '#1e3a8a' }}>
+                          {isDragging ? '¡Soltá tu factura acá!' : 'Arrastrá tu factura acá (PDF o Imagen) o hacé clic para buscar'}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                          Soporta cualquier factura PDF (AFIP, REHAU, Pronto, etc.) o fotos JPG/PNG
+                        </div>
+                      </div>
                     </div>
-                  )}
 
-                  {formData.adjuntoUrl && (
-                    <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: '#059669', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                      <CheckCircle size={15} /> Archivo adjuntado correctamente: 
-                      <a href={formData.adjuntoUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'underline' }}>
-                        Ver Comprobante
-                      </a>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* DATOS DE CABECERA DE LA FACTURA */}
-              <div style={{ background: '#ffffff', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', alignItems: 'end' }}>
-                <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: '600', color: '#475569', display: 'block', marginBottom: '0.25rem' }}>Empresa Receptora</label>
-                  <select className="input-field" value={formData.empresaId} onChange={e => setFormData({...formData, empresaId: e.target.value})}>
-                    {empresas.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: '600', color: '#475569', display: 'block', marginBottom: '0.25rem' }}>Tipo Comprobante</label>
-                  <select className="input-field" value={formData.tipoComprobante} onChange={e => setFormData({...formData, tipoComprobante: e.target.value})}>
-                    <option value="FAA">Factura A (FAA)</option>
-                    <option value="FAB">Factura B (FAB)</option>
-                    <option value="FAC">Factura C (FAC)</option>
-                    <option value="TICKET">Ticket / Comprobante Interno</option>
-                    <option value="NCA">Nota de Crédito (NCA)</option>
-                    <option value="NDA">Nota de Débito (NDA)</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: '600', color: '#475569', display: 'block', marginBottom: '0.25rem' }}>N° Comprobante (Pto - Número)</label>
-                  <div style={{ display: 'flex', gap: '0.35rem' }}>
-                    <input type="text" className="input-field" style={{ width: '70px' }} value={formData.puntoVenta} onChange={e => setFormData({...formData, puntoVenta: e.target.value})} placeholder="0001" required />
-                    <input type="text" className="input-field" style={{ flex: 1 }} value={formData.numeroComprobante} onChange={e => setFormData({...formData, numeroComprobante: e.target.value})} placeholder="00012345" required />
-                  </div>
-                </div>
-                <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: '600', color: '#475569', display: 'block', marginBottom: '0.25rem' }}>Proveedor (Razón Social)</label>
-                  <input type="text" className="input-field" placeholder="Nombre Proveedor" value={formData.proveedorNombre} onChange={e => setFormData({...formData, proveedorNombre: e.target.value})} required />
-                </div>
-                <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: '600', color: '#475569', display: 'block', marginBottom: '0.25rem' }}>CUIT Proveedor</label>
-                  <input type="text" className="input-field" placeholder="30-XXXXXXXX-X" value={formData.proveedorCuit} onChange={e => setFormData({...formData, proveedorCuit: e.target.value})} />
-                </div>
-                <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: '600', color: '#475569', display: 'block', marginBottom: '0.25rem' }}>Fecha Emisión</label>
-                  <input type="date" className="input-field" value={formData.fechaEmision} onChange={e => setFormData({...formData, fechaEmision: e.target.value})} required />
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', paddingBottom: '0.5rem' }}>
-                  <input type="checkbox" id="ingresaStockCheck" checked={formData.ingresaStock} onChange={e => setFormData({...formData, ingresaStock: e.target.checked})} style={{ width: '16px', height: '16px', cursor: 'pointer' }} />
-                  <label htmlFor="ingresaStockCheck" style={{ fontSize: '0.8rem', fontWeight: '600', color: '#1e293b', cursor: 'pointer' }}>
-                    Ingresar mercadería automáticamente a Stock físico
-                  </label>
-                </div>
-              </div>
-
-              {/* ASISTENTE INTELIGENTE DE COTEJO CON ERP */}
-              {formData.lineas.length > 0 && (
-                <div className="matching-summary-bar">
-                  <div className="matching-badges-group">
-                    <span style={{ fontSize: '0.8rem', fontWeight: '700', color: '#334155' }}>
-                      Cotejo con Stock / Lista de Precios ({formData.lineas.length} ítems):
-                    </span>
-                    {conteoEstados.exactos > 0 && (
-                      <span className="badge-exact">
-                        <Check size={14} /> {conteoEstados.exactos} Coincidentes en Catálogo
-                      </span>
-                    )}
-                    {conteoEstados.confirmados > 0 && (
-                      <span className="badge-confirmed">
-                        <CheckCircle size={14} /> {conteoEstados.confirmados} Confirmados
-                      </span>
-                    )}
-                    {conteoEstados.similares > 0 && (
-                      <span className="badge-similar">
-                        <AlertTriangle size={14} /> {conteoEstados.similares} Similares por Confirmar
-                      </span>
-                    )}
-                    {conteoEstados.nuevos > 0 && (
-                      <span className="badge-new">
-                        <Box size={14} /> {conteoEstados.nuevos} Nuevos para crear en Catálogo
-                      </span>
-                    )}
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    {conteoEstados.similares > 0 && (
+                    <div style={{ display: 'flex', gap: '0.5rem' }} onClick={e => e.stopPropagation()}>
                       <button 
                         type="button" 
-                        onClick={handleConfirmarTodosSimilares}
-                        className="btn-inline-confirm"
-                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}
+                        onClick={() => fileInputRef.current?.click()} 
+                        className="btn btn-primary" 
+                        style={{ fontSize: '0.775rem', padding: '0.35rem 0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
                       >
-                        ✓ Confirmar todos los similares
+                        <Upload size={14} /> Seleccionar Archivo
                       </button>
-                    )}
-                    {conteoEstados.nuevos > 0 && (
                       <button 
                         type="button" 
-                        onClick={handleAprobarTodosNuevos}
-                        className="btn-inline-create"
-                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}
+                        onClick={() => cameraInputRef.current?.click()} 
+                        className="btn btn-secondary" 
+                        style={{ fontSize: '0.775rem', padding: '0.35rem 0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
                       >
-                        ➕ Aprobar creación de todos los nuevos
+                        <Camera size={14} /> Sacar Foto
                       </button>
-                    )}
+                    </div>
+
+                    <input 
+                      ref={fileInputRef} 
+                      type="file" 
+                      accept="application/pdf,image/*" 
+                      style={{ display: 'none' }} 
+                      onChange={e => e.target.files?.[0] && procesarArchivoFactura(e.target.files[0])} 
+                    />
+                    <input 
+                      ref={cameraInputRef} 
+                      type="file" 
+                      accept="image/*" 
+                      capture="environment" 
+                      style={{ display: 'none' }} 
+                      onChange={e => e.target.files?.[0] && procesarArchivoFactura(e.target.files[0])} 
+                    />
+                  </div>
+                ) : (
+                  <div className="uploaded-file-banner">
+                    <div className="uploaded-file-info">
+                      {isScanningIA ? (
+                        <RefreshCw size={16} className="animate-spin" style={{ color: '#2563eb' }} />
+                      ) : (
+                        <FileText size={18} style={{ color: '#059669' }} />
+                      )}
+                      <span>
+                        {isScanningIA ? 'Procesando archivo...' : `Archivo: ${uploadedFileName || 'Factura'}`}
+                      </span>
+                      {scanMessage && (
+                        <span style={{ fontSize: '0.75rem', color: isScanningIA ? '#2563eb' : '#059669', marginLeft: '0.5rem', fontWeight: '500' }}>
+                          {scanMessage}
+                        </span>
+                      )}
+                      {formData.adjuntoUrl && (
+                        <a href={formData.adjuntoUrl} target="_blank" rel="noopener noreferrer" className="uploaded-file-link">
+                          <ExternalLink size={12} /> Ver Comprobante
+                        </a>
+                      )}
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button 
+                        type="button" 
+                        onClick={() => fileInputRef.current?.click()} 
+                        className="btn-change-file"
+                        disabled={isScanningIA}
+                      >
+                        <RefreshCw size={12} /> Cambiar Archivo
+                      </button>
+                      <input 
+                        ref={fileInputRef} 
+                        type="file" 
+                        accept="application/pdf,image/*" 
+                        style={{ display: 'none' }} 
+                        onChange={e => e.target.files?.[0] && procesarArchivoFactura(e.target.files[0])} 
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* DATOS DE CABECERA COMPACTOS */}
+                <div className="invoice-header-compact">
+                  <div>
+                    <label style={{ fontSize: '0.7rem', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '0.15rem' }}>Empresa Receptora</label>
+                    <select className="input-field" style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem' }} value={formData.empresaId} onChange={e => setFormData({...formData, empresaId: e.target.value})}>
+                      {empresas.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.7rem', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '0.15rem' }}>Tipo Comprobante</label>
+                    <select className="input-field" style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem' }} value={formData.tipoComprobante} onChange={e => setFormData({...formData, tipoComprobante: e.target.value})}>
+                      <option value="FAA">Factura A (FAA)</option>
+                      <option value="FAB">Factura B (FAB)</option>
+                      <option value="FAC">Factura C (FAC)</option>
+                      <option value="TICKET">Ticket / Interno</option>
+                      <option value="NCA">Nota de Crédito (NCA)</option>
+                      <option value="NDA">Nota de Débito (NDA)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.7rem', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '0.15rem' }}>Pto - Número</label>
+                    <div style={{ display: 'flex', gap: '0.25rem' }}>
+                      <input type="text" className="input-field" style={{ width: '65px', padding: '0.3rem 0.4rem', fontSize: '0.8rem' }} value={formData.puntoVenta} onChange={e => setFormData({...formData, puntoVenta: e.target.value})} placeholder="0001" required />
+                      <input type="text" className="input-field" style={{ flex: 1, padding: '0.3rem 0.4rem', fontSize: '0.8rem' }} value={formData.numeroComprobante} onChange={e => setFormData({...formData, numeroComprobante: e.target.value})} placeholder="00012345" required />
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.7rem', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '0.15rem' }}>Proveedor (Razón Social)</label>
+                    <input type="text" className="input-field" style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem' }} placeholder="Nombre Proveedor" value={formData.proveedorNombre} onChange={e => setFormData({...formData, proveedorNombre: e.target.value})} required />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.7rem', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '0.15rem' }}>CUIT Proveedor</label>
+                    <input type="text" className="input-field" style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem' }} placeholder="30-XXXXXXXX-X" value={formData.proveedorCuit} onChange={e => setFormData({...formData, proveedorCuit: e.target.value})} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.7rem', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '0.15rem' }}>Fecha Emisión</label>
+                    <input type="date" className="input-field" style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem' }} value={formData.fechaEmision} onChange={e => setFormData({...formData, fechaEmision: e.target.value})} required />
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', paddingBottom: '0.3rem' }}>
+                    <input type="checkbox" id="ingresaStockCheck" checked={formData.ingresaStock} onChange={e => setFormData({...formData, ingresaStock: e.target.checked})} style={{ width: '15px', height: '15px', cursor: 'pointer' }} />
+                    <label htmlFor="ingresaStockCheck" style={{ fontSize: '0.775rem', fontWeight: '700', color: '#1e293b', cursor: 'pointer' }}>
+                      Ingresar a Stock físico
+                    </label>
                   </div>
                 </div>
-              )}
 
-              {/* TABLA DE LÍNEAS / ARTÍCULOS DETECTADOS */}
-              <div className="lines-table-container">
-                <table className="lines-table">
-                  <thead>
-                    <tr>
-                      <th style={{ width: '32px' }}>#</th>
-                      <th style={{ width: '28%' }}>Artículo en Factura</th>
-                      <th style={{ width: '32%' }}>Estado en ERP (Stock / Lista de Precios)</th>
-                      <th style={{ width: '70px' }}>Cant.</th>
-                      <th style={{ width: '100px' }}>Precio U. ($)</th>
-                      <th style={{ width: '100px' }}>Total ($)</th>
-                      <th style={{ width: '75px' }}>IVA</th>
-                      <th style={{ width: '130px' }}>Centro Costo</th>
-                      <th style={{ width: '120px' }}>Obra</th>
-                      <th style={{ width: '36px' }}></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {formData.lineas.length === 0 ? (
+                {/* ASISTENTE INTELIGENTE DE COTEJO CON ERP */}
+                {formData.lineas.length > 0 && (
+                  <div className="matching-summary-bar">
+                    <div className="matching-badges-group">
+                      <span style={{ fontSize: '0.775rem', fontWeight: '700', color: '#334155' }}>
+                        Cotejo con Stock / Lista de Precios ({formData.lineas.length} ítems):
+                      </span>
+                      {conteoEstados.exactos > 0 && (
+                        <span className="badge-exact">
+                          <Check size={13} /> {conteoEstados.exactos} Coincidentes
+                        </span>
+                      )}
+                      {conteoEstados.confirmados > 0 && (
+                        <span className="badge-confirmed">
+                          <CheckCircle size={13} /> {conteoEstados.confirmados} Confirmados
+                        </span>
+                      )}
+                      {conteoEstados.similares > 0 && (
+                        <span className="badge-similar">
+                          <AlertTriangle size={13} /> {conteoEstados.similares} Similares
+                        </span>
+                      )}
+                      {conteoEstados.nuevos > 0 && (
+                        <span className="badge-new">
+                          <Box size={13} /> {conteoEstados.nuevos} Nuevos para crear
+                        </span>
+                      )}
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '0.4rem' }}>
+                      {conteoEstados.similares > 0 && (
+                        <button 
+                          type="button" 
+                          onClick={handleConfirmarTodosSimilares}
+                          className="btn-inline-confirm"
+                        >
+                          ✓ Confirmar todos los similares
+                        </button>
+                      )}
+                      {conteoEstados.nuevos > 0 && (
+                        <button 
+                          type="button" 
+                          onClick={handleAprobarTodosNuevos}
+                          className="btn-inline-create"
+                        >
+                          ➕ Aprobar creación de todos los nuevos
+                        </button>
+                      )}
+                      <button 
+                        type="button" 
+                        onClick={handleAddLinea} 
+                        className="btn btn-secondary" 
+                        style={{ fontSize: '0.725rem', padding: '0.2rem 0.6rem' }}
+                      >
+                        + Agregar Fila
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* TABLA DE LÍNEAS / ARTÍCULOS DETECTADOS - CON SCROLL REAL Y VISIBILIDAD COMPLETA */}
+                <div className="lines-table-container">
+                  <table className="lines-table">
+                    <thead>
                       <tr>
-                        <td colSpan="10" style={{ padding: '2.5rem', textAlign: 'center', color: '#64748b' }}>
-                          <FileText size={32} style={{ margin: '0 auto 0.5rem', color: '#cbd5e1' }} />
-                          <div>No hay artículos cargados todavía.</div>
-                          <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Arrastrá una factura PDF arriba o hacé clic en "+ Agregar Línea manual".</div>
-                        </td>
+                        <th style={{ width: '32px' }}>#</th>
+                        <th style={{ width: '28%' }}>Artículo en Factura</th>
+                        <th style={{ width: '32%' }}>Estado en ERP (Stock / Lista de Precios)</th>
+                        <th style={{ width: '70px', textAlign: 'right' }}>Cant.</th>
+                        <th style={{ width: '100px', textAlign: 'right' }}>Precio U. ($)</th>
+                        <th style={{ width: '100px', textAlign: 'right' }}>Total ($)</th>
+                        <th style={{ width: '80px' }}>IVA</th>
+                        <th style={{ width: '130px' }}>Centro Costo</th>
+                        <th style={{ width: '120px' }}>Obra</th>
+                        <th style={{ width: '36px' }}></th>
                       </tr>
-                    ) : (
-                      formData.lineas.map((linea, idx) => (
-                        <tr key={idx}>
-                          <td style={{ color: '#94a3b8', fontWeight: '600' }}>{idx + 1}</td>
-                          
-                          {/* Artículo de la factura */}
-                          <td>
-                            <input 
-                              type="text" 
-                              className="input-field" 
-                              style={{ fontSize: '0.8rem', padding: '0.3rem 0.5rem', width: '100%' }}
-                              value={linea.descripcion} 
-                              onChange={e => handleLineaChange(idx, 'descripcion', e.target.value)} 
-                              required 
-                            />
-                            {linea.codigoArticulo && (
-                              <span style={{ fontSize: '0.7rem', color: '#64748b', display: 'inline-block', marginTop: '2px' }}>
-                                Ref: <strong>{linea.codigoArticulo}</strong>
-                              </span>
-                            )}
+                    </thead>
+                    <tbody>
+                      {formData.lineas.length === 0 ? (
+                        <tr>
+                          <td colSpan="10" style={{ padding: '3.5rem 1rem', textAlign: 'center', color: '#64748b' }}>
+                            <FileText size={36} style={{ margin: '0 auto 0.5rem', color: '#cbd5e1' }} />
+                            <div style={{ fontSize: '0.95rem', fontWeight: '600' }}>No hay artículos cargados todavía.</div>
+                            <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '0.25rem' }}>
+                              Arrastrá una factura PDF arriba o hacé clic en "+ Agregar Fila".
+                            </div>
                           </td>
-
-                          {/* Estado en ERP / Pregunta interactiva */}
-                          <td>
-                            {linea.matchStatus === 'EXACT' && linea.suggestedItem && (
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
-                                <span className="badge-exact" title={linea.matchReason}>
-                                  <Check size={12} /> {linea.suggestedItem.descripcion}
+                        </tr>
+                      ) : (
+                        formData.lineas.map((linea, idx) => (
+                          <tr key={idx}>
+                            <td style={{ color: '#94a3b8', fontWeight: '600', textAlign: 'center' }}>{idx + 1}</td>
+                            
+                            {/* Artículo de la factura */}
+                            <td>
+                              <input 
+                                type="text" 
+                                className="input-field" 
+                                style={{ fontSize: '0.8rem', padding: '0.3rem 0.5rem', width: '100%' }}
+                                value={linea.descripcion} 
+                                onChange={e => handleLineaChange(idx, 'descripcion', e.target.value)} 
+                                required 
+                              />
+                              {linea.codigoArticulo && (
+                                <span style={{ fontSize: '0.675rem', color: '#64748b', display: 'inline-block', marginTop: '2px' }}>
+                                  Ref: <strong>{linea.codigoArticulo}</strong>
                                 </span>
-                                <button 
-                                  type="button" 
-                                  onClick={() => setSelectingItemForLineIdx(idx)}
-                                  className="btn-inline-choose"
-                                  style={{ fontSize: '0.7rem', padding: '0.15rem 0.4rem' }}
-                                >
-                                  Cambiar
-                                </button>
-                              </div>
-                            )}
+                              )}
+                            </td>
 
-                            {linea.matchStatus === 'CONFIRMED' && (
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
-                                <span className="badge-confirmed">
-                                  <CheckCircle size={12} /> {linea.suggestedItem?.descripcion || 'Enlazado a ERP'}
-                                </span>
-                                <button 
-                                  type="button" 
-                                  onClick={() => setSelectingItemForLineIdx(idx)}
-                                  className="btn-inline-choose"
-                                  style={{ fontSize: '0.7rem', padding: '0.15rem 0.4rem' }}
-                                >
-                                  Cambiar
-                                </button>
-                              </div>
-                            )}
-
-                            {linea.matchStatus === 'SIMILAR' && linea.suggestedItem && (
-                              <div className="similar-resolution-box">
-                                <div style={{ fontSize: '0.75rem', color: '#854d0e', fontWeight: '600' }}>
-                                  ¿Es el mismo artículo que: <u>{linea.suggestedItem.descripcion}</u>?
-                                </div>
-                                <div className="similar-actions-row">
-                                  <button 
-                                    type="button" 
-                                    onClick={() => handleConfirmarSimilar(idx)}
-                                    className="btn-inline-confirm"
-                                    title="Confirmar que es este artículo en el ERP"
-                                  >
-                                    ✓ Sí, es este
-                                  </button>
+                            {/* Estado en ERP / Pregunta interactiva */}
+                            <td>
+                              {linea.matchStatus === 'EXACT' && linea.suggestedItem && (
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                                  <span className="badge-exact" title={linea.matchReason}>
+                                    <Check size={12} /> {linea.suggestedItem.descripcion}
+                                  </span>
                                   <button 
                                     type="button" 
                                     onClick={() => setSelectingItemForLineIdx(idx)}
                                     className="btn-inline-choose"
-                                    title="Buscar y seleccionar otro artículo del ERP"
                                   >
-                                    🔍 Elegir otro
-                                  </button>
-                                  <button 
-                                    type="button" 
-                                    onClick={() => handleMarcarComoNuevo(idx)}
-                                    className="btn-inline-create"
-                                    title="Dar de alta como artículo nuevo en el catálogo"
-                                  >
-                                    ➕ Crear como nuevo
+                                    Cambiar
                                   </button>
                                 </div>
-                              </div>
-                            )}
+                              )}
 
-                            {(linea.matchStatus === 'NONE' || linea.matchStatus === 'NEW_PENDING') && (
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                <span className={linea.matchStatus === 'NEW_PENDING' ? 'badge-new' : 'badge-new'} style={{ backgroundColor: '#f3e8ff', color: '#6b21a8', borderColor: '#d8b4fe' }}>
-                                  <Box size={12} /> Se creará nuevo en Catálogo
-                                </span>
-                                <div style={{ display: 'flex', gap: '0.25rem' }}>
+                              {linea.matchStatus === 'CONFIRMED' && (
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                                  <span className="badge-confirmed">
+                                    <CheckCircle size={12} /> {linea.suggestedItem?.descripcion || 'Enlazado a ERP'}
+                                  </span>
                                   <button 
                                     type="button" 
                                     onClick={() => setSelectingItemForLineIdx(idx)}
                                     className="btn-inline-choose"
-                                    style={{ fontSize: '0.7rem', padding: '0.15rem 0.4rem' }}
+                                  >
+                                    Cambiar
+                                  </button>
+                                </div>
+                              )}
+
+                              {linea.matchStatus === 'SIMILAR' && linea.suggestedItem && (
+                                <div className="similar-resolution-box">
+                                  <div style={{ fontSize: '0.75rem', color: '#854d0e', fontWeight: '600' }}>
+                                    ¿Es el mismo artículo que: <u>{linea.suggestedItem.descripcion}</u>?
+                                  </div>
+                                  <div className="similar-actions-row">
+                                    <button 
+                                      type="button" 
+                                      onClick={() => handleConfirmarSimilar(idx)}
+                                      className="btn-inline-confirm"
+                                      title="Confirmar que es este artículo en el ERP"
+                                    >
+                                      ✓ Sí, es este
+                                    </button>
+                                    <button 
+                                      type="button" 
+                                      onClick={() => setSelectingItemForLineIdx(idx)}
+                                      className="btn-inline-choose"
+                                      title="Buscar y seleccionar otro artículo del ERP"
+                                    >
+                                      🔍 Elegir otro
+                                    </button>
+                                    <button 
+                                      type="button" 
+                                      onClick={() => handleMarcarComoNuevo(idx)}
+                                      className="btn-inline-create"
+                                      title="Dar de alta como artículo nuevo en el catálogo"
+                                    >
+                                      ➕ Crear como nuevo
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+
+                              {(linea.matchStatus === 'NONE' || linea.matchStatus === 'NEW_PENDING') && (
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                  <span className="badge-new" style={{ backgroundColor: '#f3e8ff', color: '#6b21a8', borderColor: '#d8b4fe' }}>
+                                    <Box size={12} /> Se creará nuevo en Catálogo
+                                  </span>
+                                  <button 
+                                    type="button" 
+                                    onClick={() => setSelectingItemForLineIdx(idx)}
+                                    className="btn-inline-choose"
                                   >
                                     🔍 Vincular a existente
                                   </button>
                                 </div>
-                              </div>
-                            )}
-                          </td>
+                              )}
+                            </td>
 
-                          {/* Cantidad */}
-                          <td>
-                            <input 
-                              type="number" 
-                              className="input-field" 
-                              style={{ fontSize: '0.8rem', padding: '0.3rem 0.5rem', width: '100%', textAlign: 'right' }}
-                              value={linea.cantidad} 
-                              onChange={e => handleLineaChange(idx, 'cantidad', e.target.value)} 
-                              min="0.01" 
-                              step="any"
-                              required 
-                            />
-                          </td>
+                            {/* Cantidad */}
+                            <td>
+                              <input 
+                                type="number" 
+                                className="input-field" 
+                                style={{ fontSize: '0.8rem', padding: '0.3rem 0.5rem', width: '100%', textAlign: 'right' }}
+                                value={linea.cantidad} 
+                                onChange={e => handleLineaChange(idx, 'cantidad', e.target.value)} 
+                                min="0.01" 
+                                step="any"
+                                required 
+                              />
+                            </td>
 
-                          {/* Precio Unitario */}
-                          <td>
-                            <input 
-                              type="number" 
-                              className="input-field" 
-                              style={{ fontSize: '0.8rem', padding: '0.3rem 0.5rem', width: '100%', textAlign: 'right' }}
-                              value={linea.precioUnitario} 
-                              onChange={e => handleLineaChange(idx, 'precioUnitario', e.target.value)} 
-                              min="0" 
-                              step="0.0001"
-                              required 
-                            />
-                          </td>
+                            {/* Precio Unitario */}
+                            <td>
+                              <input 
+                                type="number" 
+                                className="input-field" 
+                                style={{ fontSize: '0.8rem', padding: '0.3rem 0.5rem', width: '100%', textAlign: 'right' }}
+                                value={linea.precioUnitario} 
+                                onChange={e => handleLineaChange(idx, 'precioUnitario', e.target.value)} 
+                                min="0" 
+                                step="0.0001"
+                                required 
+                              />
+                            </td>
 
-                          {/* Total Línea */}
-                          <td style={{ textAlign: 'right', fontWeight: '700', color: '#1e293b' }}>
-                            $ {Number(linea.total || (linea.cantidad * linea.precioUnitario)).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </td>
+                            {/* Total Línea */}
+                            <td style={{ textAlign: 'right', fontWeight: '700', color: '#1e293b', whiteSpace: 'nowrap' }}>
+                              $ {Number(linea.total || (linea.cantidad * linea.precioUnitario)).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
 
-                          {/* Alícuota IVA */}
-                          <td>
-                            <select 
-                              className="input-field" 
-                              style={{ fontSize: '0.8rem', padding: '0.3rem 0.25rem', width: '100%' }}
-                              value={linea.alicuotaIva} 
-                              onChange={e => handleLineaChange(idx, 'alicuotaIva', Number(e.target.value))}
-                            >
-                              {ALICUOTAS_IVA.map(a => <option key={a.val} value={a.val}>{a.label}</option>)}
-                            </select>
-                          </td>
+                            {/* Alícuota IVA */}
+                            <td>
+                              <select 
+                                className="input-field" 
+                                style={{ fontSize: '0.775rem', padding: '0.3rem 0.25rem', width: '100%' }}
+                                value={linea.alicuotaIva} 
+                                onChange={e => handleLineaChange(idx, 'alicuotaIva', Number(e.target.value))}
+                              >
+                                {ALICUOTAS_IVA.map(a => <option key={a.val} value={a.val}>{a.label}</option>)}
+                              </select>
+                            </td>
 
-                          {/* Centro de Costo */}
-                          <td>
-                            <select 
-                              className="input-field" 
-                              style={{ fontSize: '0.8rem', padding: '0.3rem 0.25rem', width: '100%' }}
-                              value={linea.centroCosto} 
-                              onChange={e => handleLineaChange(idx, 'centroCosto', e.target.value)}
-                            >
-                              {CENTROS_COSTO_BASE.map(cc => <option key={cc} value={cc}>{cc}</option>)}
-                            </select>
-                          </td>
+                            {/* Centro de Costo */}
+                            <td>
+                              <select 
+                                className="input-field" 
+                                style={{ fontSize: '0.775rem', padding: '0.3rem 0.25rem', width: '100%' }}
+                                value={linea.centroCosto} 
+                                onChange={e => handleLineaChange(idx, 'centroCosto', e.target.value)}
+                              >
+                                {CENTROS_COSTO_BASE.map(cc => <option key={cc} value={cc}>{cc}</option>)}
+                              </select>
+                            </td>
 
-                          {/* Obra */}
-                          <td>
-                            <select 
-                              className="input-field" 
-                              style={{ fontSize: '0.8rem', padding: '0.3rem 0.25rem', width: '100%' }}
-                              value={linea.obraId} 
-                              onChange={e => handleLineaChange(idx, 'obraId', e.target.value)}
-                            >
-                              <option value="">Gasto General</option>
-                              {obras.map(o => <option key={o.id} value={o.id}>{o.name || o.clientName}</option>)}
-                            </select>
-                          </td>
+                            {/* Obra */}
+                            <td>
+                              <select 
+                                className="input-field" 
+                                style={{ fontSize: '0.775rem', padding: '0.3rem 0.25rem', width: '100%' }}
+                                value={linea.obraId} 
+                                onChange={e => handleLineaChange(idx, 'obraId', e.target.value)}
+                              >
+                                <option value="">Gasto General</option>
+                                {obras.map(o => <option key={o.id} value={o.id}>{o.name || o.clientName}</option>)}
+                              </select>
+                            </td>
 
-                          {/* Eliminar Fila */}
-                          <td style={{ textAlign: 'center' }}>
-                            <button 
-                              type="button" 
-                              onClick={() => handleRemoveLinea(idx)} 
-                              style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px' }}
-                              title="Eliminar línea"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+                            {/* Eliminar Fila */}
+                            <td style={{ textAlign: 'center' }}>
+                              <button 
+                                type="button" 
+                                onClick={() => handleRemoveLinea(idx)} 
+                                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px' }}
+                                title="Eliminar línea"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <button 
-                  type="button" 
-                  onClick={handleAddLinea} 
-                  className="btn btn-secondary" 
-                  style={{ fontSize: '0.8rem', padding: '0.35rem 0.85rem' }}
-                >
-                  + Agregar Línea Manual
-                </button>
-              </div>
-
-              {/* FOOTER TOTALES Y ACCIONES */}
+              {/* FOOTER TOTALES Y ACCIONES FIJO */}
               <div className="compras-modal-footer">
-                <div style={{ fontSize: '0.825rem', color: '#64748b' }}>
+                <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
                   {conteoEstados.nuevos > 0 && (
                     <span style={{ color: '#7e22ce', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                      <Box size={14} /> Se crearán {conteoEstados.nuevos} artículos nuevos en el catálogo del ERP al guardar.
+                      <Box size={14} /> Se crearán {conteoEstados.nuevos} artículos nuevos en el catálogo de Stock / Lista de Precios al guardar.
                     </span>
                   )}
                   {formData.ingresaStock && (
@@ -1164,7 +1186,7 @@ const Compras = () => {
             <p style={{ margin: 0, fontSize: '0.825rem', color: '#475569', lineHeight: 1.5 }}>
               Para procesar <strong>fotos sacadas con la cámara o imágenes JPG/PNG</strong>, podés ingresar una clave gratuita de <strong>Google AI Studio</strong>. 
               <br /><br />
-              💡 <em>Nota: Para facturas en PDF electrónicas (AFIP o de tus proveedores como REHAU), el sistema las lee al 100% de manera directa y automática sin necesidad de claves externas.</em>
+              💡 <em>Nota: Para facturas en PDF electrónicas (AFIP o de tus proveedores como REHAU y Pronto Distribuidora), el sistema las lee al 100% de manera directa y automática sin necesidad de claves externas.</em>
             </p>
 
             <div>

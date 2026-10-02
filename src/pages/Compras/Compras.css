@@ -10,7 +10,7 @@
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  padding: 1rem;
+  padding: 0.75rem;
   backdrop-filter: blur(6px);
   animation: fadeIn 0.15s ease-out;
 }
@@ -19,9 +19,9 @@
   background-color: #ffffff;
   border-radius: var(--radius-xl, 16px);
   width: 96vw;
-  max-width: 1620px;
-  height: 94vh;
-  max-height: 94vh;
+  max-width: 1650px;
+  height: 95vh;
+  max-height: 95vh;
   display: flex;
   flex-direction: column;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
@@ -31,17 +31,18 @@
 
 /* Header */
 .compras-modal-header {
-  padding: 1rem 1.5rem;
+  padding: 0.85rem 1.5rem;
   border-bottom: 1px solid var(--border-light, #e2e8f0);
   display: flex;
   justify-content: space-between;
   align-items: center;
   background-color: #ffffff;
+  flex-shrink: 0;
 }
 
 .compras-modal-title {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 1.2rem;
   font-weight: 700;
   color: var(--text-primary, #0f172a);
   display: flex;
@@ -49,77 +50,145 @@
   gap: 0.5rem;
 }
 
-.compras-modal-body {
-  padding: 1.25rem 1.5rem;
-  overflow-y: auto;
+.compras-modal-form {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
   flex: 1;
+  min-height: 0; /* Crucial for nested flexbox scrolling */
+  overflow: hidden;
+}
+
+.compras-modal-body {
+  padding: 0.85rem 1.5rem;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  flex: 1;
+  min-height: 0;
   background-color: #f8fafc;
 }
 
-/* Zona Drag & Drop */
-.drag-drop-zone {
+/* Zona Drag & Drop COMPACTA */
+.drag-drop-zone-compact {
   border: 2px dashed #93c5fd;
   background-color: #eff6ff;
-  border-radius: var(--radius-lg, 12px);
-  padding: 1.5rem;
-  text-align: center;
+  border-radius: var(--radius-md, 10px);
+  padding: 0.65rem 1.25rem;
   transition: all 0.2s ease;
-  position: relative;
   cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
 }
 
-.drag-drop-zone.dragging {
+.drag-drop-zone-compact.dragging {
   border-color: #2563eb;
   background-color: #dbeafe;
-  transform: scale(1.005);
+  transform: scale(1.003);
   box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
 }
 
-.drag-drop-content {
+.drag-drop-left {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.85rem;
 }
 
-.drag-drop-icon {
-  width: 48px;
-  height: 48px;
+.drag-drop-icon-small {
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   background-color: #dbeafe;
   color: #2563eb;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 0.25rem;
+  flex-shrink: 0;
 }
 
-.drag-drop-zone.dragging .drag-drop-icon {
-  background-color: #2563eb;
-  color: #ffffff;
-  animation: bounce 0.6s infinite alternate;
+/* Banner de Archivo Cargado (SLIM) */
+.uploaded-file-banner {
+  background-color: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: var(--radius-md, 8px);
+  padding: 0.45rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  gap: 1rem;
+}
+
+.uploaded-file-info {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-size: 0.825rem;
+  color: #166534;
+  font-weight: 600;
+}
+
+.uploaded-file-link {
+  color: #2563eb;
+  text-decoration: underline;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.775rem;
+  margin-left: 0.5rem;
+}
+
+.btn-change-file {
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  padding: 0.25rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.btn-change-file:hover {
+  background-color: #f1f5f9;
+}
+
+/* Datos de Cabecera (Compactos) */
+.invoice-header-compact {
+  background: #ffffff;
+  padding: 0.65rem 1rem;
+  border-radius: var(--radius-md, 10px);
+  border: 1px solid var(--border-light, #e2e8f0);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.65rem;
+  align-items: end;
+  flex-shrink: 0;
 }
 
 /* Barra de Resumen / Asistente ERP */
 .matching-summary-bar {
   background-color: #ffffff;
   border-radius: var(--radius-md, 8px);
-  padding: 0.75rem 1rem;
+  padding: 0.5rem 0.85rem;
   border: 1px solid var(--border-light, #e2e8f0);
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 0.75rem;
+  gap: 0.5rem;
+  flex-shrink: 0;
 }
 
 .matching-badges-group {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.6rem;
   flex-wrap: wrap;
 }
 
@@ -127,10 +196,10 @@
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.25rem 0.65rem;
+  padding: 0.2rem 0.6rem;
   background-color: #dcfce7;
   color: #15803d;
-  font-size: 0.8rem;
+  font-size: 0.775rem;
   font-weight: 600;
   border-radius: 9999px;
   border: 1px solid #bbf7d0;
@@ -140,10 +209,10 @@
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.25rem 0.65rem;
+  padding: 0.2rem 0.6rem;
   background-color: #fef9c3;
   color: #a16207;
-  font-size: 0.8rem;
+  font-size: 0.775rem;
   font-weight: 600;
   border-radius: 9999px;
   border: 1px solid #fde047;
@@ -153,10 +222,10 @@
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.25rem 0.65rem;
+  padding: 0.2rem 0.6rem;
   background-color: #fee2e2;
   color: #b91c1c;
-  font-size: 0.8rem;
+  font-size: 0.775rem;
   font-weight: 600;
   border-radius: 9999px;
   border: 1px solid #fca5a5;
@@ -166,21 +235,24 @@
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.25rem 0.65rem;
+  padding: 0.2rem 0.6rem;
   background-color: #e0f2fe;
   color: #0369a1;
-  font-size: 0.8rem;
+  font-size: 0.775rem;
   font-weight: 600;
   border-radius: 9999px;
   border: 1px solid #bae6fd;
 }
 
-/* Tabla de Líneas */
+/* Tabla de Líneas - ALTURA FLEXIBLE Y SCROLL SUAVE */
 .lines-table-container {
   background-color: #ffffff;
   border-radius: var(--radius-lg, 12px);
   border: 1px solid var(--border-light, #e2e8f0);
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: auto;
+  flex: 1;
+  min-height: 250px;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
 }
 
@@ -191,16 +263,20 @@
   font-size: 0.825rem;
 }
 
-.lines-table th {
+.lines-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
   background-color: #f1f5f9;
   color: #475569;
-  font-weight: 600;
-  padding: 0.6rem 0.75rem;
-  border-bottom: 1px solid #e2e8f0;
+  font-weight: 700;
+  padding: 0.65rem 0.75rem;
+  border-bottom: 2px solid #cbd5e1;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .lines-table td {
-  padding: 0.5rem 0.75rem;
+  padding: 0.45rem 0.75rem;
   border-bottom: 1px solid #f1f5f9;
   vertical-align: middle;
 }
@@ -214,10 +290,10 @@
   background-color: #fffbeb;
   border: 1px solid #fde68a;
   border-radius: 6px;
-  padding: 0.4rem 0.6rem;
+  padding: 0.35rem 0.5rem;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.25rem;
 }
 
 .similar-actions-row {
@@ -233,7 +309,7 @@
   border: none;
   padding: 0.2rem 0.5rem;
   border-radius: 4px;
-  font-size: 0.75rem;
+  font-size: 0.725rem;
   font-weight: 600;
   cursor: pointer;
   display: inline-flex;
@@ -250,7 +326,7 @@
   border: 1px solid #cbd5e1;
   padding: 0.2rem 0.5rem;
   border-radius: 4px;
-  font-size: 0.75rem;
+  font-size: 0.725rem;
   font-weight: 500;
   cursor: pointer;
 }
@@ -264,7 +340,7 @@
   border: 1px solid #d8b4fe;
   padding: 0.2rem 0.5rem;
   border-radius: 4px;
-  font-size: 0.75rem;
+  font-size: 0.725rem;
   font-weight: 600;
   cursor: pointer;
 }
@@ -272,9 +348,9 @@
   background-color: #e9d5ff;
 }
 
-/* Footer */
+/* Footer FIJO */
 .compras-modal-footer {
-  padding: 1rem 1.5rem;
+  padding: 0.75rem 1.5rem;
   border-top: 1px solid var(--border-light, #e2e8f0);
   background-color: #ffffff;
   display: flex;
@@ -282,6 +358,7 @@
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 1rem;
+  flex-shrink: 0;
 }
 
 .totals-group {
@@ -297,14 +374,14 @@
 }
 
 .total-pill-label {
-  font-size: 0.75rem;
+  font-size: 0.725rem;
   color: #64748b;
   text-transform: uppercase;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .total-pill-value {
-  font-size: 1.15rem;
+  font-size: 1.1rem;
   font-weight: 700;
   color: #0f172a;
 }
@@ -315,11 +392,6 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: scale(0.98); }
+  from { opacity: 0; transform: scale(0.99); }
   to { opacity: 1; transform: scale(1); }
-}
-
-@keyframes bounce {
-  from { transform: translateY(0); }
-  to { transform: translateY(-4px); }
 }
