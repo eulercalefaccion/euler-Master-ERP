@@ -1,0 +1,325 @@
+/* ==========================================================================
+   Compras & Lector Inteligente IA - Estilos Euler Master ERP
+   ========================================================================== */
+
+.compras-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(15, 23, 42, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+  backdrop-filter: blur(6px);
+  animation: fadeIn 0.15s ease-out;
+}
+
+.compras-modal-container {
+  background-color: #ffffff;
+  border-radius: var(--radius-xl, 16px);
+  width: 96vw;
+  max-width: 1620px;
+  height: 94vh;
+  max-height: 94vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border-light, #e2e8f0);
+  overflow: hidden;
+}
+
+/* Header */
+.compras-modal-header {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border-light, #e2e8f0);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #ffffff;
+}
+
+.compras-modal-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.compras-modal-body {
+  padding: 1.25rem 1.5rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  flex: 1;
+  background-color: #f8fafc;
+}
+
+/* Zona Drag & Drop */
+.drag-drop-zone {
+  border: 2px dashed #93c5fd;
+  background-color: #eff6ff;
+  border-radius: var(--radius-lg, 12px);
+  padding: 1.5rem;
+  text-align: center;
+  transition: all 0.2s ease;
+  position: relative;
+  cursor: pointer;
+}
+
+.drag-drop-zone.dragging {
+  border-color: #2563eb;
+  background-color: #dbeafe;
+  transform: scale(1.005);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
+}
+
+.drag-drop-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.drag-drop-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background-color: #dbeafe;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.25rem;
+}
+
+.drag-drop-zone.dragging .drag-drop-icon {
+  background-color: #2563eb;
+  color: #ffffff;
+  animation: bounce 0.6s infinite alternate;
+}
+
+/* Barra de Resumen / Asistente ERP */
+.matching-summary-bar {
+  background-color: #ffffff;
+  border-radius: var(--radius-md, 8px);
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border-light, #e2e8f0);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.matching-badges-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.badge-exact {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.65rem;
+  background-color: #dcfce7;
+  color: #15803d;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 9999px;
+  border: 1px solid #bbf7d0;
+}
+
+.badge-similar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.65rem;
+  background-color: #fef9c3;
+  color: #a16207;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 9999px;
+  border: 1px solid #fde047;
+}
+
+.badge-new {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.65rem;
+  background-color: #fee2e2;
+  color: #b91c1c;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 9999px;
+  border: 1px solid #fca5a5;
+}
+
+.badge-confirmed {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.65rem;
+  background-color: #e0f2fe;
+  color: #0369a1;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 9999px;
+  border: 1px solid #bae6fd;
+}
+
+/* Tabla de Líneas */
+.lines-table-container {
+  background-color: #ffffff;
+  border-radius: var(--radius-lg, 12px);
+  border: 1px solid var(--border-light, #e2e8f0);
+  overflow: hidden;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+}
+
+.lines-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.825rem;
+}
+
+.lines-table th {
+  background-color: #f1f5f9;
+  color: #475569;
+  font-weight: 600;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.lines-table td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+
+.lines-table tr:hover {
+  background-color: #f8fafc;
+}
+
+/* Callout de resolución inline de similitud */
+.similar-resolution-box {
+  background-color: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.similar-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.btn-inline-confirm {
+  background-color: #10b981;
+  color: #ffffff;
+  border: none;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.btn-inline-confirm:hover {
+  background-color: #059669;
+}
+
+.btn-inline-choose {
+  background-color: #f1f5f9;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+.btn-inline-choose:hover {
+  background-color: #e2e8f0;
+}
+
+.btn-inline-create {
+  background-color: #f3e8ff;
+  color: #7e22ce;
+  border: 1px solid #d8b4fe;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-inline-create:hover {
+  background-color: #e9d5ff;
+}
+
+/* Footer */
+.compras-modal-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--border-light, #e2e8f0);
+  background-color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.totals-group {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.total-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.total-pill-label {
+  font-size: 0.75rem;
+  color: #64748b;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.total-pill-value {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.total-pill-value.highlight {
+  font-size: 1.35rem;
+  color: #dc2626;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes bounce {
+  from { transform: translateY(0); }
+  to { transform: translateY(-4px); }
+}
