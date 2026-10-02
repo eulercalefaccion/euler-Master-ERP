@@ -101,6 +101,118 @@ const getBrochureNameFromUrl = (url, fallback) => {
   return fallback;
 };
 
+const ArquitectoSelector = ({ arquitectos = [], onChange, clientesList }) => {
+  const [searchArq, setSearchArq] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
+  const arqRef = useRef(null);
+
+  // Filter contacts that are Arquitecto or Estudio de Arquitectura
+  const arqList = clientesList.filter(c => 
+    (c.type === 'Arquitecto' || c.type === 'Estudio de Arquitectura') &&
+    !c.deleted &&
+    !arquitectos.some(a => a.id === c.id)
+  );
+
+  const filtered = searchArq.trim()
+    ? arqList.filter(c => (c.name || '').toLowerCase().includes(searchArq.toLowerCase()))
+    : arqList;
+
+  const addArq = (contact) => {
+    onChange([...arquitectos, { id: contact.id, nombre: contact.name || contact.nombre || '' }]);
+    setSearchArq('');
+    setShowDropdown(false);
+  };
+
+  const addManual = () => {
+    if (!searchArq.trim()) return;
+    onChange([...arquitectos, { id: null, nombre: searchArq.trim() }]);
+    setSearchArq('');
+    setShowDropdown(false);
+  };
+
+  const removeArq = (idx) => {
+    onChange(arquitectos.filter((_, i) => i !== idx));
+  };
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (arqRef.current && !arqRef.current.contains(e.target)) setShowDropdown(false);
+    };
+    if (showDropdown) document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showDropdown]);
+
+  return (
+    <div style={{ background: '#f0fdf4', padding: '0.75rem', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
+      <span style={{ fontSize: '0.8rem', fontWeight: '700', color: '#166534', display: 'block', marginBottom: '0.5rem' }}>
+        🏛️ Arquitecto/s Vinculado/s <span style={{ fontWeight: 400, color: '#6b7280' }}>(opcional)</span>
+      </span>
+
+      {/* Chips de arquitectos seleccionados */}
+      {arquitectos.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '0.5rem' }}>
+          {arquitectos.map((a, i) => (
+            <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', backgroundColor: '#dcfce7', color: '#166534', padding: '0.25rem 0.6rem', borderRadius: '16px', fontSize: '0.78rem', fontWeight: 600 }}>
+              {a.nombre}{!a.id && ' (manual)'}
+              <span onClick={() => removeArq(i)} style={{ cursor: 'pointer', fontWeight: 800, fontSize: '0.9rem', lineHeight: 1, marginLeft: '0.2rem' }}>×</span>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Search input */}
+      <div ref={arqRef} style={{ position: 'relative' }}>
+        <input
+          type="text"
+          className="input-field"
+          placeholder="Buscar arquitecto/a existente o escribir nombre..."
+          style={{ background: 'white', width: '100%', fontSize: '0.85rem' }}
+          value={searchArq}
+          onChange={e => { setSearchArq(e.target.value); setShowDropdown(true); }}
+          onFocus={() => setShowDropdown(true)}
+        />
+        {showDropdown && (searchArq.trim() || arqList.length > 0) && (
+          <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50, backgroundColor: 'white', border: '1px solid var(--border-light)', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', maxHeight: '200px', overflowY: 'auto', marginTop: '2px' }}>
+            {filtered.slice(0, 8).map(c => (
+              <div
+                key={c.id}
+                onClick={() => addArq(c)}
+                style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', fontSize: '0.85rem', borderBottom: '1px solid #f3f4f6' }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f0fdf4'}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                <strong>{c.name || c.nombre}</strong>
+                <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.5rem' }}>{c.type} · {c.phone || c.telefono || ''}</span>
+              </div>
+            ))}
+            {searchArq.trim() && filtered.length === 0 && (
+              <div
+                onClick={addManual}
+                style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', fontSize: '0.85rem', color: '#059669', fontWeight: 600 }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f0fdf4'}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                + Agregar "{searchArq}" como arquitecto/a (manual)
+              </div>
+            )}
+            {searchArq.trim() && filtered.length > 0 && (
+              <div
+                onClick={addManual}
+                style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', fontSize: '0.78rem', color: '#6b7280', borderTop: '1px solid #e5e7eb' }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f0fdf4'}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                + Agregar "{searchArq}" manualmente (no está en contactos)
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // ─── Componente principal ──────────────────────────────────────────────────────
 const KanbanBoard = () => {
   const { currentUser } = useAuth();
@@ -180,6 +292,7 @@ const KanbanBoard = () => {
     facturacionCuit: '',
     facturacionDni: '',
     facturacionDireccion: '',
+    arquitectos: [], // Array of { id, nombre } — linked architects
     notasLead: '',
   });
   const [isSavingLead, setIsSavingLead] = useState(false);
@@ -523,6 +636,7 @@ const KanbanBoard = () => {
       facturacionCuit: item.facturacionCuit || '',
       facturacionDni: item.facturacionDni || '',
       facturacionDireccion: item.facturacionDireccion || '',
+      arquitectos: item.arquitectos || [],
       fechaSeguimiento: item.fechaSeguimiento || '',
       notaSeguimiento: item.notaSeguimiento || '',
     });
@@ -829,6 +943,7 @@ const KanbanBoard = () => {
         facturacionCuit: editLeadFields.facturacionIgualCliente ? editLeadFields.cuit : editLeadFields.facturacionCuit,
         facturacionDni: editLeadFields.facturacionIgualCliente ? editLeadFields.dni : editLeadFields.facturacionDni,
         facturacionDireccion: editLeadFields.facturacionIgualCliente ? editLeadFields.direccionCliente : editLeadFields.facturacionDireccion,
+        arquitectos: editLeadFields.arquitectos || [],
         fechaSeguimiento: editLeadFields.fechaSeguimiento || '',
         notaSeguimiento: editLeadFields.notaSeguimiento || '',
 
@@ -1010,6 +1125,7 @@ const KanbanBoard = () => {
         facturacionCuit: editLeadFields.facturacionIgualCliente ? editLeadFields.cuit : editLeadFields.facturacionCuit,
         facturacionDni: editLeadFields.facturacionIgualCliente ? editLeadFields.dni : editLeadFields.facturacionDni,
         facturacionDireccion: editLeadFields.facturacionIgualCliente ? editLeadFields.direccionCliente : editLeadFields.facturacionDireccion,
+        arquitectos: editLeadFields.arquitectos || [],
         fechaSeguimiento: editLeadFields.fechaSeguimiento || '',
         notaSeguimiento: editLeadFields.notaSeguimiento || '',
       };
@@ -1494,6 +1610,7 @@ const KanbanBoard = () => {
         direccionCliente: item.direccionCliente || '',
         contactoNombre: item.contactoNombre || '',
         contactoTelefono: item.contactoTelefono || '',
+        arquitectos: item.arquitectos || [],
         direccionObra:  item.direccionObra || '',
         tipoObra:       item.tipoObra || 'VIVIENDA UNIFAMILIAR',
         estadoObra:     item.estadoObra || 'OBRA NUEVA',
@@ -1655,6 +1772,7 @@ const KanbanBoard = () => {
         facturacionCuit: newLead.facturacionIgualCliente ? (newLead.cuit || '') : (newLead.facturacionCuit || ''),
         facturacionDni: newLead.facturacionIgualCliente ? (newLead.dni || '') : (newLead.facturacionDni || ''),
         facturacionDireccion: newLead.facturacionIgualCliente ? (newLead.direccionCliente || '') : (newLead.facturacionDireccion || ''),
+        arquitectos: newLead.arquitectos || [],
         notasLead: newLead.notasLead || '',
         // KPI: Bitácora inicial
         statusHistory: [{
@@ -1698,6 +1816,8 @@ const KanbanBoard = () => {
         facturacionCuit: '',
         facturacionDni: '',
         facturacionDireccion: '',
+        arquitectos: [],
+
         notasLead: '',
       });
     } catch (err) { console.error(err); alert('Error: ' + err.message); }
@@ -2298,6 +2418,15 @@ const KanbanBoard = () => {
               {/* COLUMNA DERECHA: Datos del Proyecto, Contacto y Obra */}
               <div style={{ display:'flex',flexDirection:'column',gap:'1rem' }}>
                 
+                {/* Arquitecto/s vinculado/s (solo para consumidor final) */}
+                {newLead.tipoCliente === 'consumidor_final' && (
+                  <ArquitectoSelector
+                    arquitectos={newLead.arquitectos || []}
+                    onChange={(arqs) => handleUpdateNewLeadField('arquitectos', arqs)}
+                    clientesList={clientesList}
+                  />
+                )}
+
                 {/* Persona de contacto (condicional constructora/desarrolladora/arquitecto) */}
                 {newLead.tipoCliente !== 'consumidor_final' && (
                   <div style={{ background:'var(--primary-50)',padding:'0.75rem',borderRadius:'8px',border:'1px solid var(--primary-100)',display:'flex',flexDirection:'column',gap:'0.75rem' }}>
@@ -3175,6 +3304,17 @@ const KanbanBoard = () => {
                           <option value="desarrolladora">Desarrolladora</option>
                         </select>
                       </div>
+
+                      {editLeadFields.tipoCliente === 'consumidor_final' && (
+                        <div style={{ gridColumn: '1 / -1' }}>
+                          <ArquitectoSelector
+                            arquitectos={editLeadFields.arquitectos || []}
+                            onChange={(arqs) => setEditLeadFields({ ...editLeadFields, arquitectos: arqs })}
+                            clientesList={clientesList}
+                          />
+                        </div>
+                      )}
+
                       <div className="form-group" style={{ marginBottom:0 }}>
                         <label className="form-label">CUIT</label>
                         <input

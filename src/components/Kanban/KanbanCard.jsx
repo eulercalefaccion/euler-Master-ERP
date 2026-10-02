@@ -91,6 +91,11 @@ const KanbanCard = ({ item, index, onCardClick, globalLabels = {} }) => {
               <MapPin size={12} />
               <span>{item.location || 'S/D'}</span>
             </div>
+            {item.arquitectos && item.arquitectos.length > 0 && (
+              <div style={{ fontSize: '0.72rem', color: '#166534', marginTop: '0.2rem' }}>
+                🏛️ {item.arquitectos.map(a => a.nombre).join(' + ')}
+              </div>
+            )}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-secondary)', fontSize: '0.75rem' }}>
               <Calendar size={12} />
               <span>{item.date} • {item.source || 'S/D'}</span>

@@ -246,6 +246,7 @@ const Obras = () => {
       ${obra.arquitecto || ''} 
       ${obra.propietario || ''} 
       ${obra.propietarioNombre || ''} 
+      ${obra.arquitectos?.map(a=>a.nombre).join(' ') || ''}
       ${obra.presupuestoOrigen || ''} 
       ${obra.presupuestoNum || ''} 
       ${obra.presupuestoNumber || ''} 
@@ -540,6 +541,18 @@ const Obras = () => {
         <div className="form-group" style={{ marginBottom: 0 }}>
           <label className="form-label">Cliente</label>
           <input type="text" style={inp} value={editForm.clientName || ''} onChange={e => setEditForm({ ...editForm, clientName: e.target.value })} />
+          {(editForm.arquitectos || selectedObra?.arquitectos || []).length > 0 && (
+            <div style={{ marginBottom: '0.75rem', marginTop: '0.75rem' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>🏛️ Arquitecto/s</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                {(editForm.arquitectos || selectedObra?.arquitectos || []).map((a, i) => (
+                  <span key={i} style={{ backgroundColor: '#dcfce7', color: '#166534', padding: '0.25rem 0.6rem', borderRadius: '16px', fontSize: '0.8rem', fontWeight: 600 }}>
+                    {a.nombre}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
         <div className="form-group" style={{ marginBottom: 0 }}>
           <label className="form-label">Ubicación</label>
@@ -1088,6 +1101,11 @@ const Obras = () => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.875rem', fontWeight: '500' }}>
                       <User size={14} color="var(--primary-600)" /> {obra.clientName || 'No asignado'}
                   </div>
+                  {obra.arquitectos && obra.arquitectos.length > 0 && (
+                    <div style={{ fontSize: '0.78rem', color: '#166534', marginTop: '0.15rem' }}>
+                      🏛️ {obra.arquitectos.map(a => a.nombre).join(' + ')}
+                    </div>
+                  )}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: '600' }}>Operarios</span>

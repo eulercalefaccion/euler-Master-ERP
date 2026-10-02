@@ -153,6 +153,7 @@ export default function ClienteDetalleERP() {
           if (o.clientId === id || o.clienteId === id) return true;
           if (cliente?.name && o.clientName && o.clientName.trim().toLowerCase() === cliente.name.trim().toLowerCase()) return true;
           if (cliente?.nombre && o.clientName && o.clientName.trim().toLowerCase() === cliente.nombre.trim().toLowerCase()) return true;
+          if (o.arquitectos && o.arquitectos.some(a => a.id === id)) return true;
           return false;
         });
       list.sort((a, b) => {
@@ -178,6 +179,7 @@ export default function ClienteDetalleERP() {
           const presName = (p.clientName || p.name || '').trim().toLowerCase();
           if (cliente?.name && presName === cliente.name.trim().toLowerCase()) return true;
           if (cliente?.nombre && presName === cliente.nombre.trim().toLowerCase()) return true;
+          if (p.arquitectos && p.arquitectos.some(a => a.id === id)) return true;
           return false;
         });
       list.sort((a, b) => {
@@ -1197,6 +1199,13 @@ export default function ClienteDetalleERP() {
                     <div style={{ width: `${o.progress || 0}%`, height: '100%', backgroundColor: statusStyle.color, borderRadius: '4px', transition: 'width 0.3s' }} />
                   </div>
 
+                  {/* Arquitecto/s vinculados */}
+                  {o.arquitectos && o.arquitectos.length > 0 && (
+                    <div style={{ fontSize: '0.82rem', color: '#166534', marginBottom: '0.5rem' }}>
+                      🏛️ <strong>Arquitecto/s:</strong> {o.arquitectos.map(a => a.nombre).join(' + ')}
+                    </div>
+                  )}
+
                   {/* Operarios asignados */}
                   {o.operarios && (
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
@@ -1259,6 +1268,9 @@ export default function ClienteDetalleERP() {
                       <span>📅 {formatFecha(p.createdAt)}</span>
                       <span>🔧 <strong>{p.paramSistema || 'S/D'}</strong></span>
                       {(p.location || p.direccionObra) && <span>📍 {p.location || p.direccionObra}</span>}
+                      {p.arquitectos && p.arquitectos.length > 0 && (
+                        <span style={{ color: '#166534' }}>🏛️ {p.arquitectos.map(a => a.nombre).join(' + ')}</span>
+                      )}
                     </div>
                   </div>
 
