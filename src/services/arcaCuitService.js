@@ -53,6 +53,10 @@ export const extraerDniDeCuit = (cuitStr) => {
 
 /**
  * Parsea HTML de CuitOnline (search o detail page) para extraer nombre, dirección, etc.
+ * 
+ * Formatos conocidos (Oct 2026):
+ * SEARCH: <title>XXXXXXXXXXX -  Cuit Online</title> + link a detalle con nombre
+ * DETAIL: <title>NOMBRE (XX-XXXXXXXX-X), Localidad (Provincia) -  Cuit Online</title>
  */
 export const parsePadronHtml = (html, cleanCuit) => {
   if (!html) return null;
@@ -61,19 +65,47 @@ export const parsePadronHtml = (html, cleanCuit) => {
   let location = '';
   let address = '';
 
-  // Strategy 1: Title tag: <title>NAME (XX-XXXXXXXX-X), LOCATION - Cuit Online</title>
-  const titleMatch = html.match(/<title>\s*([^(<]+)\s*\(\d{2}-\d{8}-\d\)(?:,\s*([^-\n<]+))?/i);
+  // Strategy 1: Title tag: <title>NAME (XX-XXXXXXXX-X), Localidad (Provincia) - Cuit Online</title>
+  const titleMatch = html.match(/<title>\s*([^(<]+?)\s*\(\d{2}-\d{8}-\d\)(?:,\s*([^-\n<]+))?/i);
   if (titleMatch && titleMatch[1]) {
     const rawName = titleMatch[1].trim();
-    if (!rawName.toLowerCase().includes('cuit online') && !rawName.toLowerCase().includes('resultados')) {
+    if (rawName.length >= 3 &&
+        !rawName.toLowerCase().includes('cuit online') && 
+        !rawName.toLowerCase().includes('resultados') &&
+        !rawName.toLowerCase().includes('bloqueador')) {
       name = rawName;
     }
     if (titleMatch[2]) {
-      location = titleMatch[2].replace(/-\s*Cuit\s*Online/i, '').trim();
+      let locRaw = titleMatch[2].replace(/-\s*Cuit\s*Online.*/i, '').trim();
+      const provInParens = locRaw.match(/\(([^)]+)\)/);
+      if (provInParens) {
+        location = provInParens[1].trim();
+        locRaw = locRaw.replace(/\s*\([^)]+\)\s*/, '').trim();
+      }
+      if (locRaw && !location) location = locRaw;
+      if (locRaw && location && locRaw !== location) {
+        location = `${locRaw}, ${location}`;
+      }
     }
   }
 
-  // Strategy 2: H2 denominacion
+  // Strategy 2: Detail link href text
+  if (!name) {
+    const detailLinkMatch = html.match(
+      new RegExp(`detalle/${cleanCuit}/([a-z0-9][a-z0-9-]+)\\.html[^>]*>\\s*([^<]+)`, 'i')
+    );
+    if (detailLinkMatch) {
+      const linkText = detailLinkMatch[2].trim();
+      if (linkText.length >= 3 && 
+          !linkText.toLowerCase().includes('informe') &&
+          !linkText.toLowerCase().includes('vista previa') &&
+          !linkText.toLowerCase().includes('constancia')) {
+        name = linkText;
+      }
+    }
+  }
+
+  // Strategy 3: H2 denominacion
   if (!name) {
     const h2Match = html.match(/<h2[^>]*class=["']denominacion["'][^>]*>([^<]+)<\/h2>/i) ||
                     html.match(/title=["']Ver detalles de ([^"']+)["']/i);
@@ -82,36 +114,93 @@ export const parsePadronHtml = (html, cleanCuit) => {
     }
   }
 
-  // Strategy 3: Meta description
+  // Strategy 4: Meta description
   if (!name) {
-    const metaMatch = html.match(/meta\s+name=["']description["']\s+content=["'][^"']*?([a-zA-Z\sÑñÁÉÍÓÚáéíóú.-]{3,60})\s*-\s*\d{11}/i);
+    const metaMatch = html.match(
+      /meta\s+name=["']description["']\s+content=["']([^"']+)["']/i
+    );
     if (metaMatch && metaMatch[1]) {
-      let rawMeta = metaMatch[1].trim();
-      rawMeta = rawMeta.replace(/.*CuitOnline\.\s*/i, '').trim();
-      if (rawMeta.length >= 3 && !rawMeta.toLowerCase().includes('bloqueador') && !rawMeta.toLowerCase().includes('resultados')) {
-        name = rawMeta;
+      const metaParts = metaMatch[1].split(/\s*-\s*/);
+      if (metaParts[0]) {
+        const candidate = metaParts[0].trim();
+        if (candidate.length >= 3 && 
+            !candidate.toLowerCase().includes('cuit online') &&
+            !candidate.toLowerCase().includes('bloqueador') &&
+            !candidate.toLowerCase().includes('resultados') &&
+            !candidate.toLowerCase().includes('obtener')) {
+          name = candidate;
+        }
       }
     }
   }
 
-  // Extract Address
-  const domMatch = html.match(/(?:domicilio|direcci[oó]n)[^:]*:\s*<[^>]+>\s*([^<]+)/i) ||
-                   html.match(/itemprop=["']streetAddress["'][^>]*>([^<]+)/i) ||
-                   html.match(/domicilio[^<]*<[^>]+>\s*([^<]+)/i);
-  if (domMatch) address = domMatch[1].trim();
+  // Extract Address: itemprop
+  if (!address) {
+    const itemPropMatch = html.match(/itemprop=["']streetAddress["'][^>]*>([^<]+)/i);
+    if (itemPropMatch && itemPropMatch[1].trim().length > 3) {
+      address = itemPropMatch[1].trim();
+    }
+  }
+  // Extract Address: domicilio label
+  if (!address) {
+    const domMatch = html.match(/(?:domicilio|direcci[oó]n)\s*(?:fiscal|legal)?\s*:?\s*<[^>]+>\s*([^<]+)/i);
+    if (domMatch && domMatch[1].trim().length > 3) {
+      address = domMatch[1].trim();
+    }
+  }
+  // Extract Address: body text before "Provincia:"
+  if (!address) {
+    const bodyAddrMatch = html.match(
+      /Persona\s+(?:F[ií]sica|Jur[ií]dica)[^]*?(?:\([^)]*\))?[^]*?Argentina\s*(?:<[^>]*>)*\s*([a-zA-ZáéíóúñÁÉÍÓÚÑ0-9 .,]+\d{1,5}[a-zA-ZáéíóúñÁÉÍÓÚÑ0-9 .,]*?)\s*(?:<[^>]*>)*\s*Provincia:/i
+    );
+    if (bodyAddrMatch && bodyAddrMatch[1]) {
+      const candidate = bodyAddrMatch[1].replace(/<[^>]+>/g, '').trim();
+      if (candidate.length >= 4) {
+        address = candidate;
+      }
+    }
+  }
 
   // Extract Location
   if (!location) {
-    const provMatch = html.match(/(Santa Fe|Buenos Aires|Córdoba|Cordoba|Mendoza|Entre R[íi]os|Tucum[áa]n|Salta|San Juan|San Luis|Chaco|Corrientes|Misiones|Neuqu[eé]n|R[íi]o Negro|Chubut|Santa Cruz|Jujuy|La Pampa|Formosa|Catamarca|La Rioja|Tierra del Fuego|CABA|Capital Federal|C\.A\.B\.A\.)/i);
-    if (provMatch) location = provMatch[1];
+    const provLinkMatch = html.match(/Provincia:\s*(?:<a[^>]*>)?\s*([^<\n]+)/i);
+    if (provLinkMatch && provLinkMatch[1]) {
+      location = provLinkMatch[1].replace(/-\s*$/, '').trim();
+    }
+    const locMatch = html.match(/Localidad:\s*([A-Za-záéíóúñÁÉÍÓÚÑ .']+?)(?:\s*<|\s*$)/im);
+    if (locMatch && locMatch[1] && locMatch[1].trim().length > 1) {
+      const localidad = locMatch[1].trim();
+      if (location && localidad !== location) {
+        location = `${localidad}, ${location}`;
+      } else if (!location) {
+        location = localidad;
+      }
+    }
+  }
+
+  if (!location) {
+    const provMatch = html.match(
+      /(?:provincia[^a-z]*|Provincia:\s*(?:<[^>]*>)?\s*)(Santa Fe|Buenos Aires|C[oó]rdoba|Mendoza|Entre R[íi]os|Tucum[áa]n|Salta|San Juan|San Luis|Chaco|Corrientes|Misiones|Neuqu[eé]n|R[íi]o Negro|Chubut|Santa Cruz|Jujuy|La Pampa|Formosa|Catamarca|La Rioja|Tierra del Fuego|Santiago del Estero|CABA|Capital Federal|C\.A\.B\.A\.)/i
+    );
+    if (provMatch && provMatch[1]) location = provMatch[1].trim();
   }
 
   // Extract Condicion IVA
   let condicionIva = 'Consumidor Final';
-  if (html.includes('MONOTRIBUTO')) condicionIva = 'Monotributo';
-  else if (html.includes('IVA EXENTO') || html.includes('EXENTO')) condicionIva = 'Exento';
-  else if (html.includes('IVA RESPONSABLE INSCRIPTO') || html.includes('RESPONSABLE INSCRIPTO')) condicionIva = 'Responsable Inscripto';
-  else if (cleanCuit.startsWith('30') || cleanCuit.startsWith('33')) condicionIva = 'Responsable Inscripto';
+  const htmlUpper = html.toUpperCase();
+  if (htmlUpper.includes('MONOTRIBUTO') || htmlUpper.includes('MONOTRIBUTISTA')) {
+    condicionIva = 'Monotributo';
+  } else if (htmlUpper.includes('IVA EXENTO') || htmlUpper.includes('EXENTO DE IVA')) {
+    condicionIva = 'Exento';
+  } else if (htmlUpper.includes('IVA RESPONSABLE INSCRIPTO') || htmlUpper.includes('RESPONSABLE INSCRIPTO')) {
+    condicionIva = 'Responsable Inscripto';
+  } else if (cleanCuit.startsWith('30') || cleanCuit.startsWith('33') || cleanCuit.startsWith('34')) {
+    condicionIva = 'Responsable Inscripto';
+  }
+
+  // Clean up
+  if (name) name = name.replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+  if (address) address = address.replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
 
   return {
     name: name ? name.toUpperCase() : '',
@@ -123,7 +212,6 @@ export const parsePadronHtml = (html, cleanCuit) => {
 
 /**
  * Parsea el HTML de DuckDuckGo para extraer nombre, dirección y localidad.
- * DDG snippets contain: "NAME CUIT: XXXXXXXXXXX Persona Física/Jurídica ADDRESS Localidad: CITY ..."
  */
 const parseDuckDuckGoHtml = (html, cleanCuit) => {
   if (!html) return null;
@@ -206,7 +294,7 @@ export const consultarCuitArca = async (cuitRaw) => {
   try {
     const fnUrl = `/.netlify/functions/cuitPadron?cuit=${cleanCuit}`;
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 12000);
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
 
     const res = await fetch(fnUrl, { signal: controller.signal });
     clearTimeout(timeoutId);
@@ -227,7 +315,7 @@ export const consultarCuitArca = async (cuitRaw) => {
   try {
     const ddgUrl = `https://html.duckduckgo.com/html/?q=cuit+${cleanCuit}+cuitonline`;
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 6000);
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
 
     const res = await fetch(ddgUrl, { signal: controller.signal });
     clearTimeout(timeoutId);
@@ -272,7 +360,7 @@ export const consultarCuitArca = async (cuitRaw) => {
 
     if (res.ok) {
       const html = await res.text();
-      if (html.length > 5000) {
+      if (html.length > 2000) {
         const parsed = parsePadronHtml(html, cleanCuit);
         if (parsed && parsed.name) {
           return {
