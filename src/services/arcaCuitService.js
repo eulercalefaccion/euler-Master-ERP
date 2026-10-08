@@ -51,224 +51,192 @@ export const extraerDniDeCuit = (cuitStr) => {
   return '';
 };
 
-/**
- * Parsea HTML de CuitOnline (search o detail page) para extraer nombre, dirección, etc.
- * 
- * Formatos conocidos (Oct 2026):
- * SEARCH: <title>XXXXXXXXXXX -  Cuit Online</title> + link a detalle con nombre
- * DETAIL: <title>NOMBRE (XX-XXXXXXXX-X), Localidad (Provincia) -  Cuit Online</title>
- */
-export const parsePadronHtml = (html, cleanCuit) => {
-  if (!html) return null;
+// ═══════════════════════════════════════════════════════════════
+// FILTROS DE SEGURIDAD Y VALIDACIÓN
+// ═══════════════════════════════════════════════════════════════
+
+const stripStylesAndScripts = (html) => {
+  if (!html) return '';
+  return html.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ')
+             .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ');
+};
+
+const isGarbageName = (name) => {
+  if (!name || typeof name !== 'string') return true;
+  const n = name.toLowerCase().trim();
+  if (n.length < 3) return true;
+  const badPatterns = [
+    'buscador de', 'cuit online', 'cuitonline', 'resultados de', 'bloqueador de',
+    'acceso restringido', 'obtener constancia', 'partner with', 'sumate al',
+    'politica de privacidad', 'política de privacidad', 'preguntas frecuentes',
+    'eliminacion de datos', 'eliminación de datos', 'informacion publica',
+    'información pública', 'constancia de inscripcion', 'constancia de inscripción',
+    'antecedentes comerciales', 'duckduckgo', 'conviertase en partner'
+  ];
+  return badPatterns.some(bp => n.includes(bp));
+};
+
+const isGarbageAddress = (addr) => {
+  if (!addr || typeof addr !== 'string') return true;
+  const a = addr.toLowerCase().trim();
+  if (a.length < 4) return true;
+  const badWords = [
+    'duckduckgo', 'actividades', 'registradas', 'antecedentes', 'informacion',
+    'información', 'boletin', 'boletín', 'marcas', 'patentes', 'privacidad',
+    'terminos', 'términos', 'resultado', 'buscador', 'cuit online'
+  ];
+  return badWords.some(bw => a.includes(bw));
+};
+
+export const parsePadronHtml = (rawHtml, cleanCuit) => {
+  if (!rawHtml) return null;
+  const html = stripStylesAndScripts(rawHtml);
 
   let name = '';
   let location = '';
   let address = '';
 
-  // Strategy 1: Title tag: <title>NAME (XX-XXXXXXXX-X), Localidad (Provincia) - Cuit Online</title>
   const titleMatch = html.match(/<title>\s*([^(<]+?)\s*\(\d{2}-\d{8}-\d\)(?:,\s*([^-\n<]+))?/i);
   if (titleMatch && titleMatch[1]) {
     const rawName = titleMatch[1].trim();
-    if (rawName.length >= 3 &&
-        !rawName.toLowerCase().includes('cuit online') && 
-        !rawName.toLowerCase().includes('resultados') &&
-        !rawName.toLowerCase().includes('bloqueador')) {
+    if (!isGarbageName(rawName)) {
       name = rawName;
     }
     if (titleMatch[2]) {
       let locRaw = titleMatch[2].replace(/-\s*Cuit\s*Online.*/i, '').trim();
       const provInParens = locRaw.match(/\(([^)]+)\)/);
       if (provInParens) {
-        location = provInParens[1].trim();
-        locRaw = locRaw.replace(/\s*\([^)]+\)\s*/, '').trim();
-      }
-      if (locRaw && !location) location = locRaw;
-      if (locRaw && location && locRaw !== location) {
-        location = `${locRaw}, ${location}`;
+        const prov = provInParens[1].trim();
+        const loc = locRaw.replace(/\s*\([^)]+\)\s*/, '').trim();
+        location = loc && prov && loc !== prov ? `${loc}, ${prov}` : (loc || prov);
+      } else {
+        location = locRaw;
       }
     }
   }
 
-  // Strategy 2: Detail link href text
   if (!name) {
     const detailLinkMatch = html.match(
       new RegExp(`detalle/${cleanCuit}/([a-z0-9][a-z0-9-]+)\\.html[^>]*>\\s*([^<]+)`, 'i')
     );
     if (detailLinkMatch) {
       const linkText = detailLinkMatch[2].trim();
-      if (linkText.length >= 3 && 
-          !linkText.toLowerCase().includes('informe') &&
-          !linkText.toLowerCase().includes('vista previa') &&
-          !linkText.toLowerCase().includes('constancia')) {
+      if (!isGarbageName(linkText)) {
         name = linkText;
       }
     }
   }
 
-  // Strategy 3: H2 denominacion
   if (!name) {
-    const h2Match = html.match(/<h2[^>]*class=["']denominacion["'][^>]*>([^<]+)<\/h2>/i) ||
-                    html.match(/title=["']Ver detalles de ([^"']+)["']/i);
-    if (h2Match && h2Match[1] && !h2Match[1].toLowerCase().includes('bloqueador')) {
+    const h2Match = html.match(/<h2[^>]*class=["']denominacion["'][^>]*>([^<]+)<\/h2>/i);
+    if (h2Match && h2Match[1] && !isGarbageName(h2Match[1])) {
       name = h2Match[1].trim();
     }
   }
 
-  // Strategy 4: Meta description
-  if (!name) {
-    const metaMatch = html.match(
-      /meta\s+name=["']description["']\s+content=["']([^"']+)["']/i
-    );
-    if (metaMatch && metaMatch[1]) {
-      const metaParts = metaMatch[1].split(/\s*-\s*/);
-      if (metaParts[0]) {
-        const candidate = metaParts[0].trim();
-        if (candidate.length >= 3 && 
-            !candidate.toLowerCase().includes('cuit online') &&
-            !candidate.toLowerCase().includes('bloqueador') &&
-            !candidate.toLowerCase().includes('resultados') &&
-            !candidate.toLowerCase().includes('obtener')) {
-          name = candidate;
-        }
-      }
-    }
-  }
-
-  // Extract Address: itemprop
   if (!address) {
-    const itemPropMatch = html.match(/itemprop=["']streetAddress["'][^>]*>([^<]+)/i);
-    if (itemPropMatch && itemPropMatch[1].trim().length > 3) {
-      address = itemPropMatch[1].trim();
-    }
-  }
-  // Extract Address: domicilio label
-  if (!address) {
-    const domMatch = html.match(/(?:domicilio|direcci[oó]n)\s*(?:fiscal|legal)?\s*:?\s*<[^>]+>\s*([^<]+)/i);
-    if (domMatch && domMatch[1].trim().length > 3) {
-      address = domMatch[1].trim();
-    }
-  }
-  // Extract Address: body text before "Provincia:"
-  if (!address) {
-    const bodyAddrMatch = html.match(
-      /Persona\s+(?:F[ií]sica|Jur[ií]dica)[^]*?(?:\([^)]*\))?[^]*?Argentina\s*(?:<[^>]*>)*\s*([a-zA-ZáéíóúñÁÉÍÓÚÑ0-9 .,]+\d{1,5}[a-zA-ZáéíóúñÁÉÍÓÚÑ0-9 .,]*?)\s*(?:<[^>]*>)*\s*Provincia:/i
-    );
-    if (bodyAddrMatch && bodyAddrMatch[1]) {
-      const candidate = bodyAddrMatch[1].replace(/<[^>]+>/g, '').trim();
-      if (candidate.length >= 4) {
+    const addrRegex = /Argentina\s*(?:<[^>]*>)*\s*([a-zA-ZáéíóúñÁÉÍÓÚÑ0-9 .,/'-]+\d{1,5}[a-zA-ZáéíóúñÁÉÍÓÚÑ0-9 .,/'-]*?)\s*(?:<[^>]*>)*\s*Provincia:/i;
+    const bodyMatch = html.match(addrRegex);
+    if (bodyMatch && bodyMatch[1]) {
+      const candidate = bodyMatch[1].replace(/<[^>]+>/g, '').trim();
+      if (!isGarbageAddress(candidate)) {
         address = candidate;
       }
     }
   }
 
-  // Extract Location
-  if (!location) {
-    const provLinkMatch = html.match(/Provincia:\s*(?:<a[^>]*>)?\s*([^<\n]+)/i);
-    if (provLinkMatch && provLinkMatch[1]) {
-      location = provLinkMatch[1].replace(/-\s*$/, '').trim();
-    }
-    const locMatch = html.match(/Localidad:\s*([A-Za-záéíóúñÁÉÍÓÚÑ .']+?)(?:\s*<|\s*$)/im);
-    if (locMatch && locMatch[1] && locMatch[1].trim().length > 1) {
-      const localidad = locMatch[1].trim();
-      if (location && localidad !== location) {
-        location = `${localidad}, ${location}`;
-      } else if (!location) {
-        location = localidad;
-      }
+  if (!address) {
+    const itemPropMatch = html.match(/itemprop=["']streetAddress["'][^>]*>([^<]+)/i);
+    if (itemPropMatch && itemPropMatch[1] && !isGarbageAddress(itemPropMatch[1])) {
+      address = itemPropMatch[1].trim();
     }
   }
 
-  if (!location) {
-    const provMatch = html.match(
-      /(?:provincia[^a-z]*|Provincia:\s*(?:<[^>]*>)?\s*)(Santa Fe|Buenos Aires|C[oó]rdoba|Mendoza|Entre R[íi]os|Tucum[áa]n|Salta|San Juan|San Luis|Chaco|Corrientes|Misiones|Neuqu[eé]n|R[íi]o Negro|Chubut|Santa Cruz|Jujuy|La Pampa|Formosa|Catamarca|La Rioja|Tierra del Fuego|Santiago del Estero|CABA|Capital Federal|C\.A\.B\.A\.)/i
-    );
-    if (provMatch && provMatch[1]) location = provMatch[1].trim();
-  }
-
-  // Extract Condicion IVA
   let condicionIva = 'Consumidor Final';
-  const htmlUpper = html.toUpperCase();
-  if (htmlUpper.includes('MONOTRIBUTO') || htmlUpper.includes('MONOTRIBUTISTA')) {
-    condicionIva = 'Monotributo';
-  } else if (htmlUpper.includes('IVA EXENTO') || htmlUpper.includes('EXENTO DE IVA')) {
-    condicionIva = 'Exento';
-  } else if (htmlUpper.includes('IVA RESPONSABLE INSCRIPTO') || htmlUpper.includes('RESPONSABLE INSCRIPTO')) {
+  const esPersonaJuridica = cleanCuit.startsWith('30') || cleanCuit.startsWith('33') || cleanCuit.startsWith('34');
+  if (esPersonaJuridica) {
     condicionIva = 'Responsable Inscripto';
-  } else if (cleanCuit.startsWith('30') || cleanCuit.startsWith('33') || cleanCuit.startsWith('34')) {
-    condicionIva = 'Responsable Inscripto';
+  } else {
+    const taxSection = html.match(/Impuestos activos:[\s\S]*?(?=Reg[ií]menes|Actividades|<\/table>|<\/div>|$)/i);
+    const taxText = taxSection ? taxSection[0].toUpperCase() : '';
+    if (taxText.includes('MONOTRIBUTO')) condicionIva = 'Monotributo';
+    else if (taxText.includes('RESPONSABLE INSCRIPTO') || taxText.includes('IVA')) condicionIva = 'Responsable Inscripto';
+    else if (taxText.includes('EXENTO')) condicionIva = 'Exento';
   }
 
-  // Clean up
-  if (name) name = name.replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
-  if (address) address = address.replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!name) return null;
 
   return {
-    name: name ? name.toUpperCase() : '',
-    address: address ? address.toUpperCase() : '',
-    location,
+    name: name.toUpperCase().replace(/\s+/g, ' ').trim(),
+    address: address ? address.toUpperCase().replace(/\s+/g, ' ').trim() : '',
+    location: location ? location.replace(/\s+/g, ' ').trim() : '',
     condicionIva
   };
 };
 
-/**
- * Parsea el HTML de DuckDuckGo para extraer nombre, dirección y localidad.
- */
-const parseDuckDuckGoHtml = (html, cleanCuit) => {
-  if (!html) return null;
+const parseDuckDuckGoHtml = (rawHtml, cleanCuit) => {
+  if (!rawHtml) return null;
+  const html = stripStylesAndScripts(rawHtml);
+  const esPersonaJuridica = cleanCuit.startsWith('30') || cleanCuit.startsWith('33') || cleanCuit.startsWith('34');
 
   let name = '';
-  let location = '';
   let address = '';
-  let condicionIva = '';
+  let location = '';
+  let condicionIva = esPersonaJuridica ? 'Responsable Inscripto' : 'Consumidor Final';
 
-  // Pattern 1: result__a link text: "NAME (XX-XXXXXXXX-X), LOCATION"
-  const resultAMatch = html.match(/class=["']result__a["'][^>]*>([^<]+)\(\d{2}-\d{8}-\d\)/i);
-  if (resultAMatch && resultAMatch[1]) {
-    name = resultAMatch[1].trim();
-    const fullMatch = html.match(/class=["']result__a["'][^>]*>[^<]+\(\d{2}-\d{8}-\d\),\s*([^<]+)/i);
-    if (fullMatch && fullMatch[1]) {
-      location = fullMatch[1].replace(/-\s*Cuit\s*Online.*/i, '').replace(/\s*-\s*$/, '').trim();
+  const titles = [...html.matchAll(/class=["']result__a["'][^>]*>([\s\S]*?)<\/a>/gi)].map(m => m[1].replace(/<[^>]+>/g, '').trim());
+  const snippets = [...html.matchAll(/class=["']result__snippet["'][^>]*>([\s\S]*?)<\/a>/gi)].map(m => m[1].replace(/<[^>]+>/g, '').trim());
+
+  for (const t of titles) {
+    const m = t.match(/^([A-ZÁÉÍÓÚÑa-záéíóúñ0-9 .,'&-]{3,70}?)\s*(?:[—–-]|\||\()\s*(?:CUIT|\d{2}-\d{8}-\d)/i);
+    if (m && !isGarbageName(m[1])) {
+      name = m[1].trim();
+      break;
+    }
+    const m2 = t.match(/(?:Buscador de CUIT - |Consulta de CUIT - )([A-ZÁÉÍÓÚÑa-záéíóúñ0-9 .,'&-]{3,70}?)\s*(?:\(CUIT|[—–-]\s*CUIT)/i);
+    if (m2 && !isGarbageName(m2[1])) {
+      name = m2[1].trim();
+      break;
     }
   }
 
-  // Pattern 2: Scan ALL snippets for address & localidad
-  const snippetRegex = /class=["']result__snippet["'][^>]*>([\s\S]*?)<\/a>/gi;
-  let snippetMatch;
-  while ((snippetMatch = snippetRegex.exec(html)) !== null) {
-    const clean = snippetMatch[1].replace(/<[^>]+>/g, '').trim();
-
+  for (const s of snippets) {
     if (!name) {
-      const nameFromSnippet = clean.match(/^([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ .',-]{2,60})\s+CUIT/i);
-      if (nameFromSnippet) name = nameFromSnippet[1].trim();
+      const nm = s.match(/(?:(?:Informaci[óo]n p[úu]blica de|empresa)\s+)?([A-ZÁÉÍÓÚÑa-záéíóúñ0-9 .,'&-]{3,70}?)\s*(?:[—–-]|:|\()\s*CUIT\s*:?\s*\d{2}-?\d{8}-?\d/i);
+      if (nm && !isGarbageName(nm[1])) {
+        name = nm[1].trim();
+      }
     }
 
-    if (!address) {
-      const addrMatch = clean.match(/Persona\s+(?:F[ií]sica|Jur[ií]dica)(?:\s*\([^)]*\))?\s+(.+?)\s+Localidad:/i);
-      if (addrMatch && addrMatch[1]) address = addrMatch[1].trim();
+    if (!esPersonaJuridica) {
+      if (s.match(/IVA\s+Inscripto|Responsable\s+Inscripto/i)) {
+        condicionIva = 'Responsable Inscripto';
+      } else if (s.match(/Monotribut/i)) {
+        condicionIva = 'Monotributo';
+      }
     }
 
     if (!location) {
-      const locMatch = clean.match(/Localidad:\s*([A-Za-záéíóúñÁÉÍÓÚÑ .]+?)(?:\s+(?:Ganancias|Fecha|IVA|No Inscripto|Monotributo)|$)/i);
-      if (locMatch && locMatch[1]) location = locMatch[1].trim();
+      const locM = s.match(/\d{4}-([A-ZÁÉÍÓÚÑ\s]+?)(?:,|$|\.)/i);
+      if (locM && locM[1] && !locM[1].toLowerCase().includes('duckduckgo')) {
+        location = locM[1].trim();
+      }
     }
 
-    if (!condicionIva) {
-      if (clean.includes('Monotributo')) condicionIva = 'Monotributo';
-      else if (clean.includes('IVA Exento') || clean.includes('Exento')) condicionIva = 'Exento';
-      else if (clean.includes('Responsable Inscripto')) condicionIva = 'Responsable Inscripto';
+    if (!address) {
+      const addrMatch = s.match(/Persona\s+(?:F[ií]sica|Jur[ií]dica)(?:\s*\([^)]*\))?\s+(.+?)\s+Localidad:/i);
+      if (addrMatch && addrMatch[1] && !isGarbageAddress(addrMatch[1])) {
+        address = addrMatch[1].trim();
+      }
     }
   }
 
-  // Pattern 3: URL slug fallback
-  if (!name) {
-    const slugMatch = html.match(new RegExp(`detalle/${cleanCuit}/([a-z0-9-]+)\\.html`, 'i'));
-    if (slugMatch && slugMatch[1]) name = slugMatch[1].replace(/-/g, ' ').trim();
-  }
+  if (!name) return null;
 
   return {
-    name: name ? name.toUpperCase().replace(/\s+/g, ' ').trim() : '',
-    address: address ? address.toUpperCase() : '',
-    location,
+    name: name.toUpperCase().replace(/\s+/g, ' ').trim(),
+    address: address ? address.toUpperCase().replace(/\s+/g, ' ').trim() : '',
+    location: location || '',
     condicionIva
   };
 };
@@ -294,14 +262,14 @@ export const consultarCuitArca = async (cuitRaw) => {
   try {
     const fnUrl = `/.netlify/functions/cuitPadron?cuit=${cleanCuit}`;
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
 
     const res = await fetch(fnUrl, { signal: controller.signal });
     clearTimeout(timeoutId);
 
     if (res.ok) {
       const data = await res.json();
-      if (data.exito && data.name) {
+      if (data.exito && data.name && !isGarbageName(data.name)) {
         return data;
       }
     }
@@ -313,9 +281,9 @@ export const consultarCuitArca = async (cuitRaw) => {
   // STEP 2: DuckDuckGo HTML search from browser (user's residential IP)
   // ═══════════════════════════════════════════════════════════
   try {
-    const ddgUrl = `https://html.duckduckgo.com/html/?q=cuit+${cleanCuit}+cuitonline`;
+    const ddgUrl = `https://html.duckduckgo.com/html/?q=cuit+${cleanCuit}`;
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
 
     const res = await fetch(ddgUrl, { signal: controller.signal });
     clearTimeout(timeoutId);
@@ -323,7 +291,7 @@ export const consultarCuitArca = async (cuitRaw) => {
     if (res.ok) {
       const html = await res.text();
       const parsed = parseDuckDuckGoHtml(html, cleanCuit);
-      if (parsed && parsed.name) {
+      if (parsed && parsed.name && !isGarbageName(parsed.name)) {
         return {
           exito: true,
           fuente: 'ARCA / AFIP Padrón',
@@ -332,9 +300,9 @@ export const consultarCuitArca = async (cuitRaw) => {
           name: parsed.name,
           type: esPersonaFisica ? 'Propietario' : 'Constructora',
           dni: dniExtraido,
-          address: parsed.address || '',
+          address: isGarbageAddress(parsed.address) ? '' : parsed.address,
           location: parsed.location || '',
-          condicionIva: parsed.condicionIva || (esPersonaFisica ? 'Consumidor Final' : 'Responsable Inscripto'),
+          condicionIva: parsed.condicionIva,
           esPersonaFisica,
           mensaje: `Contribuyente hallado en Padrón ARCA: ${parsed.name}`
         };
@@ -345,7 +313,7 @@ export const consultarCuitArca = async (cuitRaw) => {
   }
 
   // ═══════════════════════════════════════════════════════════
-  // STEP 3: CuitOnline direct from browser (user IP may bypass Cloudflare)
+  // STEP 3: CuitOnline direct from browser (user IP)
   // ═══════════════════════════════════════════════════════════
   try {
     const coUrl = `https://www.cuitonline.com/search.php?q=${cleanCuit}`;
@@ -362,7 +330,7 @@ export const consultarCuitArca = async (cuitRaw) => {
       const html = await res.text();
       if (html.length > 2000) {
         const parsed = parsePadronHtml(html, cleanCuit);
-        if (parsed && parsed.name) {
+        if (parsed && parsed.name && !isGarbageName(parsed.name)) {
           return {
             exito: true,
             fuente: 'ARCA / AFIP Padrón Oficial',
@@ -371,7 +339,7 @@ export const consultarCuitArca = async (cuitRaw) => {
             name: parsed.name,
             type: esPersonaFisica ? 'Propietario' : 'Constructora',
             dni: dniExtraido,
-            address: parsed.address,
+            address: isGarbageAddress(parsed.address) ? '' : parsed.address,
             location: parsed.location,
             condicionIva: parsed.condicionIva,
             esPersonaFisica,
@@ -381,7 +349,7 @@ export const consultarCuitArca = async (cuitRaw) => {
       }
     }
   } catch (err) {
-    // CORS will likely block this, that's expected
+    // CORS will likely block this from browser, expected
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -401,6 +369,6 @@ export const consultarCuitArca = async (cuitRaw) => {
     esPersonaFisica,
     mensaje: esPersonaFisica 
       ? `CUIT de Persona Física verificado en ARCA (DNI ${dniExtraido} detectado). Completá la Razón Social manualmente.` 
-      : `CUIT de Persona Jurídica verificado en ARCA.`
+      : `CUIT de Persona Jurídica verificado en ARCA. Completá la Razón Social manualmente.`
   };
 };

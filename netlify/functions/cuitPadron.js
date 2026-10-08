@@ -28,281 +28,214 @@ const extraerDniDeCuit = (cleanCuit) => {
 };
 
 // ═══════════════════════════════════════════════════════════════
-// PARSEO: Funciones para extraer datos del HTML de CuitOnline
+// FILTROS DE SEGURIDAD Y VALIDACIÓN
 // ═══════════════════════════════════════════════════════════════
 
-/**
- * Parsea HTML de CuitOnline (search o detail page)
- * 
- * Formatos conocidos del HTML de CuitOnline (Oct 2026):
- * 
- * SEARCH PAGE (/search.php?q=XXXXXXXXXXX):
- *   <title>XXXXXXXXXXX -  Cuit Online</title>
- *   <a href="https://www.cuitonline.com/detalle/CUIT/nombre-slug.html">NOMBRE</a>
- *   <h2 class="denominacion">NOMBRE</h2>
- * 
- * DETAIL PAGE (/detalle/CUIT/nombre-slug.html):
- *   <title>NOMBRE (XX-XXXXXXXX-X), Localidad (Provincia) -  Cuit Online</title>
- *   Persona Física  (Femenino/Masculino), Argentina
- *   CALLE NÚMERO    Provincia: PROVINCIA -     Localidad: LOCALIDAD
- *   Empleador: No/Sí
- *   Impuestos activos: ...
- */
-const parsePadronHtml = (html, cleanCuit) => {
-  if (!html) return null;
+const stripStylesAndScripts = (html) => {
+  if (!html) return '';
+  return html.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ')
+             .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ');
+};
 
-  const cuitFormateado = formatCUIT(cleanCuit);
+const isGarbageName = (name) => {
+  if (!name || typeof name !== 'string') return true;
+  const n = name.toLowerCase().trim();
+  if (n.length < 3) return true;
+  const badPatterns = [
+    'buscador de', 'cuit online', 'cuitonline', 'resultados de', 'bloqueador de',
+    'acceso restringido', 'obtener constancia', 'partner with', 'sumate al',
+    'politica de privacidad', 'política de privacidad', 'preguntas frecuentes',
+    'eliminacion de datos', 'eliminación de datos', 'informacion publica',
+    'información pública', 'constancia de inscripcion', 'constancia de inscripción',
+    'antecedentes comerciales', 'duckduckgo', 'conviertase en partner'
+  ];
+  return badPatterns.some(bp => n.includes(bp));
+};
+
+const isGarbageAddress = (addr) => {
+  if (!addr || typeof addr !== 'string') return true;
+  const a = addr.toLowerCase().trim();
+  if (a.length < 4) return true;
+  const badWords = [
+    'duckduckgo', 'actividades', 'registradas', 'antecedentes', 'informacion',
+    'información', 'boletin', 'boletín', 'marcas', 'patentes', 'privacidad',
+    'terminos', 'términos', 'resultado', 'buscador', 'cuit online'
+  ];
+  return badWords.some(bw => a.includes(bw));
+};
+
+// ═══════════════════════════════════════════════════════════════
+// PARSEO: CuitOnline
+// ═══════════════════════════════════════════════════════════════
+
+const extractDetailSlug = (rawHtml, cleanCuit) => {
+  if (!rawHtml) return '';
+  const html = stripStylesAndScripts(rawHtml);
+  const slugMatch = html.match(new RegExp(`detalle/${cleanCuit}/([a-z0-9][a-z0-9-]+)\\.html`, 'i'));
+  return slugMatch ? slugMatch[1] : '';
+};
+
+const parsePadronHtml = (rawHtml, cleanCuit) => {
+  if (!rawHtml) return null;
+  const html = stripStylesAndScripts(rawHtml);
+
   let name = '';
   let location = '';
   let address = '';
 
-  // ── Strategy 1: <title> tag ─────────────────────────────────────
-  // Detail pages: <title>NOMBRE (XX-XXXXXXXX-X), Localidad (Provincia) -  Cuit Online</title>
+  // 1. Title tag: <title>NAME (XX-XXXXXXXX-X), Localidad (Provincia) - Cuit Online</title>
   const titleMatch = html.match(/<title>\s*([^(<]+?)\s*\(\d{2}-\d{8}-\d\)(?:,\s*([^-\n<]+))?/i);
   if (titleMatch && titleMatch[1]) {
     const rawName = titleMatch[1].trim();
-    if (rawName.length >= 3 &&
-        !rawName.toLowerCase().includes('cuit online') && 
-        !rawName.toLowerCase().includes('resultados') &&
-        !rawName.toLowerCase().includes('bloqueador')) {
+    if (!isGarbageName(rawName)) {
       name = rawName;
     }
     if (titleMatch[2]) {
-      // "Rosario (Santa Fe) -  Cuit Online" → extract localidad and provincia
       let locRaw = titleMatch[2].replace(/-\s*Cuit\s*Online.*/i, '').trim();
-      // Extract "(Provincia)" if present
       const provInParens = locRaw.match(/\(([^)]+)\)/);
       if (provInParens) {
-        location = provInParens[1].trim(); // provincia
-        locRaw = locRaw.replace(/\s*\([^)]+\)\s*/, '').trim(); // localidad
-      }
-      if (locRaw && !location) location = locRaw;
-      // If we have "Rosario (Santa Fe)", prepend localidad
-      if (locRaw && location && locRaw !== location) {
-        location = `${locRaw}, ${location}`;
+        const prov = provInParens[1].trim();
+        const loc = locRaw.replace(/\s*\([^)]+\)\s*/, '').trim();
+        location = loc && prov && loc !== prov ? `${loc}, ${prov}` : (loc || prov);
+      } else {
+        location = locRaw;
       }
     }
   }
 
-  // ── Strategy 2: Detail link href in search results ──────────────
-  // <a href=".../detalle/CUIT/nombre-con-guiones.html">NOMBRE</a>
+  // 2. Search result link to detail
   if (!name) {
     const detailLinkMatch = html.match(
       new RegExp(`detalle/${cleanCuit}/([a-z0-9][a-z0-9-]+)\\.html[^>]*>\\s*([^<]+)`, 'i')
     );
     if (detailLinkMatch) {
       const linkText = detailLinkMatch[2].trim();
-      if (linkText.length >= 3 && 
-          !linkText.toLowerCase().includes('informe') &&
-          !linkText.toLowerCase().includes('vista previa') &&
-          !linkText.toLowerCase().includes('constancia')) {
+      if (!isGarbageName(linkText)) {
         name = linkText;
       }
     }
   }
 
-  // ── Strategy 3: H2 denominacion or title="Ver detalles de NAME" ──
+  // 3. H2 denominacion on verified detail page
   if (!name) {
-    const h2Match = html.match(/<h2[^>]*class=["']denominacion["'][^>]*>([^<]+)<\/h2>/i) ||
-                    html.match(/title=["']Ver detalles de ([^"']+)["']/i);
-    if (h2Match && h2Match[1] && !h2Match[1].toLowerCase().includes('bloqueador')) {
+    const h2Match = html.match(/<h2[^>]*class=["']denominacion["'][^>]*>([^<]+)<\/h2>/i);
+    if (h2Match && h2Match[1] && !isGarbageName(h2Match[1])) {
       name = h2Match[1].trim();
     }
   }
 
-  // ── Strategy 4: Meta description ─────────────────────────────────
-  if (!name) {
-    const metaMatch = html.match(
-      /meta\s+name=["']description["']\s+content=["']([^"']+)["']/i
-    );
-    if (metaMatch && metaMatch[1]) {
-      // Format: "NOMBRE - CUIT XXXXXXXXXXX - Datos de..." 
-      const metaParts = metaMatch[1].split(/\s*-\s*/);
-      if (metaParts[0]) {
-        const candidate = metaParts[0].trim();
-        if (candidate.length >= 3 && 
-            !candidate.toLowerCase().includes('cuit online') &&
-            !candidate.toLowerCase().includes('bloqueador') &&
-            !candidate.toLowerCase().includes('resultados') &&
-            !candidate.toLowerCase().includes('obtener')) {
-          name = candidate;
-        }
-      }
-    }
-  }
-
-  // ── Extract Address (multiple patterns) ──────────────────────────
-  
-  // Pattern 1: itemprop="streetAddress"
+  // Address: CuitOnline detail page layout
   if (!address) {
-    const itemPropMatch = html.match(/itemprop=["']streetAddress["'][^>]*>([^<]+)/i);
-    if (itemPropMatch && itemPropMatch[1].trim().length > 3) {
-      address = itemPropMatch[1].trim();
-    }
-  }
-
-  // Pattern 2: Domicilio/Dirección label followed by value
-  if (!address) {
-    const domMatch = html.match(/(?:domicilio|direcci[oó]n)\s*(?:fiscal|legal)?\s*:?\s*<[^>]+>\s*([^<]+)/i);
-    if (domMatch && domMatch[1].trim().length > 3) {
-      address = domMatch[1].trim();
-    }
-  }
-
-  // Pattern 3: CuitOnline detail page body text pattern
-  // The detail page shows address as plain text: "cordoba 8536    Provincia: Santa Fe"
-  if (!address) {
-    // Look for text that looks like an address before "Provincia:"
-    const bodyAddrMatch = html.match(
-      /Persona\s+(?:F[ií]sica|Jur[ií]dica)[^]*?(?:\([^)]*\))?[^]*?Argentina\s*(?:<[^>]*>)*\s*([a-zA-ZáéíóúñÁÉÍÓÚÑ0-9 .,]+\d{1,5}[a-zA-ZáéíóúñÁÉÍÓÚÑ0-9 .,]*?)\s*(?:<[^>]*>)*\s*Provincia:/i
-    );
-    if (bodyAddrMatch && bodyAddrMatch[1]) {
-      const candidate = bodyAddrMatch[1].replace(/<[^>]+>/g, '').trim();
-      if (candidate.length >= 4) {
+    const addrRegex = /Argentina\s*(?:<[^>]*>)*\s*([a-zA-ZáéíóúñÁÉÍÓÚÑ0-9 .,/'-]+\d{1,5}[a-zA-ZáéíóúñÁÉÍÓÚÑ0-9 .,/'-]*?)\s*(?:<[^>]*>)*\s*Provincia:/i;
+    const bodyMatch = html.match(addrRegex);
+    if (bodyMatch && bodyMatch[1]) {
+      const candidate = bodyMatch[1].replace(/<[^>]+>/g, '').trim();
+      if (!isGarbageAddress(candidate)) {
         address = candidate;
       }
     }
   }
 
-  // ── Extract Location/Provincia ────────────────────────────────────
-  if (!location) {
-    // CuitOnline format: "Provincia: <a...>Santa Fe</a> - Localidad: Rosario"
-    const provLinkMatch = html.match(/Provincia:\s*(?:<a[^>]*>)?\s*([^<\n]+)/i);
-    if (provLinkMatch && provLinkMatch[1]) {
-      location = provLinkMatch[1].replace(/-\s*$/, '').trim();
-    }
-    // Also try to get Localidad
-    const locMatch = html.match(/Localidad:\s*([A-Za-záéíóúñÁÉÍÓÚÑ .']+?)(?:\s*<|\s*$)/im);
-    if (locMatch && locMatch[1] && locMatch[1].trim().length > 1) {
-      const localidad = locMatch[1].trim();
-      if (location && localidad !== location) {
-        location = `${localidad}, ${location}`;
-      } else if (!location) {
-        location = localidad;
-      }
+  if (!address) {
+    const itemPropMatch = html.match(/itemprop=["']streetAddress["'][^>]*>([^<]+)/i);
+    if (itemPropMatch && itemPropMatch[1] && !isGarbageAddress(itemPropMatch[1])) {
+      address = itemPropMatch[1].trim();
     }
   }
 
-  // Fallback: match known province names
-  if (!location) {
-    const provMatch = html.match(
-      /(?:provincia[^a-z]*|Provincia:\s*(?:<[^>]*>)?\s*)(Santa Fe|Buenos Aires|C[oó]rdoba|Mendoza|Entre R[íi]os|Tucum[áa]n|Salta|San Juan|San Luis|Chaco|Corrientes|Misiones|Neuqu[eé]n|R[íi]o Negro|Chubut|Santa Cruz|Jujuy|La Pampa|Formosa|Catamarca|La Rioja|Tierra del Fuego|Santiago del Estero|CABA|Capital Federal|C\.A\.B\.A\.)/i
-    );
-    if (provMatch && provMatch[1]) location = provMatch[1].trim();
-  }
-
-  // ── Extract Condición IVA ─────────────────────────────────────────
+  // Condicion IVA (Clean check without CSS classes)
   let condicionIva = 'Consumidor Final';
-  const htmlUpper = html.toUpperCase();
-  if (htmlUpper.includes('MONOTRIBUTO') || htmlUpper.includes('MONOTRIBUTISTA')) {
-    condicionIva = 'Monotributo';
-  } else if (htmlUpper.includes('IVA EXENTO') || htmlUpper.includes('EXENTO DE IVA')) {
-    condicionIva = 'Exento';
-  } else if (htmlUpper.includes('IVA RESPONSABLE INSCRIPTO') || htmlUpper.includes('RESPONSABLE INSCRIPTO')) {
+  const esPersonaJuridica = cleanCuit.startsWith('30') || cleanCuit.startsWith('33') || cleanCuit.startsWith('34');
+  if (esPersonaJuridica) {
     condicionIva = 'Responsable Inscripto';
-  } else if (cleanCuit.startsWith('30') || cleanCuit.startsWith('33') || cleanCuit.startsWith('34')) {
-    condicionIva = 'Responsable Inscripto';
+  } else {
+    const taxSection = html.match(/Impuestos activos:[\s\S]*?(?=Reg[ií]menes|Actividades|<\/table>|<\/div>|$)/i);
+    const taxText = taxSection ? taxSection[0].toUpperCase() : '';
+    if (taxText.includes('MONOTRIBUTO')) condicionIva = 'Monotributo';
+    else if (taxText.includes('RESPONSABLE INSCRIPTO') || taxText.includes('IVA')) condicionIva = 'Responsable Inscripto';
+    else if (taxText.includes('EXENTO')) condicionIva = 'Exento';
   }
 
-  // ── Clean up name ─────────────────────────────────────────────────
-  if (name) {
-    // Remove any straggling HTML entities
-    name = name.replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
-  }
-  if (address) {
-    address = address.replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
-  }
+  if (!name) return null;
 
   return {
-    name: name ? name.toUpperCase() : '',
-    address: address ? address.toUpperCase() : '',
-    location: location || '',
+    name: name.toUpperCase().replace(/\s+/g, ' ').trim(),
+    address: address ? address.toUpperCase().replace(/\s+/g, ' ').trim() : '',
+    location: location ? location.replace(/\s+/g, ' ').trim() : '',
     condicionIva
   };
 };
 
-/**
- * Extrae el slug del detalle de CuitOnline del HTML de búsqueda.
- * Ejemplo: detalle/27215239646/di-benedetto-nanci.html → "di-benedetto-nanci"
- */
-const extractDetailSlug = (html, cleanCuit) => {
-  const slugMatch = html.match(new RegExp(`detalle/${cleanCuit}/([a-z0-9][a-z0-9-]+)\\.html`, 'i'));
-  return slugMatch ? slugMatch[1] : '';
-};
+// ═══════════════════════════════════════════════════════════════
+// PARSEO: DuckDuckGo HTML
+// ═══════════════════════════════════════════════════════════════
 
-/**
- * Parsea los resultados HTML de DuckDuckGo para extraer nombre, dirección, etc.
- */
-const parseDuckDuckGoHtml = (html, cleanCuit) => {
-  if (!html) return null;
+const parseDuckDuckGoHtml = (rawHtml, cleanCuit) => {
+  if (!rawHtml) return null;
+  const html = stripStylesAndScripts(rawHtml);
+  const esPersonaJuridica = cleanCuit.startsWith('30') || cleanCuit.startsWith('33') || cleanCuit.startsWith('34');
 
   let name = '';
-  let location = '';
   let address = '';
-  let condicionIva = '';
-  let detailSlug = '';
+  let location = '';
+  let condicionIva = esPersonaJuridica ? 'Responsable Inscripto' : 'Consumidor Final';
 
-  // Extract detail page slug from URL in results
-  const slugMatch = html.match(new RegExp(`detalle/${cleanCuit}/([a-z0-9-]+)\\.html`, 'i'));
-  if (slugMatch && slugMatch[1]) {
-    detailSlug = slugMatch[1];
-  }
+  const titles = [...html.matchAll(/class=["']result__a["'][^>]*>([\s\S]*?)<\/a>/gi)].map(m => m[1].replace(/<[^>]+>/g, '').trim());
+  const snippets = [...html.matchAll(/class=["']result__snippet["'][^>]*>([\s\S]*?)<\/a>/gi)].map(m => m[1].replace(/<[^>]+>/g, '').trim());
 
-  // Pattern 1: result__a link text: "NAME (XX-XXXXXXXX-X), LOCATION"
-  const resultAMatch = html.match(/class=["']result__a["'][^>]*>([^<]+)\(\d{2}-\d{8}-\d\)/i);
-  if (resultAMatch && resultAMatch[1]) {
-    name = resultAMatch[1].trim();
-    const fullMatch = html.match(/class=["']result__a["'][^>]*>[^<]+\(\d{2}-\d{8}-\d\),\s*([^<]+)/i);
-    if (fullMatch && fullMatch[1]) {
-      location = fullMatch[1].replace(/-\s*Cuit\s*Online.*/i, '').replace(/\s*-\s*$/, '').trim();
+  // Titles: e.g. "NAME — CUIT ...", "NAME (30-12345678-9)...", "NAME - CUIT ..."
+  for (const t of titles) {
+    const m = t.match(/^([A-ZÁÉÍÓÚÑa-záéíóúñ0-9 .,'&-]{3,70}?)\s*(?:[—–-]|\||\()\s*(?:CUIT|\d{2}-\d{8}-\d)/i);
+    if (m && !isGarbageName(m[1])) {
+      name = m[1].trim();
+      break;
+    }
+    const m2 = t.match(/(?:Buscador de CUIT - |Consulta de CUIT - )([A-ZÁÉÍÓÚÑa-záéíóúñ0-9 .,'&-]{3,70}?)\s*(?:\(CUIT|[—–-]\s*CUIT)/i);
+    if (m2 && !isGarbageName(m2[1])) {
+      name = m2[1].trim();
+      break;
     }
   }
 
-  // Pattern 2: Scan ALL snippets for address & localidad
-  const snippetRegex = /class=["']result__snippet["'][^>]*>([\s\S]*?)<\/a>/gi;
-  let snippetMatch;
-  while ((snippetMatch = snippetRegex.exec(html)) !== null) {
-    const clean = snippetMatch[1].replace(/<[^>]+>/g, '').trim();
-
+  // Snippets
+  for (const s of snippets) {
     if (!name) {
-      const nameFromSnippet = clean.match(/^([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ .',-]{2,60})\s+CUIT/i);
-      if (nameFromSnippet) {
-        name = nameFromSnippet[1].trim();
+      const nm = s.match(/(?:(?:Informaci[óo]n p[úu]blica de|empresa)\s+)?([A-ZÁÉÍÓÚÑa-záéíóúñ0-9 .,'&-]{3,70}?)\s*(?:[—–-]|:|\()\s*CUIT\s*:?\s*\d{2}-?\d{8}-?\d/i);
+      if (nm && !isGarbageName(nm[1])) {
+        name = nm[1].trim();
       }
     }
 
-    if (!address) {
-      const addrMatch = clean.match(/Persona\s+(?:F[ií]sica|Jur[ií]dica)(?:\s*\([^)]*\))?\s+(.+?)\s+Localidad:/i);
-      if (addrMatch && addrMatch[1]) {
-        address = addrMatch[1].trim();
+    if (!esPersonaJuridica) {
+      if (s.match(/IVA\s+Inscripto|Responsable\s+Inscripto/i)) {
+        condicionIva = 'Responsable Inscripto';
+      } else if (s.match(/Monotribut/i)) {
+        condicionIva = 'Monotributo';
       }
     }
 
     if (!location) {
-      const locMatch = clean.match(/Localidad:\s*([A-Za-záéíóúñÁÉÍÓÚÑ .]+?)(?:\s+(?:Ganancias|Fecha|IVA|No Inscripto|Monotributo)|$)/i);
-      if (locMatch && locMatch[1]) {
-        location = locMatch[1].trim();
+      const locM = s.match(/\d{4}-([A-ZÁÉÍÓÚÑ\s]+?)(?:,|$|\.)/i);
+      if (locM && locM[1] && !locM[1].toLowerCase().includes('duckduckgo')) {
+        location = locM[1].trim();
       }
     }
 
-    if (!condicionIva) {
-      if (clean.includes('Monotributo')) condicionIva = 'Monotributo';
-      else if (clean.includes('IVA Exento') || clean.includes('Exento')) condicionIva = 'Exento';
-      else if (clean.includes('Responsable Inscripto')) condicionIva = 'Responsable Inscripto';
+    if (!address) {
+      const addrMatch = s.match(/Persona\s+(?:F[ií]sica|Jur[ií]dica)(?:\s*\([^)]*\))?\s+(.+?)\s+Localidad:/i);
+      if (addrMatch && addrMatch[1] && !isGarbageAddress(addrMatch[1])) {
+        address = addrMatch[1].trim();
+      }
     }
   }
 
-  // Pattern 3: From URL slug if no other name found
-  if (!name && detailSlug) {
-    name = detailSlug.replace(/-/g, ' ').trim();
-  }
+  if (!name) return null;
 
   return {
-    name: name ? name.toUpperCase().replace(/\s+/g, ' ').trim() : '',
-    address: address ? address.toUpperCase() : '',
+    name: name.toUpperCase().replace(/\s+/g, ' ').trim(),
+    address: address ? address.toUpperCase().replace(/\s+/g, ' ').trim() : '',
     location: location || '',
-    condicionIva: condicionIva || '',
-    detailSlug
+    condicionIva
   };
 };
 
@@ -310,20 +243,9 @@ const fetchHeaders = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
   'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
   'Accept-Language': 'es-AR,es;q=0.9,en-US;q=0.8,en;q=0.7',
-  'Cache-Control': 'max-age=0',
-  'Sec-Ch-Ua': '"Chromium";v="126", "Not(A:Brand";v="24", "Google Chrome";v="126"',
-  'Sec-Ch-Ua-Mobile': '?0',
-  'Sec-Ch-Ua-Platform': '"Windows"',
-  'Sec-Fetch-Dest': 'document',
-  'Sec-Fetch-Mode': 'navigate',
-  'Sec-Fetch-Site': 'none',
-  'Sec-Fetch-User': '?1',
-  'Upgrade-Insecure-Requests': '1'
+  'Cache-Control': 'max-age=0'
 };
 
-/**
- * Fetch con timeout y manejo de errores
- */
 const fetchWithTimeout = async (url, timeoutMs = 6000, extraHeaders = {}) => {
   const controller = new AbortController();
   const tid = setTimeout(() => controller.abort(), timeoutMs);
@@ -375,77 +297,57 @@ export const handler = async (event) => {
   let detailSlug = '';
 
   // ═══════════════════════════════════════════════════════════════
-  // STRATEGY 1: CuitOnline SEARCH page (direct)
+  // STRATEGY 1: CuitOnline SEARCH + DETAIL
   // ═══════════════════════════════════════════════════════════════
   try {
     const searchUrl = `https://www.cuitonline.com/search.php?q=${cleanCuit}`;
-    console.log('[cuitPadron] Strategy 1: CuitOnline search →', searchUrl);
-    
-    const response = await fetchWithTimeout(searchUrl, 6000);
+    const response = await fetchWithTimeout(searchUrl, 5000);
 
     if (response.ok) {
       const searchHtml = await response.text();
-      console.log('[cuitPadron] Search HTML length:', searchHtml.length);
       
-      // Only process if we got real HTML (not a Cloudflare challenge)
       if (searchHtml.length > 2000 && !searchHtml.includes('cf-browser-verification') && !searchHtml.includes('cf-challenge')) {
-        
-        // Extract the detail slug FIRST (for later use)
         detailSlug = extractDetailSlug(searchHtml, cleanCuit);
-        console.log('[cuitPadron] Detail slug found:', detailSlug || '(none)');
 
-        const parsed = parsePadronHtml(searchHtml, cleanCuit);
-        if (parsed && parsed.name) {
-          finalName = parsed.name;
-          finalLocation = parsed.location || finalLocation;
-          finalCondicionIva = parsed.condicionIva || finalCondicionIva;
-          console.log('[cuitPadron] Strategy 1 got name:', finalName);
+        if (detailSlug) {
+          try {
+            const detailUrl = `https://www.cuitonline.com/detalle/${cleanCuit}/${detailSlug}.html`;
+            const detailRes = await fetchWithTimeout(detailUrl, 5000);
+            if (detailRes.ok) {
+              const detailHtml = await detailRes.text();
+              const parsed = parsePadronHtml(detailHtml, cleanCuit);
+              if (parsed && parsed.name) {
+                finalName = parsed.name;
+                finalAddress = parsed.address || '';
+                finalLocation = parsed.location || '';
+                finalCondicionIva = parsed.condicionIva || finalCondicionIva;
+              }
+            }
+          } catch (e) {
+            console.warn('[cuitPadron] Detail page fetch failed:', e.message);
+          }
+        } else {
+          // If no detail slug, try parsing the search page directly
+          const parsed = parsePadronHtml(searchHtml, cleanCuit);
+          if (parsed && parsed.name) {
+            finalName = parsed.name;
+            finalLocation = parsed.location || '';
+            finalCondicionIva = parsed.condicionIva || finalCondicionIva;
+          }
         }
       }
     }
   } catch (err) {
-    console.warn('[cuitPadron] Strategy 1 (CuitOnline search) failed:', err.message);
+    console.warn('[cuitPadron] Strategy 1 (CuitOnline) failed:', err.message);
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // STRATEGY 2: CuitOnline DETAIL page (has address + full info)
-  // ═══════════════════════════════════════════════════════════════
-  if (detailSlug) {
-    try {
-      const detailUrl = `https://www.cuitonline.com/detalle/${cleanCuit}/${detailSlug}.html`;
-      console.log('[cuitPadron] Strategy 2: CuitOnline detail →', detailUrl);
-      
-      const detailRes = await fetchWithTimeout(detailUrl, 6000);
-      
-      if (detailRes.ok) {
-        const detailHtml = await detailRes.text();
-        console.log('[cuitPadron] Detail HTML length:', detailHtml.length);
-        
-        if (detailHtml.length > 2000 && !detailHtml.includes('cf-browser-verification')) {
-          const dp = parsePadronHtml(detailHtml, cleanCuit);
-          if (dp) {
-            finalName = dp.name || finalName;
-            finalAddress = dp.address || finalAddress;
-            finalLocation = dp.location || finalLocation;
-            finalCondicionIva = dp.condicionIva || finalCondicionIva;
-            console.log('[cuitPadron] Strategy 2 got:', { name: dp.name, address: dp.address, location: dp.location });
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('[cuitPadron] Strategy 2 (CuitOnline detail) failed:', e.message);
-    }
-  }
-
-  // ═══════════════════════════════════════════════════════════════
-  // STRATEGY 3: DuckDuckGo HTML search (works from datacenter IPs)
+  // STRATEGY 2: DuckDuckGo HTML Search (Universal Fallback)
   // ═══════════════════════════════════════════════════════════════
   if (!finalName) {
     try {
-      const ddgUrl = `https://html.duckduckgo.com/html/?q=cuit+${cleanCuit}+cuitonline`;
-      console.log('[cuitPadron] Strategy 3: DuckDuckGo →', ddgUrl);
-      
-      const ddgRes = await fetchWithTimeout(ddgUrl, 6000, {
+      const ddgUrl = `https://html.duckduckgo.com/html/?q=cuit+${cleanCuit}`;
+      const ddgRes = await fetchWithTimeout(ddgUrl, 5000, {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0.0.0'
       });
 
@@ -456,100 +358,50 @@ export const handler = async (event) => {
           finalName = ddgParsed.name;
           finalAddress = ddgParsed.address || finalAddress;
           finalLocation = ddgParsed.location || finalLocation;
-          if (ddgParsed.condicionIva) finalCondicionIva = ddgParsed.condicionIva;
-          detailSlug = ddgParsed.detailSlug || detailSlug;
-          console.log('[cuitPadron] Strategy 3 got name:', finalName);
+          finalCondicionIva = ddgParsed.condicionIva || finalCondicionIva;
         }
       }
     } catch (err) {
-      console.warn('[cuitPadron] Strategy 3 (DuckDuckGo) failed:', err.message);
-    }
-
-    // If DDG gave us a slug but no detail was fetched yet, try it
-    if (detailSlug && !finalAddress) {
-      try {
-        const detailUrl = `https://www.cuitonline.com/detalle/${cleanCuit}/${detailSlug}.html`;
-        console.log('[cuitPadron] Strategy 3b: CuitOnline detail from DDG slug →', detailUrl);
-        
-        const detailRes = await fetchWithTimeout(detailUrl, 5000);
-        if (detailRes.ok) {
-          const detailHtml = await detailRes.text();
-          if (detailHtml.length > 2000 && !detailHtml.includes('cf-browser-verification')) {
-            const dp = parsePadronHtml(detailHtml, cleanCuit);
-            if (dp) {
-              finalName = dp.name || finalName;
-              finalAddress = dp.address || finalAddress;
-              finalLocation = dp.location || finalLocation;
-              finalCondicionIva = dp.condicionIva || finalCondicionIva;
-            }
-          }
-        }
-      } catch (e) {
-        console.warn('[cuitPadron] Strategy 3b (CuitOnline detail from DDG) failed:', e.message);
-      }
+      console.warn('[cuitPadron] Strategy 2 (DuckDuckGo) failed:', err.message);
     }
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // STRATEGY 4: DDG search for domicilio specifically
-  // ═══════════════════════════════════════════════════════════════
-  if (!finalAddress && finalName) {
-    try {
-      const ddgDomUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(finalName)}+${cleanCuit}+domicilio`;
-      console.log('[cuitPadron] Strategy 4: DDG domicilio →', ddgDomUrl);
-      
-      const ddgDomRes = await fetchWithTimeout(ddgDomUrl, 5000, {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0.0.0'
-      });
-      
-      if (ddgDomRes.ok) {
-        const ddgDomHtml = await ddgDomRes.text();
-        const domSnippet = ddgDomHtml.match(
-          /(?:domicilio|direcci[oó]n|dom\.?)\s*(?:fiscal)?[:\s]+([A-ZÁÉÍÓÚÑ0-9][A-ZÁÉÍÓÚÑ0-9a-záéíóúñ .,\-\d]{5,80})/i
-        );
-        if (domSnippet && domSnippet[1]) {
-          finalAddress = domSnippet[1].trim().toUpperCase();
-          console.log('[cuitPadron] Strategy 4 got address:', finalAddress);
-        }
-      }
-    } catch (e) {
-      console.warn('[cuitPadron] Strategy 4 (DDG domicilio) failed:', e.message);
-    }
-  }
-
-  // ═══════════════════════════════════════════════════════════════
-  // STRATEGY 5: Bing search (additional fallback for name)
+  // STRATEGY 3: Bing Search (Third Fallback)
   // ═══════════════════════════════════════════════════════════════
   if (!finalName) {
     try {
-      const bingUrl = `https://www.bing.com/search?q=cuit+${cleanCuit}+cuitonline`;
-      console.log('[cuitPadron] Strategy 5: Bing →', bingUrl);
-      
-      const bingRes = await fetchWithTimeout(bingUrl, 5000, {
+      const bingUrl = `https://www.bing.com/search?q=cuit+${cleanCuit}`;
+      const bingRes = await fetchWithTimeout(bingUrl, 4000, {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0.0.0'
       });
 
       if (bingRes.ok) {
         const bingHtml = await bingRes.text();
-        const bingMatch = bingHtml.match(
+        const cleanBing = stripStylesAndScripts(bingHtml);
+        const bingMatch = cleanBing.match(
           new RegExp(`([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ .'-]{2,60})\\s*\\(\\s*\\d{2}-\\d{8}-\\d\\s*\\)`, 'i')
-        ) || bingHtml.match(
+        ) || cleanBing.match(
           new RegExp(`([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ .'-]{2,60})\\s*(?:CUIT|cuit)\\s*:?\\s*${cleanCuit}`, 'i')
         );
-        if (bingMatch && bingMatch[1]) {
+        if (bingMatch && bingMatch[1] && !isGarbageName(bingMatch[1])) {
           finalName = bingMatch[1].trim().toUpperCase();
-          console.log('[cuitPadron] Strategy 5 got name:', finalName);
         }
       }
     } catch (err) {
-      console.warn('[cuitPadron] Strategy 5 (Bing) failed:', err.message);
+      console.warn('[cuitPadron] Strategy 3 (Bing) failed:', err.message);
     }
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // BUILD RESPONSE
+  // FINAL SANITIZATION
   // ═══════════════════════════════════════════════════════════════
-  console.log('[cuitPadron] Final result:', { name: finalName, address: finalAddress, location: finalLocation, condicionIva: finalCondicionIva });
+  if (isGarbageName(finalName)) {
+    finalName = '';
+  }
+  if (isGarbageAddress(finalAddress)) {
+    finalAddress = '';
+  }
 
   return {
     statusCode: 200,
@@ -569,7 +421,7 @@ export const handler = async (event) => {
         ? `Contribuyente hallado en Padrón ARCA: ${finalName}`
         : esPersonaFisica
           ? `CUIT de Persona Física verificado (DNI ${dniExtraido} detectado). Completá la Razón Social manualmente.`
-          : `CUIT de Persona Jurídica verificado en ARCA.`
+          : `CUIT de Persona Jurídica verificado en ARCA. Completá la Razón Social manualmente.`
     })
   };
 };
