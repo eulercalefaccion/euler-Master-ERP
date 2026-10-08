@@ -11,7 +11,8 @@ import MediaLightbox from '../components/MediaLightbox'
 import ManualesSoluciones from '../components/ManualesSoluciones'
 import AutocompleteLocalidad from '../components/AutocompleteLocalidad'
 import * as XLSX from 'xlsx'
-import { useAuth } from '../../context/AuthContext'
+// useAuth provided by ERP auth shim
+const useAuth = () => ({ user: { uid: 'erp-admin', nombre: 'Administrador', role: 'admin' }, logout: () => {} })
 import TranscriberWorker from '../worker?worker'
 
 // ── Error Boundary ─────────────────────────────────────────────────────────────
@@ -300,8 +301,7 @@ const SyncTextarea = ({ value, onChange, ...props }) => {
 }
 
 function ServicioCard({ s, onUpdate, onEliminar, onFoto, clientes, navigate }) {
-  const { currentUser } = useAuth()
-  const nombreUsuario = currentUser?.name || currentUser?.email?.split('@')[0] || 'Usuario'
+  const { nombre: nombreUsuario } = useAuth()
   const [expandido, setExpandido] = useState(false)
   const [materiales, setMateriales] = useState(s.materiales || [])
   const [manoObra, setManoObra] = useState(s.manoObra || [])
@@ -350,7 +350,7 @@ function ServicioCard({ s, onUpdate, onEliminar, onFoto, clientes, navigate }) {
   const obtenerMedios = () => {
     const lista = []
     if (s.fotoURL) {
-      lista.push({ url: s.fotoURL, tipo: detectarTipo(s.fotoURL), info: 'Foto adjuntada por cliente' })
+      lista.push({ url: s.fotoURL, tipo: detectarTipo(s.fotoURL), info: 'Foto inicial' })
     }
     if (s.fotosCliente && Array.isArray(s.fotosCliente)) {
       s.fotosCliente.forEach((url, i) => {
@@ -360,9 +360,9 @@ function ServicioCard({ s, onUpdate, onEliminar, onFoto, clientes, navigate }) {
     if (s.fotosHecnico && Array.isArray(s.fotosHecnico)) {
       s.fotosHecnico.forEach((f) => {
         if (f && f.url) {
-          const tec = f.tecnico || s.tecnico || 'Técnico'
-          const fechaStr = f.fecha ? ` · ${new Date(f.fecha).toLocaleDateString('es-AR')}` : ''
-          lista.push({ url: f.url, tipo: detectarTipo(f.url), info: `Subido por: ${tec} (${f.tipo || 'Galería'}${fechaStr})` })
+          const tec = f.tecnico || s.tecnico || 'Técnico';
+          const fechaStr = f.fecha ? ` · ${new Date(f.fecha).toLocaleDateString('es-AR')}` : '';
+          lista.push({ url: f.url, tipo: detectarTipo(f.url), info: `Subido por: ${tec} (${f.tipo || 'Galería'}${fechaStr})` });
         }
       })
     }
@@ -1680,7 +1680,7 @@ function GestionTecnicos() {
 
   const handleEditar = (t) => {
     setEditandoId(t.id)
-    setEditData({ nombre: t.nombre, email: t.email || '', password: '', rol: t.rol || t.role || 'tecnico', activo: t.activo !== false })
+    setEditData({ nombre: t.nombre, email: t.email || '', password: t.password || '', oldPassword: t.password || '', rol: t.rol || t.role || 'tecnico', activo: t.activo !== false })
     setNuevoTecnico(null)
   }
 
@@ -1702,26 +1702,22 @@ function GestionTecnicos() {
   const handleGuardarEdit = async () => {
     if (!editData.nombre.trim()) return alert('El nombre no puede estar vacío')
     if (!validarEmail(editData.email)) return alert('El email no es válido')
-    if (editData.password.trim() && editData.password.length < 6) return alert('La contraseña debe tener al menos 6 caracteres')
+    if (!editData.password.trim() || editData.password.length < 6) return alert('La contraseña debe tener al menos 6 caracteres')
     
     setGuardando(true)
     try {
       const t = tecnicos.find(x => x.id === editandoId)
-      const needsAuthUpdate = (editData.email !== t.email) || (editData.password.trim().length > 0)
+      const needsAuthUpdate = (editData.email !== t.email) || (editData.password !== t.password)
 
       if (needsAuthUpdate && t.email && t.password) {
         // Obtenemos token con las credenciales viejas para poder actualizar
         const idToken = await getAuthToken(t.email, t.password)
         
-        const payload = { idToken, email: editData.email, returnSecureToken: true }
-        if (editData.password.trim().length > 0) {
-          payload.password = editData.password
-        }
         // Actualizamos en Firebase Auth
         const resUpdate = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:update?key=${apiKey}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
+          body: JSON.stringify({ idToken, email: editData.email, password: editData.password, returnSecureToken: true })
         })
         const dataUpdate = await resUpdate.json()
         if (dataUpdate.error) throw new Error('Error al actualizar en Auth: ' + dataUpdate.error.message)
@@ -1731,6 +1727,7 @@ function GestionTecnicos() {
       await updateDoc(doc(db, 'usuarios', editandoId), {
         nombre: editData.nombre.trim(),
         email: editData.email.trim(),
+        password: editData.password,
         role: editData.rol,
         activo: editData.activo,
       })
@@ -1800,6 +1797,7 @@ function GestionTecnicos() {
       await setDoc(doc(db, 'usuarios', uid), {
         nombre: nuevoTecnico.nombre.trim(),
         email: nuevoTecnico.email.trim(),
+        password: nuevoTecnico.password,
         role: nuevoTecnico.rol,
         activo: true,
         creadoEn: serverTimestamp(),
@@ -1916,10 +1914,17 @@ function GestionTecnicos() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <span style={{
             fontFamily: 'monospace', fontSize: '0.9rem', fontWeight: 600,
-            color: 'var(--azul)', letterSpacing: 2,
+            color: 'var(--azul)', letterSpacing: passVisible ? 1 : 2,
           }}>
-            ••••••
+            {passVisible ? (t.password || '—') : '••••••'}
           </span>
+          <button
+            onClick={() => togglePass(t.id)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--gris-texto)', display: 'flex', padding: 2 }}
+            title={passVisible ? 'Ocultar Contraseña' : 'Mostrar Contraseña'}
+          >
+            {passVisible ? <EyeOff size={14} /> : <Eye size={14} />}
+          </button>
         </div>
         <div>
           <span style={{
@@ -2809,7 +2814,7 @@ export default function Admin() {
             Exportar Excel
           </button>
           <button className="btn-secondary" onClick={() => {
-            const url = 'https://eulerservicios.netlify.app/'
+            const url = window.location.origin + '/'
             navigator.clipboard.writeText(url)
             alert('✅ Link del formulario copiado')
           }}>

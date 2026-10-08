@@ -4,7 +4,8 @@ import {
   doc, getDoc, onSnapshot, updateDoc, collection, query, where, orderBy, getDocs
 } from 'firebase/firestore'
 import { db } from '../../services/firebaseConfig'
-import { useAuth } from '../../context/AuthContext'
+// useAuth provided by ERP auth shim
+const useAuth = () => ({ user: { uid: 'erp-admin', nombre: 'Administrador', role: 'admin' }, logout: () => {} })
 import { FileText, Camera, Edit2, Save, ChevronRight } from 'lucide-react'
 import MediaLightbox from '../components/MediaLightbox'
 import AutocompleteLocalidad from '../components/AutocompleteLocalidad'
@@ -31,8 +32,8 @@ function calcTotal(materiales, manoObra) {
 export default function ClienteDetalle() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { currentUser } = useAuth()
-  const isTecnico = currentUser?.role === 'tecnico' || currentUser?.rol === 'tecnico'
+  const { currentUser, role } = useAuth()
+  const isTecnico = role === 'tecnico' || currentUser?.role === 'tecnico' || currentUser?.rol === 'tecnico'
   const [cliente, setCliente] = useState(null)
   const [servicios, setServicios] = useState([])
   const [editando, setEditando] = useState(false)

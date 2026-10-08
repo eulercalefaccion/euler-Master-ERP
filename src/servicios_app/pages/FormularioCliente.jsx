@@ -429,13 +429,8 @@ export default function FormularioCliente() {
 
       setEnviado(true)
     } catch (err) {
-      console.error('Error al enviar formulario:', err)
-      const msg = err?.message || ''
-      if (msg.includes('10 MB') || msg.includes('demasiado grande') || msg.includes('subir')) {
-        setError(msg)
-      } else {
-        setError('Hubo un error al procesar el envío (' + (msg || 'Error de conexión') + '). Por favor intentá nuevamente o contactanos por WhatsApp.')
-      }
+      console.error(err)
+      setError(err?.message || 'Hubo un error al enviar. Intentá nuevamente.')
     } finally {
       setEnviando(false)
     }

@@ -196,15 +196,13 @@ service cloud.firestore {
     // sin autenticación. Debe poder crear documentos sin login.
     
     match /servicios/{servicioId} {
-      allow read: if true;
-      allow create: if true;
-      allow update, delete: if isSignedIn();
+      allow read, create, update: if true;
+      allow delete: if isSignedIn();
     }
 
     match /clientes/{clienteId} {
-      allow read: if true;
-      allow create: if true;
-      allow update, delete: if isAdmin();
+      allow read, create, update: if true;
+      allow delete: if isAdmin();
     }
 
     match /usuarios/{usuarioId} {

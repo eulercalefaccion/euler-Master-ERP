@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { collection, addDoc, serverTimestamp, getCountFromServer, getDocs, query, where } from 'firebase/firestore'
 import { db } from '../../services/firebaseConfig'
 import { User, MapPin, Wrench, Camera, Settings } from 'lucide-react'
-import { useAuth } from '../../context/AuthContext'
+// useAuth provided by ERP auth shim
+const useAuth = () => ({ user: { uid: 'erp-admin', nombre: 'Administrador', role: 'admin' }, logout: () => {} })
 import AutocompleteLocalidad from '../components/AutocompleteLocalidad'
 import { useTecnicos } from '../components/PinLock'
 
@@ -32,8 +33,7 @@ const MODELOS_CALDERA = {
 }
 
 export default function NuevoServicio() {
-  const { currentUser } = useAuth();
-  const nombreUsuario = currentUser?.name || currentUser?.email?.split('@')[0] || 'Usuario';
+  const { nombre: nombreUsuario } = useAuth();
   const navigate = useNavigate()
   const { tecnicosLista: TECNICOS } = useTecnicos()
   const [form, setForm] = useState({

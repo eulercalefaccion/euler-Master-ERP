@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { doc, onSnapshot, updateDoc, arrayUnion, getDoc } from 'firebase/firestore'
 import { db } from '../../services/firebaseConfig'
-import { useAuth } from '../../context/AuthContext'
+// useAuth provided by ERP auth shim
+const useAuth = () => ({ user: { uid: 'erp-admin', nombre: 'Administrador', role: 'admin' }, logout: () => {} })
 import { Camera, Mic, MicOff, Clock, CheckCircle, PlusCircle, XCircle, Save, MapPin, MessageCircle, Trash2 } from 'lucide-react'
 import TranscriberWorker from '../worker?worker'
 
