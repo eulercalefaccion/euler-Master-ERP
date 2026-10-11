@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, Calculator, Package, MapPin, Receipt, HardHat, Wallet, DollarSign, Trash2, Zap, BarChart2, X, LogOut, Settings, Wrench, ShoppingBag, Tag, Landmark, BookOpen, Database, TrendingUp } from 'lucide-react';
+import { LayoutDashboard, Users, Calculator, Package, MapPin, Receipt, HardHat, Wallet, DollarSign, Trash2, Zap, BarChart2, X, LogOut, Settings, Wrench, ShoppingBag, Tag, Landmark, BookOpen, Database, TrendingUp, FileText, ListChecks } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const Sidebar = ({ className = '', isMobile, onClose }) => {
@@ -16,8 +16,10 @@ const Sidebar = ({ className = '', isMobile, onClose }) => {
       label: 'VENTAS & CRM',
       items: [
         { name: 'Contactos (Clientes & Proveedores)', icon: <Users size={20} />, path: '/clientes' },
+        { name: 'Presupuestos (CRM)', icon: <Calculator size={20} />, path: '/presupuestos' },
+        { name: 'Listado de Presupuestos', icon: <ListChecks size={20} />, path: '/listado-presupuestos' },
+        { name: 'Facturas', icon: <FileText size={20} />, path: '/facturas' },
         { name: 'Ventas (AR)', icon: <Tag size={20} />, path: '/ventas' },
-        { name: 'Presupuestos', icon: <Calculator size={20} />, path: '/presupuestos' },
         { name: 'Balance Térmico IA', icon: <Zap size={20} />, path: '/balance-termico' },
         { name: 'Estándares', icon: <Zap size={20} />, path: '/estandares' },
         { name: 'Lista de Precios', icon: <DollarSign size={20} />, path: '/lista-precios' },

@@ -31,6 +31,8 @@ import CompartirServicio from './servicios_app/pages/CompartirServicio';
 
 import Compras from './pages/Compras/Compras';
 import Ventas from './pages/Ventas/Ventas';
+import ListadoFacturas from './pages/Listados/ListadoFacturas';
+import ListadoPresupuestos from './pages/Listados/ListadoPresupuestos';
 import Tesoreria from './pages/Tesoreria/Tesoreria';
 import Contabilidad from './pages/Contabilidad/Contabilidad';
 import FlujoFondos from './pages/FlujoFondos/FlujoFondos';
@@ -87,6 +89,8 @@ function App() {
         <Route path="/clientes/:id" element={<PrivateRoute><ClienteDetalleERP /></PrivateRoute>} />
         <Route path="/compras" element={<PrivateRoute><Compras /></PrivateRoute>} />
         <Route path="/ventas" element={<PrivateRoute><Ventas /></PrivateRoute>} />
+        <Route path="/facturas" element={<PrivateRoute><ListadoFacturas /></PrivateRoute>} />
+        <Route path="/listado-presupuestos" element={<PrivateRoute><ListadoPresupuestos /></PrivateRoute>} />
         <Route path="/tesoreria" element={<PrivateRoute><Tesoreria /></PrivateRoute>} />
         <Route path="/flujo-fondos" element={<PrivateRoute><FlujoFondos /></PrivateRoute>} />
         <Route path="/contabilidad" element={<PrivateRoute><Contabilidad /></PrivateRoute>} />

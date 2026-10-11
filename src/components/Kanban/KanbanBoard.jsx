@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { DragDropContext } from '@hello-pangea/dnd';
+import { useSearchParams } from 'react-router-dom';
 import {
   Plus, X, Save, MessageSquare, DollarSign, MapPin, Calendar, Tag,
   Trash2, ListPlus, Target, History, FileText, RefreshCw, Receipt, Download, Upload, Loader, Search, Settings, AlertCircle, LayoutGrid, List, Map as MapIcon, CheckCircle, Shield, AlertTriangle,
@@ -641,6 +642,17 @@ const KanbanBoard = () => {
       notaSeguimiento: item.notaSeguimiento || '',
     });
   };
+
+  // ─── Deep link: /presupuestos?abrir=<id> (desde el Listado de Presupuestos) ──
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const id = searchParams.get('abrir');
+    if (!id) return;
+    const item = data.items?.[id];
+    if (!item) return; // espera a que lleguen los datos
+    openDetail(item);
+    setSearchParams({}, { replace: true });
+  }, [searchParams, data.items]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Descuento Comercial toggle ─────────────────────────────────────────────
   const handleToggleCanal = () => {

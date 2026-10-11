@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   HardHat, Search, Plus, MapPin, User, Thermometer, X, Save, Edit2,
   ChevronRight, PlayCircle, Package, Upload, FileText, Users, Calendar,
@@ -306,6 +307,22 @@ const Obras = () => {
     setUploadProgress(null);
     setShowSurveyModal(false);
   };
+
+  /* ── Deep link: /obras?obra=<id>&tab=<tab> (desde Facturas / Presupuestos) ── */
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const id = searchParams.get('obra');
+    if (!id || !obras.length) return;
+    const obra = obras.find(o => o.id === id);
+    if (obra) {
+      // Sincroniza con un estado externo (la URL) una sola vez; luego se limpia el parámetro.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      openDetail(obra);
+      const tab = searchParams.get('tab');
+      if (tab) setActiveTab(tab);
+    }
+    setSearchParams({}, { replace: true });
+  }, [obras, searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ── Save general fields ── */
   const handleSaveEdit = async () => {
