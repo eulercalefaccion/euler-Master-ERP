@@ -49,6 +49,87 @@ const getPresupuestoFecha = (presupuesto) => {
   return new Date().toLocaleDateString('es-AR');
 };
 
+// ─── Encabezado / pie comunes (mismo lenguaje visual que la factura ARCA) ────
+const GRAY_SOFT = [100, 116, 139];
+const LINE_SOFT = [203, 213, 225];
+const DOMICILIO_COMERCIAL = 'Perez Bulnes 6044 - Rosario - Santa Fe';
+const CONTACTO = `www.euler.com.ar  ·  info@euler.com.ar  ·  Cel. 341 569-5849  ·  ${DOMICILIO_COMERCIAL}`;
+/** Primera línea útil debajo del encabezado (con y sin título de sección). */
+const CONTENT_TOP = 49;
+const CONTENT_TOP_CONT = 43;
+const PAGE_BOTTOM = 18;
+
+const numeroPresupuesto = (p) => {
+  const num = p.presupuestoNumber || 'S/N';
+  return String(num).includes('_Rev')
+    ? `N° ${num}`
+    : `N° ${num}  ·  Rev${p.revision !== undefined ? p.revision : 0}`;
+};
+
+/** Encabezado de las páginas interiores: logo, recuadro X y título PRESUPUESTO. */
+const drawHeader = (doc, p, logoHeader, seccion = '') => {
+  const W = doc.internal.pageSize.getWidth();
+  doc.setFillColor(...EULER_DARK); doc.rect(0, 0, W, 3, 'F');
+  doc.setFillColor(...EULER_GOLD); doc.rect(0, 3, W, 0.8, 'F');
+
+  if (logoHeader) {
+    doc.addImage(logoHeader, 'PNG', 14, 9, 50, 14.2);
+  } else {
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(20); doc.setTextColor(...EULER_DARK);
+    doc.text('EULER', 14, 18);
+    doc.setFont('helvetica', 'italic'); doc.setFontSize(8); doc.setTextColor(...EULER_MID);
+    doc.text('calefacción por agua', 14, 23);
+  }
+
+  // Recuadro "X": documento no válido como factura
+  const by = 8;
+  doc.setDrawColor(...EULER_DARK); doc.setLineWidth(0.6); doc.setFillColor(...WHITE);
+  doc.roundedRect(W / 2 - 9, by, 18, 18, 1.5, 1.5, 'FD');
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(24); doc.setTextColor(...EULER_DARK);
+  doc.text('X', W / 2, by + 12.4, { align: 'center' });
+  doc.setFontSize(5.6); doc.setTextColor(...GRAY_SOFT);
+  doc.text('DOCUMENTO NO VÁLIDO', W / 2, by + 21.6, { align: 'center' });
+  doc.text('COMO FACTURA', W / 2, by + 24.1, { align: 'center' });
+
+  // Título
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(22); doc.setTextColor(...EULER_DARK);
+  doc.text('PRESUPUESTO', W - 14, 16.5, { align: 'right' });
+  doc.setFontSize(10.5); doc.setTextColor(...EULER_MID);
+  doc.text(numeroPresupuesto(p), W - 14, 23, { align: 'right' });
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...GRAY_SOFT);
+  doc.text(`Fecha: ${getPresupuestoFecha(p)}`, W - 14, 28, { align: 'right' });
+
+  // Separador con acento dorado
+  doc.setDrawColor(...LINE_SOFT); doc.setLineWidth(0.3); doc.line(14, 35, W - 14, 35);
+  doc.setFillColor(...EULER_GOLD); doc.rect(14, 34.6, 28, 0.9, 'F');
+
+  if (seccion) {
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(...EULER_MID);
+    doc.text(seccion, 14, 43);
+  }
+};
+
+/** Si no entra `alto` desde `y`, agrega página con encabezado y devuelve la nueva y. */
+const asegurarEspacio = (doc, p, logoHeader, y, alto) => {
+  const H = doc.internal.pageSize.getHeight();
+  if (y + alto <= H - PAGE_BOTTOM) return y;
+  doc.addPage();
+  drawHeader(doc, p, logoHeader);
+  return CONTENT_TOP_CONT;
+};
+
+/** Pie con datos de contacto en todas las páginas interiores. */
+const drawFooters = (doc, desde = 2) => {
+  const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
+  for (let i = desde; i <= doc.getNumberOfPages(); i++) {
+    doc.setPage(i);
+    doc.setFillColor(...EULER_GOLD); doc.rect(14, H - 12, W - 28, 0.5, 'F');
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...GRAY_SOFT);
+    doc.text(CONTACTO, W / 2, H - 7.5, { align: 'center' });
+  }
+};
+
 // ─── LOGO Euler (texto estilizado, se reemplaza con imagen si está disponible)
 const drawLogo = (doc, x, y, logoBase64) => {
   if (logoBase64) {
@@ -85,26 +166,42 @@ const buildPortada = (doc, presupuesto, logoBase64) => {
   doc.rect(0, H - 24, W, 2, 'F');
 
   // Logo
-  drawLogo(doc, W / 2, 75, logoBase64);
+  drawLogo(doc, W / 2, 70, logoBase64);
 
-  // Título
-  doc.setFontSize(13);
+  // Título bien visible (centrado manual: jsPDF no compensa charSpace al centrar)
+  const centrado = (txt, y, cs) => {
+    const w = doc.getTextWidth(txt) + cs * (txt.length - 1);
+    doc.text(txt, W / 2 - w / 2, y, { charSpace: cs });
+  };
   doc.setFont('helvetica', 'bold');
+  doc.setFontSize(40);
   doc.setTextColor(...WHITE);
-  doc.text('PRESUPUESTO DE CALEFACCIÓN POR AGUA', W / 2, 110, { align: 'center' });
+  centrado('PRESUPUESTO', 121, 1.5);
+  doc.setFillColor(...EULER_GOLD);
+  doc.rect(W / 2 - 25, 126, 50, 1.2, 'F');
+  doc.setFontSize(10.5);
+  doc.setTextColor(...EULER_GOLD);
+  centrado('CALEFACCIÓN POR AGUA', 133.5, 1);
+
+  // Número + revisión en píldora dorada
+  const pillTxt = numeroPresupuesto(presupuesto);
+  doc.setFontSize(11);
+  const pillW = doc.getTextWidth(pillTxt) + 12;
+  doc.setFillColor(...EULER_GOLD);
+  doc.roundedRect(W / 2 - pillW / 2, 138.5, pillW, 8.5, 4.25, 4.25, 'F');
+  doc.setTextColor(...EULER_DARK);
+  doc.text(pillTxt, W / 2, 144.3, { align: 'center' });
 
   // Datos del presupuesto (metadatos)
   const campos = [
     ['Cliente:',           presupuesto.clientName || presupuesto.name || '—'],
-    ['N° Presupuesto:',    `${presupuesto.presupuestoNumber || '—'}`],
-    ['Revisión:',          presupuesto.revision !== undefined ? `Rev${presupuesto.revision}` : 'Rev0'],
     ['Dirección de obra:', presupuesto.location || '—'],
     ['Fecha:',             getPresupuestoFecha(presupuesto)],
     ['Modo de precios:',   (presupuesto.canal === 'canal2' || presupuesto.canal === 'descuento') ? 'Con Descuento Comercial' : 'Con IVA 21% discriminado'],
   ];
 
   const labelColor = [106, 159, 192];
-  let yPos = 124;
+  let yPos = 159;
 
   campos.forEach(([label, valor]) => {
     if (!valor || valor === '—' || valor === '') return;
@@ -269,52 +366,45 @@ const buildPortada = (doc, presupuesto, logoBase64) => {
   }
 
   // Footer
-  doc.setFontSize(9);
+  doc.setFontSize(8.5);
+  doc.setFont('helvetica', 'normal');
   doc.setTextColor(...labelColor);
-  doc.text('www.euler.com.ar  |  info@euler.com.ar  |  CEL 341 5695849', W / 2, H - 10, { align: 'center' });
+  doc.text(CONTACTO, W / 2, H - 10, { align: 'center' });
 };
 
 // ─── PÁGINA 2: Tabla de ítems ────────────────────────────────────────────────
-const buildTablaItems = (doc, presupuesto) => {
+const buildTablaItems = (doc, presupuesto, logoHeader) => {
   doc.addPage();
   const W = doc.internal.pageSize.getWidth();
+  drawHeader(doc, presupuesto, logoHeader, 'DETALLE DEL PRESUPUESTO');
 
-  // Mini header
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'italic');
-  doc.setTextColor(...EULER_MID);
-  const revHeader = (presupuesto.presupuestoNumber || '').includes('_Rev')
-    ? (presupuesto.presupuestoNumber || '')
-    : `${presupuesto.presupuestoNumber || ''}  Rev${presupuesto.revision !== undefined ? presupuesto.revision : 0}`;
-  doc.text(`EULER Calefacción por Agua  |  ${revHeader}`, W - 14, 14, { align: 'right' });
-
-  // Título de sección
-  doc.setFontSize(16);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...EULER_DARK);
-  doc.text('EULER — Calefacción por Agua', 14, 25);
-
-  // Línea dorada
+  // Tarjeta del cliente
+  const nombreCli = presupuesto.clientName || presupuesto.name || '';
+  doc.setFillColor(...EULER_LIGHT);
+  doc.roundedRect(14, CONTENT_TOP, W - 28, 15, 1.5, 1.5, 'F');
   doc.setFillColor(...EULER_GOLD);
-  doc.rect(14, 28, W - 28, 1.5, 'F');
-
-  // Info cliente
-  doc.setFontSize(11);
+  doc.rect(14, CONTENT_TOP + 1.5, 1.3, 12, 'F');
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...GRAY_TEXT);
-  doc.text(presupuesto.clientName || presupuesto.name || '', 14, 38);
+  doc.setFontSize(6.8);
+  doc.setTextColor(...EULER_MID);
+  doc.text('CLIENTE', 19, CONTENT_TOP + 4.6);
+  doc.setFontSize(10.5);
+  doc.setTextColor(...EULER_DARK);
+  doc.text(doc.splitTextToSize(nombreCli, W - 40)[0] || '', 19, CONTENT_TOP + 9.4);
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  doc.text(presupuesto.location || '', 14, 44);
+  doc.setFontSize(8.5);
+  doc.setTextColor(...GRAY_TEXT);
+  doc.text(doc.splitTextToSize(presupuesto.location || '', W - 40)[0] || '', 19, CONTENT_TOP + 13.2);
 
   const quoteItems = presupuesto.quoteItems || [];
   const materiales = quoteItems.filter(i => i.tipo !== 'mano_de_obra' && i.tipo !== 'servicio');
   const manoDeObra = quoteItems.filter(i => i.tipo === 'mano_de_obra' || i.tipo === 'servicio');
 
-  let startY = 52;
+  let startY = CONTENT_TOP + 23;
 
   const buildSection = (items, titulo, startY) => {
     if (items.length === 0) return startY;
+    startY = asegurarEspacio(doc, presupuesto, logoHeader, startY, 25);
 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
@@ -333,23 +423,28 @@ const buildTablaItems = (doc, presupuesto) => {
       startY: startY + 3,
       head: [['#', 'Descripción', 'Cantidad', 'Precio Unit.', 'Subtotal']],
       body: tableData,
-      theme: 'grid',
+      theme: 'striped',
+      styles: { font: 'helvetica', cellPadding: { top: 2.1, bottom: 2.1, left: 2, right: 2 }, valign: 'middle' },
       headStyles: {
         fillColor: EULER_DARK,
         textColor: WHITE,
         fontStyle: 'bold',
-        fontSize: 9,
+        fontSize: 8.5,
       },
-      bodyStyles: { fontSize: 9, textColor: GRAY_TEXT },
-      alternateRowStyles: { fillColor: GRAY_LIGHT },
+      bodyStyles: { fontSize: 8.8, textColor: GRAY_TEXT },
+      alternateRowStyles: { fillColor: [246, 248, 251] },
       columnStyles: {
-        0: { cellWidth: 8, halign: 'center' },
+        0: { cellWidth: 8, halign: 'center', textColor: GRAY_SOFT },
         1: { cellWidth: 'auto' },
-        2: { cellWidth: 28, halign: 'center' },
+        2: { cellWidth: 26, halign: 'center' },
         3: { cellWidth: 32, halign: 'right' },
-        4: { cellWidth: 32, halign: 'right', fontStyle: 'bold' },
+        4: { cellWidth: 34, halign: 'right', fontStyle: 'bold' },
       },
-      margin: { left: 14, right: 14 },
+      didParseCell: (d) => {
+        if (d.section === 'head' && d.column.index >= 2) d.cell.styles.halign = d.column.index === 2 ? 'center' : 'right';
+      },
+      margin: { left: 14, right: 14, top: CONTENT_TOP_CONT, bottom: PAGE_BOTTOM },
+      didDrawPage: (d) => { if (d.pageNumber > 1) drawHeader(doc, presupuesto, logoHeader); },
     });
 
     return doc.lastAutoTable.finalY + 8;
@@ -361,16 +456,18 @@ const buildTablaItems = (doc, presupuesto) => {
   // Total
   const isDescuentoComercial = presupuesto.canal === 'canal2' || presupuesto.canal === 'descuento';
   const calcRes = calcularDescuentosPresupuesto(quoteItems, isDescuentoComercial);
+  startY = asegurarEspacio(doc, presupuesto, logoHeader, startY, isDescuentoComercial ? 16 : 30);
+  const xVal = W - 20;
 
   if (isDescuentoComercial) {
-    doc.setFillColor(...EULER_LIGHT);
+    doc.setFillColor(...EULER_DARK);
     doc.roundedRect(14, startY, W - 28, 14, 2, 2, 'F');
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...EULER_DARK);
-    doc.text('TOTAL — Precios con Descuento Comercial', 20, startY + 9.5);
-    doc.setTextColor(...EULER_MID);
-    doc.text(formatARS(calcRes.montoFinalPresupuesto), W - 14, startY + 9.5, { align: 'right' });
+    doc.setTextColor(...WHITE);
+    doc.text('TOTAL — Precios con Descuento Comercial', 20, startY + 9.2);
+    doc.setFontSize(13);
+    doc.text(formatARS(calcRes.montoFinalPresupuesto), xVal, startY + 9.4, { align: 'right' });
     startY += 20;
   } else {
     const subtotalSinIva = calcRes.subtotalNeto;
@@ -383,75 +480,68 @@ const buildTablaItems = (doc, presupuesto) => {
     doc.setFontSize(9.5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...GRAY_TEXT);
-    doc.text('Precio sin IVA:', 20, startY + 8);
-    doc.text(formatARS(subtotalSinIva), W - 14, startY + 8, { align: 'right' });
+    doc.text('Precio sin IVA:', 20, startY + 7);
+    doc.text(formatARS(subtotalSinIva), xVal, startY + 7, { align: 'right' });
 
-    doc.text('IVA (21%):', 20, startY + 14);
-    doc.text(formatARS(iva), W - 14, startY + 14, { align: 'right' });
+    doc.text('IVA (21%):', 20, startY + 12.5);
+    doc.text(formatARS(iva), xVal, startY + 12.5, { align: 'right' });
 
+    // Banda oscura del total
+    doc.setFillColor(...EULER_DARK);
+    doc.roundedRect(14, startY + 16, W - 28, 12, 2, 2, 'F');
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...EULER_DARK);
-    doc.text('TOTAL (Precio IVA incluido):', 20, startY + 22);
-    doc.setTextColor(...EULER_MID);
-    doc.text(formatARS(totalConIva), W - 14, startY + 22, { align: 'right' });
+    doc.setTextColor(...WHITE);
+    doc.text('TOTAL (Precio IVA incluido)', 20, startY + 23.6);
+    doc.setFontSize(13);
+    doc.text(formatARS(totalConIva), xVal, startY + 23.8, { align: 'right' });
 
     startY += 34;
   }
 
   // Notas
   if (presupuesto.notas) {
-    const notasY = startY + 2;
     doc.setFontSize(9);
+    const lines = doc.splitTextToSize(presupuesto.notas, W - 28);
+    const notasY = asegurarEspacio(doc, presupuesto, logoHeader, startY + 2, 8 + Math.min(lines.length, 6) * 4.5);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...EULER_DARK);
     doc.text('Observaciones:', 14, notasY);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...GRAY_TEXT);
-    const lines = doc.splitTextToSize(presupuesto.notas, W - 28);
     doc.text(lines, 14, notasY + 6);
   }
 };
 
 // ─── PÁGINA 3: Condiciones ───────────────────────────────────────────────────
-const buildCondiciones = (doc, presupuesto) => {
+const buildCondiciones = (doc, presupuesto, logoHeader) => {
   doc.addPage();
   const W = doc.internal.pageSize.getWidth();
-
-  // Mini header
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'italic');
-  doc.setTextColor(...EULER_MID);
-  doc.text('www.euler.com.ar  |  info@euler.com.ar', W - 14, 14, { align: 'right' });
-
-  // Título
-  doc.setFontSize(16);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...EULER_DARK);
-  doc.text('EULER — Calefacción por Agua', 14, 25);
-
-  // Línea dorada
-  doc.setFillColor(...EULER_GOLD);
-  doc.rect(14, 28, W - 28, 1.5, 'F');
+  drawHeader(doc, presupuesto, logoHeader, 'CONDICIONES COMERCIALES');
 
   const addSection = (titulo, items, yStart) => {
-    doc.setFontSize(12);
+    yStart = asegurarEspacio(doc, presupuesto, logoHeader, yStart, 14);
+    doc.setFontSize(10.5);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...EULER_MID);
+    doc.setTextColor(...EULER_DARK);
     doc.text(titulo, 14, yStart);
     let y = yStart + 6;
     items.forEach(item => {
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
-      doc.setTextColor(...GRAY_TEXT);
       const lines = doc.splitTextToSize(`— ${item}`, W - 32);
-      doc.text(lines, 18, y);
-      y += lines.length * 5.5;
+      const LH_ITEM = 9 * 0.3528 * 1.25; // alto real de línea (9 pt, factor 1.25)
+      y = asegurarEspacio(doc, presupuesto, logoHeader, y, lines.length * LH_ITEM);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(...GRAY_TEXT);
+      doc.text(lines, 18, y, { lineHeightFactor: 1.25 });
+      y += lines.length * LH_ITEM + 1.8;
     });
     return y + 4;
   };
 
-  let y = 38;
+  let y = CONTENT_TOP + 1;
 
   y = addSection('1) FORMA DE PAGO', [
     'Efectivo, transferencia, cheques/echeqs. (consultar por tarjetas de credito).',
@@ -482,25 +572,10 @@ const buildCondiciones = (doc, presupuesto) => {
 };
 
 // ─── PÁGINA 4: Garantías y Cierre ─────────────────────────────────────────────
-const buildGarantiasYCierre = (doc, presupuesto) => {
+const buildGarantiasYCierre = (doc, presupuesto, logoHeader) => {
   doc.addPage();
   const W = doc.internal.pageSize.getWidth();
-
-  // Mini header
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'italic');
-  doc.setTextColor(...EULER_MID);
-  doc.text('www.euler.com.ar  |  info@euler.com.ar', W - 14, 14, { align: 'right' });
-
-  // Título
-  doc.setFontSize(16);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...EULER_DARK);
-  doc.text('EULER — Garantías y Cierre', 14, 25);
-
-  // Línea dorada
-  doc.setFillColor(...EULER_GOLD);
-  doc.rect(14, 28, W - 28, 1.5, 'F');
+  drawHeader(doc, presupuesto, logoHeader, 'GARANTÍAS Y CIERRE');
 
   const addGarantia = (titulo, desc, yStart) => {
     doc.setFontSize(10);
@@ -516,9 +591,9 @@ const buildGarantiasYCierre = (doc, presupuesto) => {
     return yStart + 5.5 + (lines.length * 5) + 6;
   };
 
-  let y = 38;
+  let y = CONTENT_TOP + 2;
   
-  doc.setFontSize(12);
+  doc.setFontSize(10.5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...EULER_MID);
   doc.text('GARANTÍAS', 14, y);
@@ -543,7 +618,7 @@ const buildGarantiasYCierre = (doc, presupuesto) => {
 
   // Proyecto
   y += 4;
-  doc.setFontSize(12);
+  doc.setFontSize(10.5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...EULER_MID);
   doc.text('PROYECTO', 14, y);
@@ -625,32 +700,42 @@ const getBase64ImageFromURL = (url) => {
 };
 
 /**
+ * Arma las páginas propias del presupuesto (sin folletos) y devuelve el jsPDF.
+ * @param {Object} presupuesto
+ * @param {{ logoPortada?: string|null, logoHeader?: string|null }} logos
+ */
+export function construirDocPresupuesto(presupuesto, { logoPortada = null, logoHeader = null } = {}, onProgress = null) {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  onProgress?.(0.1);
+  buildPortada(doc, presupuesto, logoPortada);
+  onProgress?.(0.2);
+  buildTablaItems(doc, presupuesto, logoHeader);
+  onProgress?.(0.3);
+  buildCondiciones(doc, presupuesto, logoHeader);
+  onProgress?.(0.4);
+  buildGarantiasYCierre(doc, presupuesto, logoHeader);
+  drawFooters(doc, 2);
+  onProgress?.(0.5);
+  return doc;
+}
+
+/**
  * Genera y descarga el PDF del presupuesto.
  * @param {Object} presupuesto - El documento del presupuesto de Firestore
  * @param {Array}  folletoUrls - Array de { nombre, url } de Firebase Storage (opcional)
  * @param {Function} onProgress - Callback (0..1) para barra de progreso
  */
 export async function generarPDFPresupuesto(presupuesto, folletoUrls = [], onProgress = null) {
-  const jspdfInstance = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-
-  // Cargar el logo desde public/logo_euler.png si existe
-  let logoBase64 = null;
-  try {
-    logoBase64 = await getBase64ImageFromURL('/logo_euler.png');
-  } catch (e) {
-    console.warn('No se pudo cargar el logo de Euler', e);
-  }
+  // Logos: portada (fondo azul) y encabezados (fondo blanco)
+  const [logoPortada, logoHeader] = await Promise.all(
+    ['/logo_euler.png', '/logo_euler_factura.png'].map((u) => getBase64ImageFromURL(u).catch((e) => {
+      console.warn('No se pudo cargar el logo', u, e);
+      return null;
+    })),
+  );
 
   // Paso 1-4: páginas del presupuesto
-  onProgress?.(0.1);
-  buildPortada(jspdfInstance, presupuesto, logoBase64);
-  onProgress?.(0.2);
-  buildTablaItems(jspdfInstance, presupuesto);
-  onProgress?.(0.3);
-  buildCondiciones(jspdfInstance, presupuesto);
-  onProgress?.(0.4);
-  buildGarantiasYCierre(jspdfInstance, presupuesto);
-  onProgress?.(0.5);
+  const jspdfInstance = construirDocPresupuesto(presupuesto, { logoPortada, logoHeader }, onProgress);
 
   // Serializar el PDF principal
   const mainPdfBytes = jspdfInstance.output('arraybuffer');

@@ -98,7 +98,7 @@ export const ARCA_CONFIG_DEFAULT = {
   entorno: 'homologacion',
   cuit: '20316275622',
   razonSocial: 'AYALA NICOLAS FEDERICO',
-  domicilio: 'San Marcos 2760 M:24, Roldán, Santa Fe',
+  domicilio: 'Perez Bulnes 6044 - Rosario - Santa Fe',
   condicionIva: 'IVA Responsable Inscripto',
   ingresosBrutos: '',
   inicioActividades: '',
