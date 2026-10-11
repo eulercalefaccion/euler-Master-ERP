@@ -285,6 +285,8 @@ exports.arcaEmitirFactura = runtime.https.onCall(async (data, context) => {
         lineas, impNeto, impIva, impTotal,
         asociado: asociado ? { id: asociado.id, cbteTipo: asociado.cbteTipo, ptoVta: asociado.puntoVenta, nro: asociado.numeroComprobante, fecha: arca.isoToYyyymmdd(asociado.fechaEmision), numeroOriginal: asociado.numeroOriginal } : null,
         observaciones: String(data?.observaciones || '').slice(0, 500),
+        condicionVenta: String(data?.condicionVenta || 'Contado').slice(0, 60),
+        notas: String(data?.notas || '').slice(0, 300),
         emitidoPor: context.auth.token?.email || context.auth.uid,
       };
 
@@ -381,6 +383,8 @@ async function persistir(db, c) {
     })),
     estado: esNC ? 'aplicada' : 'pendiente',
     observaciones: c.observaciones,
+    condicionVenta: c.condicionVenta || 'Contado',
+    notas: c.notas || '',
     observacionesArca: c.observacionesArca || [],
     recuperado: !!c.recuperado,
     emitidoPor: c.emitidoPor,

@@ -106,6 +106,10 @@ export const ARCA_CONFIG_DEFAULT = {
   puntoVentaProd: null,
   conceptoDefault: 3,
   empresaId: 'ayala-nicolas',
+  telefono: '341 569-5849',
+  email: 'info@euler.com.ar',
+  web: 'www.euler.com.ar',
+  instagram: '@eulercalefaccion',
 };
 
 export const getArcaConfig = async () => {

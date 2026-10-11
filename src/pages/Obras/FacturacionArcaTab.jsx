@@ -21,6 +21,7 @@ const inp = {
 };
 const lbl = { fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.2rem', display: 'block' };
 const card = { border: '1px solid var(--border-light)', borderRadius: '10px', padding: '1rem', background: 'var(--bg-primary)' };
+const CONDICIONES_VENTA = ['Contado', 'Efectivo', 'Transferencia', 'Cuenta corriente', 'Cheque', 'Tarjeta de débito', 'Tarjeta de crédito', 'Otra'];
 
 export default function FacturacionArcaTab({ obra }) {
   const { currentUser } = useAuth();
@@ -41,6 +42,9 @@ export default function FacturacionArcaTab({ obra }) {
   const [fchServHasta, setFchServHasta] = useState(hoyISO());
   const [fchVtoPago, setFchVtoPago] = useState(hoyISO());
   const [observaciones, setObservaciones] = useState('');
+  const notasDefault = obra.presupuestoNum ? `Presupuesto ${obra.presupuestoNum}` : '';
+  const [condicionVenta, setCondicionVenta] = useState('Contado');
+  const [notas, setNotas] = useState(notasDefault);
   const [porcentaje, setPorcentaje] = useState('');
   const [buscandoPadron, setBuscandoPadron] = useState(false);
 
@@ -69,6 +73,8 @@ export default function FacturacionArcaTab({ obra }) {
     setReceptor(receptorDesdeObra(obra));
     setLineas(lineasDesdeObra(obra));
     setObservaciones('');
+    setNotas(notasDefault);
+    setCondicionVenta('Contado');
     setPorcentaje('');
     setError('');
     setExito(null);
@@ -88,6 +94,8 @@ export default function FacturacionArcaTab({ obra }) {
       })));
       setConcepto(orig.concepto || 3);
       setObservaciones(`Anula/acredita ${orig.tipoComprobante} ${orig.numeroOriginal}`);
+      setNotas(`Anula/acredita Factura ${orig.letra} N° ${orig.numeroOriginal}`);
+      setCondicionVenta(orig.condicionVenta || 'Contado');
       setModo({ nc: { ...resumen, letra: orig.letra } });
     } catch (e) {
       setError(e.message);
@@ -156,6 +164,8 @@ export default function FacturacionArcaTab({ obra }) {
         concepto,
         fchServDesde, fchServHasta, fchVtoPago,
         observaciones,
+        condicionVenta,
+        notas,
       });
       setExito(res);
       setModo(null);
@@ -337,8 +347,21 @@ export default function FacturacionArcaTab({ obra }) {
             </button>
           </div>
 
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(160px, 220px) 1fr', gap: '0.75rem' }}>
+            <div>
+              <span style={lbl}>Condición de venta</span>
+              <select style={inp} value={condicionVenta} onChange={(e) => setCondicionVenta(e.target.value)}>
+                {CONDICIONES_VENTA.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <span style={lbl}>Notas (se imprimen en la factura)</span>
+              <input style={inp} value={notas} maxLength={300} onChange={(e) => setNotas(e.target.value)} placeholder="Ej: Presupuesto 0001-00000193" />
+            </div>
+          </div>
+
           <div>
-            <span style={lbl}>Observaciones internas</span>
+            <span style={lbl}>Observaciones internas (no se imprimen)</span>
             <input style={inp} value={observaciones} onChange={(e) => setObservaciones(e.target.value)} />
           </div>
 
@@ -480,6 +503,11 @@ function ArcaConfigModal({ cfg, onClose, onSaved }) {
           <div style={{ gridColumn: '1 / -1' }}><span style={lbl}>Domicilio comercial</span><input style={inp} value={form.domicilio} onChange={(e) => set('domicilio', e.target.value)} /></div>
           <div><span style={lbl}>Ingresos Brutos (N°)</span><input style={inp} value={form.ingresosBrutos} onChange={(e) => set('ingresosBrutos', e.target.value)} /></div>
           <div><span style={lbl}>Inicio de actividades</span><input style={inp} type="date" value={form.inicioActividades} onChange={(e) => set('inicioActividades', e.target.value)} /></div>
+          <div style={{ gridColumn: '1 / -1', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginTop: '0.3rem' }}>Contacto impreso en la factura</div>
+          <div><span style={lbl}>Teléfono</span><input style={inp} value={form.telefono || ''} onChange={(e) => set('telefono', e.target.value)} /></div>
+          <div><span style={lbl}>Email</span><input style={inp} value={form.email || ''} onChange={(e) => set('email', e.target.value)} /></div>
+          <div><span style={lbl}>Web</span><input style={inp} value={form.web || ''} onChange={(e) => set('web', e.target.value)} /></div>
+          <div><span style={lbl}>Instagram</span><input style={inp} value={form.instagram || ''} onChange={(e) => set('instagram', e.target.value)} /></div>
         </div>
 
         {err && <div style={{ color: '#b91c1c', fontSize: '0.8rem', whiteSpace: 'pre-wrap' }}>{err}</div>}
