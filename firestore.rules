@@ -132,6 +132,13 @@ service cloud.firestore {
       allow read, write: if isSignedIn();
     }
 
+    // Comprobantes emitidos en HOMOLOGACIÓN de ARCA (sin validez fiscal).
+    // Solo los escribe la Cloud Function. arca_ta / arca_locks quedan cerrados (regla base).
+    match /arca_pruebas/{pruebaId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
     match /recibos/{reciboId} {
       allow read, write: if isSignedIn();
     }

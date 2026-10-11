@@ -21,18 +21,11 @@ export const EMPRESAS_INICIALES = [
     puntosVenta: [1],
     direccion: 'Rosario, Santa Fe',
     activa: true
-  },
-  {
-    id: 'euler-general',
-    nombre: 'EULER SRL / General',
-    razonSocial: 'Euler SRL',
-    cuit: '30-71998877-5',
-    condicionFiscal: 'Responsable Inscripto',
-    puntosVenta: [1],
-    direccion: 'Rosario, Santa Fe',
-    activa: true
   }
 ];
+
+// Euler SRL no existe. Solo hay dos cuentas: Ayala Nicolás Federico (fiscal) y Euler Calefacción (no fiscal).
+const EMPRESAS_INEXISTENTES = ['euler-general'];
 
 export const getEmpresas = async () => {
   try {
@@ -43,7 +36,8 @@ export const getEmpresas = async () => {
       }
       return EMPRESAS_INICIALES;
     }
-    const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .filter(d => !EMPRESAS_INEXISTENTES.includes(d.id) && !/euler\s*srl/i.test(d.razonSocial || ''));
 
     // Asegurar que Ayala Nicolas Federico tenga el CUIT real 20-31627562-2 y esté prioritario
     const ayala = docs.find(d => d.id === 'ayala-nicolas' || /ayala/i.test(d.nombre));

@@ -16,6 +16,7 @@ import { getTipoCambio } from '../../services/tipoCambioService';
 import { useAuth } from '../../context/AuthContext';
 import ObrasListView from './ObrasListView';
 import ObrasMapView from './ObrasMapView';
+import FacturacionArcaTab from './FacturacionArcaTab';
 
 const addBusinessDays = (startDateStr, days) => {
   if (!days) return startDateStr;
@@ -57,6 +58,7 @@ const TABS = [
   { id: 'personal',   label: '👷 Personal'  },
   { id: 'archivos',   label: '📁 Archivos'  },
   { id: 'bitacora',   label: '📝 Bitácora'  },
+  { id: 'facturacion', label: '🧾 Facturación', soloCanal1: true },
 ];
 
 /* ─────────────────────────────────────────────────────── */
@@ -1198,7 +1200,7 @@ const Obras = () => {
 
             {/* Tab bar */}
             <div style={{ display: 'flex', borderBottom: '1px solid var(--border-light)', backgroundColor: 'var(--bg-primary)', flexShrink: 0, overflowX: 'auto' }}>
-              {TABS.map(tab => (
+              {TABS.filter(tab => !tab.soloCanal1 || (selectedObra.canal || 'iva') === 'iva').map(tab => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
@@ -1228,6 +1230,9 @@ const Obras = () => {
               {activeTab === 'personal'   && renderPersonal()}
               {activeTab === 'archivos'   && renderArchivos()}
               {activeTab === 'bitacora'   && renderBitacora()}
+              {activeTab === 'facturacion' && (selectedObra.canal || 'iva') === 'iva' && (
+                <FacturacionArcaTab key={selectedObra.id} obra={selectedObra} />
+              )}
             </div>
           </div>
         </>

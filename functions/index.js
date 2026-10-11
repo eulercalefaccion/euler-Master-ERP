@@ -201,3 +201,8 @@ Tu respuesta DEBE ser ÚNICAMENTE un JSON válido sin markdown ni texto extra. L
     );
   }
 });
+
+// ─── Facturación Electrónica ARCA (ver arcaFunctions.js) ────────────────────
+const arcaFunctions = require('./arcaFunctions');
+exports.arcaEstado = arcaFunctions.arcaEstado;
+exports.arcaEmitirFactura = arcaFunctions.arcaEmitirFactura;

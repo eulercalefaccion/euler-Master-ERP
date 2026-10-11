@@ -154,10 +154,6 @@ export async function parsePdfInvoiceBuffer(arrayBuffer) {
     receptorEmpresaId = 'ayala-nicolas';
     receptorNombre = 'AYALA NICOLAS FEDERICO';
     receptorCuit = '20-31627562-2';
-  } else if (/euler\s*srl/i.test(combinedText) || /30-?71998877-?5/i.test(combinedText)) {
-    receptorEmpresaId = 'euler-general';
-    receptorNombre = 'EULER SRL';
-    receptorCuit = '30-71998877-5';
   }
 
   // 2. Proveedor Emisor
