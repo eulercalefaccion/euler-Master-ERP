@@ -135,7 +135,8 @@ exports.arcaEstado = runtime.https.onCall(async (data, context) => {
 
 /**
  * data = {
- *   obraId: string,                         // obra Canal 1 (canal 'iva')
+ *   obraId?: string,                        // obra Canal 1 (canal 'iva') – opcional
+ *   clienteId?, presupuestoId?, presupuestoNumero?, clienteTelefono?   // si no hay obra
  *   comprobanteAsociadoId?: string,         // si viene => Nota de Crédito sobre ese comprobante
  *   receptor: { nombre, docTipo, docNro, condicionIvaId, domicilio },
  *   lineas: [{ descripcion, cantidad, precioUnitario }],   // precios NETOS (sin IVA)
@@ -157,16 +158,17 @@ exports.arcaEmitirFactura = runtime.https.onCall(async (data, context) => {
       throw new HttpsError('failed-precondition', `No hay punto de venta configurado para ${entorno}.`);
     }
 
-    // 1. Obra ─────────────────────────────────────────────────────────────────
+    // 1. Obra (opcional: también se factura desde un presupuesto o con ítems libres) ──
     const obraId = String(data?.obraId || '');
-    if (!obraId) throw new HttpsError('invalid-argument', 'Falta la obra.');
-    const obraRef = db.collection('obras').doc(obraId);
-    const obraSnap = await obraRef.get();
-    if (!obraSnap.exists) throw new HttpsError('not-found', 'La obra no existe.');
-    const obra = obraSnap.data();
-    const canal = obra.canal || 'iva';
-    if (canal !== 'iva') {
-      throw new HttpsError('failed-precondition', 'Esta obra no es Canal 1 (con factura). No se puede facturar en ARCA.');
+    let obra = null;
+    if (obraId) {
+      const obraSnap = await db.collection('obras').doc(obraId).get();
+      if (!obraSnap.exists) throw new HttpsError('not-found', 'La obra no existe.');
+      obra = obraSnap.data();
+      const canal = obra.canal || 'iva';
+      if (canal !== 'iva') {
+        throw new HttpsError('failed-precondition', 'Esta obra no es Canal 1 (con factura). No se puede facturar en ARCA.');
+      }
     }
 
     // 2. Comprobante asociado (Nota de Crédito) ───────────────────────────────
@@ -175,7 +177,7 @@ exports.arcaEmitirFactura = runtime.https.onCall(async (data, context) => {
       const aSnap = await db.collection(coleccion).doc(String(data.comprobanteAsociadoId)).get();
       if (!aSnap.exists) throw new HttpsError('not-found', 'No se encontró el comprobante a anular/acreditar.');
       asociado = { id: aSnap.id, ...aSnap.data() };
-      if (asociado.obraId !== obraId) throw new HttpsError('invalid-argument', 'El comprobante asociado no pertenece a esta obra.');
+      if ((asociado.obraId || '') !== obraId) throw new HttpsError('invalid-argument', 'El comprobante asociado no pertenece a esta obra.');
       if (asociado.esNotaCredito) throw new HttpsError('invalid-argument', 'No se puede hacer una nota de crédito sobre otra nota de crédito.');
     }
 
@@ -214,6 +216,7 @@ exports.arcaEmitirFactura = runtime.https.onCall(async (data, context) => {
         descripcion: String(l.descripcion || '').trim().slice(0, 250),
         cantidad: Number(l.cantidad),
         precioUnitario: arca.round2(Number(l.precioUnitario)),
+        entregaPendiente: !!l.entregaPendiente,
       }))
       .filter((l) => l.descripcion && l.cantidad > 0 && l.precioUnitario > 0);
     if (!lineas.length) throw new HttpsError('invalid-argument', 'El comprobante no tiene líneas válidas.');
@@ -271,8 +274,11 @@ exports.arcaEmitirFactura = runtime.https.onCall(async (data, context) => {
 
       const contexto = {
         coleccion, campoObra, entorno, cfg: { cuit: cfg.cuit, razonSocial: cfg.razonSocial, empresaId: cfg.empresaId },
-        obraId, obraNombre: obra.name || '', otNumber: obra.otNumber || '', presupuestoId: obra.presupuestoId || null,
-        clienteId: obra.clientId || null,
+        obraId: obraId || null, obraNombre: obra?.name || '', otNumber: obra?.otNumber || '',
+        presupuestoId: obra?.presupuestoId || (data?.presupuestoId ? String(data.presupuestoId) : null),
+        presupuestoNumero: String(data?.presupuestoNumero || obra?.presupuestoNum || '').slice(0, 60),
+        clienteId: obra?.clientId || (data?.clienteId ? String(data.clienteId) : null),
+        clienteTelefono: String(data?.clienteTelefono || '').slice(0, 40),
         cbteTipo, letra, ptoVta: cfg.puntoVenta, nro, fecha: hoy.yyyymmdd, concepto,
         fchServDesde: concepto === 1 ? null : fchServDesde,
         fchServHasta: concepto === 1 ? null : fchServHasta,
@@ -341,6 +347,8 @@ async function persistir(db, c) {
     clienteCuit: c.receptor.docTipo === arca.DOC_TIPO.SIN_ID ? '' : c.receptor.docNro,
     receptor: c.receptor,
     presupuestoId: c.presupuestoId,
+    presupuestoNumero: c.presupuestoNumero || '',
+    clienteTelefono: c.clienteTelefono || '',
     obraId: c.obraId,
     obraNombre: c.obraNombre,
     otNumber: c.otNumber,
@@ -380,6 +388,7 @@ async function persistir(db, c) {
       cuentaNombre: 'Ventas de Equipos e Instalaciones',
       centroCosto: 'General',
       obraId: c.obraId,
+      entregaPendiente: !!l.entregaPendiente,
     })),
     estado: esNC ? 'aplicada' : 'pendiente',
     observaciones: c.observaciones,
@@ -433,18 +442,20 @@ async function persistir(db, c) {
     asociadoId: c.asociado?.id || null,
     receptor: c.receptor.nombre,
   };
-  const etiqueta = `${esNC ? 'Nota de Crédito' : 'Factura'} ${c.letra} ${numeroOriginal}`;
-  const textoBitacora = `${c.entorno === 'produccion' ? '' : '[PRUEBA ARCA] '}${etiqueta} emitida en ARCA por $ ${c.impTotal.toLocaleString('es-AR', { minimumFractionDigits: 2 })} – CAE ${c.cae}`;
-  const obraRef = db.collection('obras').doc(c.obraId);
-  const obraActual = (await obraRef.get()).data() || {};
-  batch.update(obraRef, {
-    [c.campoObra]: admin.firestore.FieldValue.arrayUnion(resumen),
-    bitacoraPreview: textoBitacora,
-    bitacoraHistory: [
-      { texto: textoBitacora, fecha: new Date().toISOString(), autor: c.emitidoPor },
-      ...(obraActual.bitacoraHistory || []),
-    ],
-  });
+  if (c.obraId) {
+    const etiqueta = `${esNC ? 'Nota de Crédito' : 'Factura'} ${c.letra} ${numeroOriginal}`;
+    const textoBitacora = `${c.entorno === 'produccion' ? '' : '[PRUEBA ARCA] '}${etiqueta} emitida en ARCA por $ ${c.impTotal.toLocaleString('es-AR', { minimumFractionDigits: 2 })} – CAE ${c.cae}`;
+    const obraRef = db.collection('obras').doc(c.obraId);
+    const obraActual = (await obraRef.get()).data() || {};
+    batch.update(obraRef, {
+      [c.campoObra]: admin.firestore.FieldValue.arrayUnion(resumen),
+      bitacoraPreview: textoBitacora,
+      bitacoraHistory: [
+        { texto: textoBitacora, fecha: new Date().toISOString(), autor: c.emitidoPor },
+        ...(obraActual.bitacoraHistory || []),
+      ],
+    });
+  }
 
   await batch.commit();
   return { ...comprobante, id: docRef.id, coleccion: c.coleccion, createdAt: null };

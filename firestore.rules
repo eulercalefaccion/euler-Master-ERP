@@ -143,6 +143,17 @@ service cloud.firestore {
       allow read, write: if isSignedIn();
     }
 
+    // Materiales pagados por el cliente y pendientes de entrega.
+    match /materiales_a_favor/{matId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // Saldos iniciales de cuenta corriente (migración GesDatta). Solo admin carga/anula.
+    match /saldos_iniciales/{saldoId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
     match /ordenes_pago/{opaId} {
       allow read, write: if isSignedIn();
     }

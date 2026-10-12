@@ -52,10 +52,11 @@ export async function generarPDFFacturaArca(cbte, cfg = {}, { descargar = true, 
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
   const M = 12;
+  const esX = cbte.letra === 'X';
   const esA = cbte.letra === 'A';
   const esNC = !!cbte.esNotaCredito;
-  const prueba = cbte.entornoArca !== 'produccion';
-  const titulo = esNC ? 'NOTA DE CRÉDITO' : 'FACTURA';
+  const prueba = !esX && cbte.entornoArca !== 'produccion';
+  const titulo = esX ? 'COMPROBANTE' : (esNC ? 'NOTA DE CRÉDITO' : 'FACTURA');
   const numero = cbte.numeroOriginal || '';
   const logoData = logo ?? await cargarLogo();
   const contacto = {
@@ -90,7 +91,7 @@ export async function generarPDFFacturaArca(cbte, cfg = {}, { descargar = true, 
     setTxt(10, true, DARK);
     doc.text(`${titulo} ${cbte.letra} N° ${numero}`, W - M, 13, { align: 'right' });
     setTxt(7.5, false, GRAY);
-    doc.text(`Fecha de emisión: ${fechaAR(cbte.fechaEmision)}  ·  CAE ${cbte.cae || ''}`, W - M, 17.5, { align: 'right' });
+    doc.text(`Fecha de emisión: ${fechaAR(cbte.fechaEmision)}${esX ? '  ·  Documento no válido como factura' : `  ·  CAE ${cbte.cae || ''}`}`, W - M, 17.5, { align: 'right' });
     doc.setDrawColor(...LINE); doc.setLineWidth(0.3); doc.line(M, 21, W - M, 21);
   };
 
@@ -111,10 +112,16 @@ export async function generarPDFFacturaArca(cbte, cfg = {}, { descargar = true, 
   doc.setDrawColor(...DARK); doc.setLineWidth(0.6); doc.setFillColor(255, 255, 255);
   doc.roundedRect(bx, by, 20, 20, 1.5, 1.5, 'FD');
   setTxt(28, true, DARK); doc.text(cbte.letra || '', W / 2, by + 13.3, { align: 'center' });
-  setTxt(6.5, true, GRAY); doc.text(`COD. ${COD[cbte.cbteTipo] || ''}`, W / 2, by + 18, { align: 'center' });
+  if (esX) {
+    setTxt(4.6, true, GRAY);
+    doc.text('NO VÁLIDO', W / 2, by + 16.6, { align: 'center' });
+    doc.text('COMO FACTURA', W / 2, by + 18.6, { align: 'center' });
+  } else {
+    setTxt(6.5, true, GRAY); doc.text(`COD. ${COD[cbte.cbteTipo] || ''}`, W / 2, by + 18, { align: 'center' });
+  }
 
   // Título y número
-  setTxt(esNC ? 17 : 21, true, DARK); doc.text(titulo, W - M, 16, { align: 'right' });
+  setTxt(esNC || esX ? 17 : 21, true, DARK); doc.text(titulo, W - M, 16, { align: 'right' });
   setTxt(12.5, true, MID); doc.text(`N° ${numero}`, W - M, 23, { align: 'right' });
   const pill = (texto, color, xRight, y) => {
     setTxt(6.8, true, [255, 255, 255]);
@@ -123,7 +130,7 @@ export async function generarPDFFacturaArca(cbte, cfg = {}, { descargar = true, 
     doc.text(texto, xRight - w / 2, y + 3.25, { align: 'center' });
     return w;
   };
-  const wOrig = pill('ORIGINAL', GOLD, W - M, 25.8);
+  const wOrig = pill(esX ? 'DOCUMENTO NO VÁLIDO COMO FACTURA' : 'ORIGINAL', esX ? MID : GOLD, W - M, 25.8);
   if (prueba) pill('PRUEBA – SIN VALIDEZ FISCAL', [220, 38, 38], W - M - wOrig - 2, 25.8);
 
   // Separador vertical (debajo del recuadro de letra)
@@ -137,16 +144,23 @@ export async function generarPDFFacturaArca(cbte, cfg = {}, { descargar = true, 
   ey += par('Domicilio comercial:', cfg.domicilio, M, ey, colW) * LH + 1.2;
   ey += par('Teléfono:', contacto.tel, M, ey, colW) * LH + 1.2;
   ey += par('Email:', contacto.email, M, ey, colW) * LH + 1.2;
-  par('Condición frente al IVA:', cfg.condicionIva || 'IVA Responsable Inscripto', M, ey, colW);
+  if (esX) par('Web:', contacto.web, M, ey, colW);
+  else par('Condición frente al IVA:', cfg.condicionIva || 'IVA Responsable Inscripto', M, ey, colW);
 
   // Datos del comprobante (derecha)
   const xr = W / 2 + 6;
   const colR = W - M - xr;
   par('Fecha de emisión:', fechaAR(cbte.fechaEmision), xr, 35.5, colR, 8.6);
-  par('CUIT:', fmtCuit(cbte.emisorCuit || cfg.cuit), xr, 41, colR);
-  par('Ingresos Brutos:', cfg.ingresosBrutos || fmtCuit(cbte.emisorCuit || cfg.cuit), xr, 45.9, colR);
-  par('Inicio de actividades:', fechaAR(cfg.inicioActividades) || '-', xr, 50.8, colR);
-  par('Punto de venta / Número:', numero, xr, 55.7, colR);
+  if (esX) {
+    par('Punto de venta / Número:', numero, xr, 41, colR);
+    if (cbte.presupuestoNumero) par('Presupuesto:', cbte.presupuestoNumero, xr, 45.9, colR);
+    if (cbte.fechaVencimiento && cbte.fechaVencimiento !== cbte.fechaEmision) par('Vencimiento:', fechaAR(cbte.fechaVencimiento), xr, 50.8, colR);
+  } else {
+    par('CUIT:', fmtCuit(cbte.emisorCuit || cfg.cuit), xr, 41, colR);
+    par('Ingresos Brutos:', cfg.ingresosBrutos || fmtCuit(cbte.emisorCuit || cfg.cuit), xr, 45.9, colR);
+    par('Inicio de actividades:', fechaAR(cfg.inicioActividades) || '-', xr, 50.8, colR);
+    par('Punto de venta / Número:', numero, xr, 55.7, colR);
+  }
 
   // Línea de cierre del encabezado con acento dorado
   doc.setDrawColor(...LINE); doc.line(M, 60, W - M, 60);
@@ -168,7 +182,7 @@ export async function generarPDFFacturaArca(cbte, cfg = {}, { descargar = true, 
   const docVal = rx.docTipo === 99 ? 'Sin identificar' : (rx.docTipo === 80 || rx.docTipo === 86 ? fmtCuit(rx.docNro) : rx.docNro);
   const recTop = y;
   const xDer = W - M - 66;
-  setTxt(7, true, MID); doc.text(esNC ? 'CLIENTE' : 'FACTURAR A', M + 5, y + 5);
+  setTxt(7, true, MID); doc.text(esNC || esX ? 'CLIENTE' : 'FACTURAR A', M + 5, y + 5);
   setTxt(11, true, DARK);
   const nombreLines = doc.splitTextToSize(rx.nombre || '-', xDer - (M + 5) - 4);
   doc.text(nombreLines, M + 5, y + 10.5, { lineHeightFactor: 1.15 });
@@ -192,9 +206,11 @@ export async function generarPDFFacturaArca(cbte, cfg = {}, { descargar = true, 
   const body = (cbte.lineas || []).map((l, i) => {
     const neto = Number(l.neto ?? l.cantidad * l.precioUnitario);
     const cant = Number(l.cantidad).toLocaleString('es-AR', { maximumFractionDigits: 3 });
+    const desc = l.entregaPendiente ? `${l.descripcion}\n(pendiente de entrega – queda a favor del cliente)` : l.descripcion;
+    if (esX) return [String(i + 1), desc, cant, ars(l.precioUnitario), ars(neto)];
     return esA
-      ? [String(i + 1), l.descripcion, cant, ars(l.precioUnitario), '21%', ars(neto)]
-      : [String(i + 1), l.descripcion, cant, ars(l.precioUnitario * 1.21), ars(neto * 1.21)];
+      ? [String(i + 1), desc, cant, ars(l.precioUnitario), '21%', ars(neto)]
+      : [String(i + 1), desc, cant, ars(l.precioUnitario * 1.21), ars(neto * 1.21)];
   });
   autoTable(doc, {
     startY: y,
@@ -225,7 +241,7 @@ export async function generarPDFFacturaArca(cbte, cfg = {}, { descargar = true, 
   let ny = F + 4;
   ny += par('Condición de venta:', cbte.condicionVenta || 'Contado', M, ny, notasW) * LH + 1.5;
   if (cbte.notas) ny += par('Notas:', cbte.notas, M, ny, notasW) * LH + 1.5;
-  if (!esA) {
+  if (!esA && !esX) {
     const ty = Math.max(ny + 1, F + 14);
     doc.setFillColor(...LIGHT); doc.roundedRect(M, ty, notasW, 12, 1.5, 1.5, 'F');
     setTxt(7.3, true, DARK); doc.text('Régimen de Transparencia Fiscal al Consumidor (Ley 27.743)', M + 3, ty + 4.6);
@@ -236,7 +252,7 @@ export async function generarPDFFacturaArca(cbte, cfg = {}, { descargar = true, 
   const tx = W - M - 80;
   const filas = esA
     ? [['Importe neto gravado', cbte.subtotalNeto], ['IVA 21%', cbte.totalIva], ['Otros tributos', 0]]
-    : [['Subtotal', cbte.totalComprobante], ['Otros tributos', 0]];
+    : (esX ? [['Subtotal', cbte.totalComprobante]] : [['Subtotal', cbte.totalComprobante], ['Otros tributos', 0]]);
   let tyy = F + 4;
   filas.forEach(([l, v]) => {
     setTxt(8.6, false, GRAY); doc.text(l, tx + 2, tyy);
@@ -252,23 +268,33 @@ export async function generarPDFFacturaArca(cbte, cfg = {}, { descargar = true, 
   const sy = F + 40;
   doc.setDrawColor(...LINE); doc.setLineWidth(0.3); doc.line(M, sy, W - M, sy);
 
-  // QR + leyenda ARCA
-  if (cbte.qrUrl) {
-    const qr = await QRCode.toDataURL(cbte.qrUrl, { margin: 0, width: 320, errorCorrectionLevel: 'M', color: { dark: '#0D2A4E', light: '#FFFFFF' } });
-    doc.addImage(qr, 'PNG', M, sy + 4, 31, 31);
-  }
-  setTxt(14, true, DARK, true); doc.text('ARCA', M + 36, sy + 12);
-  setTxt(9, true, TEXT); doc.text('Comprobante Autorizado', M + 36, sy + 17.5);
-  setTxt(6.6, false, GRAY);
-  doc.text(doc.splitTextToSize('Esta Agencia no se responsabiliza por los datos ingresados en el detalle de la operación.', 62), M + 36, sy + 22, { lineHeightFactor: 1.2 });
+  if (esX) {
+    // Comprobante interno: leyenda en lugar de CAE / QR
+    doc.setDrawColor(...DARK); doc.setLineWidth(0.4); doc.roundedRect(M, sy + 6, W - 2 * M, 18, 2, 2, 'S');
+    doc.setFillColor(...GOLD); doc.rect(M, sy + 7.5, 1.3, 15, 'F');
+    setTxt(11, true, DARK); doc.text('DOCUMENTO NO VÁLIDO COMO FACTURA', M + 6, sy + 13.5);
+    setTxt(7.8, false, GRAY);
+    doc.text('Comprobante interno de venta. Los pagos se acreditan mediante recibo de cobro.', M + 6, sy + 19);
+    setTxt(9, true, MID, true); doc.text('¡Gracias por confiar en Euler!', W - M - 6, sy + 16.5, { align: 'right' });
+  } else {
+    // QR + leyenda ARCA
+    if (cbte.qrUrl) {
+      const qr = await QRCode.toDataURL(cbte.qrUrl, { margin: 0, width: 320, errorCorrectionLevel: 'M', color: { dark: '#0D2A4E', light: '#FFFFFF' } });
+      doc.addImage(qr, 'PNG', M, sy + 4, 31, 31);
+    }
+    setTxt(14, true, DARK, true); doc.text('ARCA', M + 36, sy + 12);
+    setTxt(9, true, TEXT); doc.text('Comprobante Autorizado', M + 36, sy + 17.5);
+    setTxt(6.6, false, GRAY);
+    doc.text(doc.splitTextToSize('Esta Agencia no se responsabiliza por los datos ingresados en el detalle de la operación.', 62), M + 36, sy + 22, { lineHeightFactor: 1.2 });
 
-  // CAE
-  const cx = W - M - 72;
-  doc.setDrawColor(...DARK); doc.setLineWidth(0.4); doc.roundedRect(cx, sy + 6, 72, 22, 2, 2, 'S');
-  setTxt(7.2, true, GRAY); doc.text('CAE N°', cx + 4, sy + 11.5);
-  setTxt(13, true, DARK); doc.text(String(cbte.cae || ''), cx + 4, sy + 18);
-  setTxt(7.2, true, GRAY); doc.text('Vencimiento del CAE:', cx + 4, sy + 24.3);
-  setTxt(8.6, true, TEXT); doc.text(fechaAR(cbte.vencimientoCae), cx + 34, sy + 24.3);
+    // CAE
+    const cx = W - M - 72;
+    doc.setDrawColor(...DARK); doc.setLineWidth(0.4); doc.roundedRect(cx, sy + 6, 72, 22, 2, 2, 'S');
+    setTxt(7.2, true, GRAY); doc.text('CAE N°', cx + 4, sy + 11.5);
+    setTxt(13, true, DARK); doc.text(String(cbte.cae || ''), cx + 4, sy + 18);
+    setTxt(7.2, true, GRAY); doc.text('Vencimiento del CAE:', cx + 4, sy + 24.3);
+    setTxt(8.6, true, TEXT); doc.text(fechaAR(cbte.vencimientoCae), cx + 34, sy + 24.3);
+  }
 
   // ── Pie de página en todas las hojas ─────────────────────────────────────
   const total = doc.getNumberOfPages();

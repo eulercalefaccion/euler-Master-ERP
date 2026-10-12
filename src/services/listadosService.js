@@ -61,6 +61,7 @@ export const SIGLA_LABEL = {
 
 export const ESTADOS_FACTURA = {
   pendiente: { label: 'Pendiente de cobro', color: '#92400e', bg: '#fef3c7' },
+  parcial:   { label: 'Cobro parcial',      color: '#1d4ed8', bg: '#dbeafe' },
   cobrada:   { label: 'Cobrada',            color: '#047857', bg: '#d1fae5' },
   anulada:   { label: 'Anulada (NC)',       color: '#b91c1c', bg: '#fee2e2' },
   nc_parcial:{ label: 'NC parcial',         color: '#9a3412', bg: '#ffedd5' },

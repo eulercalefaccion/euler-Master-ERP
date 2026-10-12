@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { collection, onSnapshot } from 'firebase/firestore';
 import {
-  Calculator, Download, MessageCircle, HardHat, FileSpreadsheet, ExternalLink, Plus, TrendingUp, CheckCircle, Clock, Target, Loader,
+  Calculator, Download, MessageCircle, HardHat, FileSpreadsheet, ExternalLink, Plus, TrendingUp, CheckCircle, Clock, Target, Loader, Receipt,
 } from 'lucide-react';
 import { db } from '../../services/firebaseConfig';
 import { generarPDFPresupuesto } from '../../services/pdfPresupuesto';
@@ -215,6 +215,7 @@ export default function ListadoPresupuestos() {
                           {generando === p.id ? <Loader size={14} className="spin" /> : <Download size={14} />}
                         </IconBtn>
                         <IconBtn title="Seguimiento por WhatsApp" onClick={() => whatsapp(p)} color="#15803d" bg="#dcfce7"><MessageCircle size={14} /></IconBtn>
+                        <IconBtn title="Facturar este presupuesto" onClick={() => navigate(`/facturas?nueva=1&presupuesto=${p.id}`)} color="#047857" bg="#d1fae5"><Receipt size={14} /></IconBtn>
                         <IconBtn title={p._obra ? 'Ir a la obra' : 'Todavía no tiene obra'} onClick={() => navigate(`/obras?obra=${p._obra.id}`)} disabled={!p._obra} color="#0D2A4E" bg="#e8eff7"><HardHat size={14} /></IconBtn>
                       </div>
                     </td>
