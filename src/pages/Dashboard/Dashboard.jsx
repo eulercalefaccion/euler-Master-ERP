@@ -7,6 +7,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recha
 import { db } from '../../services/firebaseConfig';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { getTipoCambio } from '../../services/tipoCambioService';
+import { calcularReservas } from '../../services/reservasStock';
 
 // ─── helpers ───────────────────────────────────────────────────────────────
 const fmt = (n) =>
@@ -110,6 +111,7 @@ const Dashboard = () => {
   const [obras, setObras] = useState([]);
   const [listaPrecios, setListaPrecios] = useState([]);
   const [transacciones, setTransacciones] = useState([]);
+  const [materialesAFavor, setMaterialesAFavor] = useState([]);
   const [tipoCambio, setTipoCambio] = useState(null);
   const [tcLoading, setTcLoading] = useState(true);
 
@@ -127,6 +129,9 @@ const Dashboard = () => {
       ),
       onSnapshot(collection(db, 'transacciones'), (snap) =>
         setTransacciones(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+      ),
+      onSnapshot(collection(db, 'materiales_a_favor'), (snap) =>
+        setMaterialesAFavor(snap.docs.map(d => ({ id: d.id, ...d.data() }))), () => {}
       ),
     ];
 
@@ -181,23 +186,24 @@ const Dashboard = () => {
     };
   }, [obras]);
 
-  // ── Derived: Alertas de Stock ──
+  // ── Derived: Alertas de Stock (disponible = físico − reservado en vivo) ──
+  const { reservadoPor } = useMemo(() => calcularReservas({ materiales: materialesAFavor, obras, lista: listaPrecios }), [materialesAFavor, obras, listaPrecios]);
   const alertasStock = useMemo(() => {
     return listaPrecios
+      .map(item => {
+        const reservado = reservadoPor[item.id] || 0;
+        return { ...item, reservado, disponible: (Number(item.stock) || 0) - reservado };
+      })
       .filter(item => {
         const tipo = (item.tipo || '').toLowerCase();
         if (tipo !== 'material') return false;
         const sm = Number(item.stockMinimo) || 0;
+        if (item.reservado > 0 && item.disponible < 0) return true; // faltante por reservas
         if (sm <= 0) return false;
-        const disp = (Number(item.stock) || 0) - (Number(item.stockReservado) || 0);
-        return disp <= sm;
+        return item.disponible <= sm;
       })
-      .map(item => ({
-        ...item,
-        disponible: (Number(item.stock) || 0) - (Number(item.stockReservado) || 0),
-      }))
       .sort((a, b) => a.disponible - b.disponible);
-  }, [listaPrecios]);
+  }, [listaPrecios, reservadoPor]);
 
   // ── Derived: Ventas anuales chart ──
   const chartData = useMemo(() => {
@@ -400,7 +406,7 @@ const Dashboard = () => {
                 fontSize: '0.7rem', fontWeight: 600, padding: '0.15rem 0.5rem',
                 borderRadius: 20, background: '#fef2f2', color: '#ef4444',
               }}>
-                {alertasStock.length} bajo mínimo
+                {alertasStock.length} con alerta
               </span>
             ) : (
               <span style={{
@@ -443,14 +449,14 @@ const Dashboard = () => {
                         borderRadius: 6, background: isCritical ? '#ef4444' : '#f97316',
                         color: '#fff', whiteSpace: 'nowrap',
                       }}>
-                        {isCritical ? '⚠ 0' : item.disponible} disp.
+                        {item.disponible < 0 ? `⚠ Faltan ${-item.disponible}` : `${item.disponible} disp.`}
                       </span>
-                      {Number(item.stockReservado) > 0 && (
+                      {item.reservado > 0 && (
                         <span style={{
                           fontSize: '0.68rem', fontWeight: 600, padding: '0.1rem 0.35rem',
                           borderRadius: 6, background: '#fef3c7', color: '#92400e',
                         }}>
-                          {item.stockReservado} res.
+                          {item.reservado} res.
                         </span>
                       )}
                     </div>

@@ -16,7 +16,7 @@ import { db, storage } from '../../services/firebaseConfig';
 import { dbJornadas } from '../../services/firebaseJornadas';
 import {
   collection, onSnapshot, query, addDoc, updateDoc, deleteDoc, doc,
-  serverTimestamp, increment, setDoc, arrayUnion, getDocs, where
+  serverTimestamp, setDoc, arrayUnion, getDocs, where
 } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { getTipoCambio, calcularPrecios, calcularPrecioManoDeObra, IVA } from '../../services/tipoCambioService';
@@ -1547,16 +1547,8 @@ const KanbanBoard = () => {
         bitacora: arrayUnion(bitacoraAprobado),
       });
 
-      // 2. Reservar stock en lista_precios
-      for (const qi of (item.quoteItems || [])) {
-        if (qi.listaItemId) {
-          try {
-            await updateDoc(doc(db, 'lista_precios', qi.listaItemId), {
-              stockReservado: increment(qi.quantity || 0),
-            });
-          } catch (e) { console.warn('No se pudo reservar stock para', qi.descripcion, e); }
-        }
-      }
+      // 2. Reserva de stock: ya no se usa el contador stockReservado.
+      //    Las obras aprobadas "Pendiente de Inicio" se cuentan como reservadas en vivo (services/reservasStock.js).
 
       // 3. Crear obra en Euler Jornadas
       const jornadasObraId = `ob_erp_${Date.now()}`;

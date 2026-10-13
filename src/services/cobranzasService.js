@@ -6,7 +6,7 @@
  * Las numeraciones viven en configuracion/ventas y se incrementan dentro de transacciones.
  */
 import {
-  collection, doc, getDoc, getDocs, query, where, runTransaction, writeBatch, addDoc, updateDoc, setDoc, serverTimestamp, arrayUnion,
+  collection, doc, getDoc, getDocs, query, where, runTransaction, writeBatch, addDoc, updateDoc, setDoc, serverTimestamp, arrayUnion, increment,
 } from 'firebase/firestore';
 import { db } from './firebaseConfig';
 import { MEDIOS_COBRO, r2, claveBase } from './ventasCalculo';
@@ -162,7 +162,7 @@ export const emitirComprobanteX = async (p, user) => {
     const pendientes = lineas.filter((l) => l.entregaPendiente);
     if (pendientes.length) {
       tx.set(doc(collection(db, 'materiales_a_favor')), materialDoc({
-        empresaId: EMPRESA_EULER, cli, comprobanteId: ref.id, comprobanteColeccion: 'comprobantes_venta', comprobanteNumero: `FAX ${numeroOriginal}`, fecha, lineas: pendientes, user,
+        empresaId: EMPRESA_EULER, cli, comprobanteId: ref.id, comprobanteColeccion: 'comprobantes_venta', comprobanteNumero: `FAX ${numeroOriginal}`, obraId: comprobante.obraId, fecha, lineas: pendientes, user,
       }));
     }
     return { ...comprobante, id: ref.id, createdAt: null };
@@ -311,13 +311,14 @@ export const anularRecibo = async (r, motivo, user) => {
 
 // ─── Materiales a favor ─────────────────────────────────────────────────────
 
-function materialDoc({ empresaId, cli, comprobanteId = null, comprobanteColeccion = null, comprobanteNumero = '', fecha, lineas, user, nota = '', prueba = false }) {
+function materialDoc({ empresaId, cli, comprobanteId = null, comprobanteColeccion = null, comprobanteNumero = '', obraId = null, fecha, lineas, user, nota = '', prueba = false }) {
   return {
     empresaId,
     ...cli,
     comprobanteId,
     comprobanteColeccion,
     comprobanteNumero,
+    obraId: obraId || null,
     fecha: fecha || hoyISO(),
     items: lineas.map((l) => ({
       descripcion: l.descripcion, cantidad: Number(l.cantidad) || 0, cantidadEntregada: 0, unidad: l.unidad || '',
@@ -337,13 +338,17 @@ export const crearMaterialesAFavor = async ({ empresaId, cliente, comprobante, l
   if (!lineas?.length) return null;
   const cli = datosCliente(cliente);
   const ref = await addDoc(collection(db, 'materiales_a_favor'), materialDoc({
-    empresaId, cli, comprobanteId: comprobante?.id || null, comprobanteColeccion: comprobante?.coleccion || null,
+    empresaId, cli, comprobanteId: comprobante?.id || null, comprobanteColeccion: comprobante?.coleccion || null, obraId: comprobante?.obraId || null,
     comprobanteNumero: comprobante ? `${comprobante.tipoComprobante} ${comprobante.numeroOriginal}` : '', fecha: comprobante?.fechaEmision, lineas, user, nota, prueba,
   }));
   return ref.id;
 };
 
-/** entregas: { [indiceItem]: cantidad } */
+/**
+ * entregas: { [indiceItem]: cantidad }
+ * La entrega saca el material del depósito: descuenta el stock físico de los ítems vinculados a la lista de precios
+ * (salvo materiales de prueba). La reserva baja sola porque se calcula en vivo.
+ */
 export const registrarEntregaMateriales = async (mat, entregas, nota, user) => {
   const items = (mat.items || []).map((it, i) => {
     const cant = Number(entregas[i] || 0);
@@ -351,14 +356,29 @@ export const registrarEntregaMateriales = async (mat, entregas, nota, user) => {
     if (cant < 0 || cant > pendiente + 0.0001) throw new Error(`Cantidad inválida para ${it.descripcion}.`);
     return { ...it, cantidadEntregada: r2(Number(it.cantidadEntregada || 0) + cant) };
   });
-  const detalle = (mat.items || []).map((it, i) => ({ descripcion: it.descripcion, cantidad: Number(entregas[i] || 0) })).filter((x) => x.cantidad > 0);
+  const detalle = (mat.items || []).map((it, i) => ({ descripcion: it.descripcion, cantidad: Number(entregas[i] || 0), listaItemId: it.listaItemId || null })).filter((x) => x.cantidad > 0);
   if (!detalle.length) throw new Error('Indicá al menos una cantidad entregada.');
   const completo = items.every((it) => it.cantidadEntregada >= Number(it.cantidad) - 0.0001);
-  await updateDoc(doc(db, 'materiales_a_favor', mat.id), {
+  const batch = writeBatch(db);
+  batch.update(doc(db, 'materiales_a_favor', mat.id), {
     items,
     estado: completo ? 'entregado' : 'parcial',
-    entregas: arrayUnion({ fecha: new Date().toISOString(), items: detalle, nota: nota || '', usuario: quien(user) }),
+    entregas: arrayUnion({ fecha: new Date().toISOString(), items: detalle, nota: nota || '', usuario: quien(user), descuentaStock: !mat.prueba }),
   });
+  if (!mat.prueba) {
+    const porArticulo = {};
+    detalle.forEach((d) => { if (d.listaItemId) porArticulo[d.listaItemId] = (porArticulo[d.listaItemId] || 0) + d.cantidad; });
+    Object.entries(porArticulo).forEach(([id, cant]) => {
+      batch.update(doc(db, 'lista_precios', id), { stock: increment(-cant), stockActualizadoEn: new Date().toISOString() });
+    });
+  }
+  await batch.commit();
+};
+
+/** Vincula un ítem libre de materiales a favor con un artículo de la lista de precios (para que impacte en stock). */
+export const vincularMaterialArticulo = async (mat, idx, articulo) => {
+  const items = (mat.items || []).map((it, i) => (i === idx ? { ...it, listaItemId: articulo?.id || null, unidad: it.unidad || articulo?.unidad || '' } : it));
+  await updateDoc(doc(db, 'materiales_a_favor', mat.id), { items });
 };
 
 // ─── Saldos iniciales (migración GesDatta) ──────────────────────────────────

@@ -1,26 +1,37 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Package, AlertTriangle, Wrench, Thermometer, Archive, Minus, Plus, Edit2, TrendingDown, CheckCircle, XCircle, DollarSign } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { Search, Package, AlertTriangle, Minus, Plus, Edit2, CheckCircle, XCircle, DollarSign, ShoppingCart, Bookmark } from 'lucide-react';
 import { db } from '../../services/firebaseConfig';
 import { collection, onSnapshot, updateDoc, doc } from 'firebase/firestore';
-import { getTipoCambio, calcularPrecios, calcularPrecioManoDeObra } from '../../services/tipoCambioService';
+import { getTipoCambio } from '../../services/tipoCambioService';
+import { calcularReservas } from '../../services/reservasStock';
+import ReservasStock from './ReservasStock';
 
 const formatARS = (n) => n != null ? `$ ${n.toLocaleString('es-AR')}` : '—';
+const fmtCant = (n) => Number(n || 0).toLocaleString('es-AR', { maximumFractionDigits: 2 });
 
 const Stock = () => {
+  const [params, setParams] = useSearchParams();
+  const [vista, setVista] = useState(params.get('tab') === 'reservados' ? 'reservados' : 'inventario');
+  const [articuloFiltro, setArticuloFiltro] = useState('');
   const [items, setItems] = useState([]);
+  const [materiales, setMateriales] = useState([]);
+  const [obras, setObras] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('Todas');
-  const [filterStock, setFilterStock] = useState('todos'); // todos, bajo, sinstock
+  const [filterStock, setFilterStock] = useState('todos'); // todos, faltante, bajo, sinstock
   const [editingId, setEditingId] = useState(null);
   const [editValues, setEditValues] = useState({});
   const [tc, setTc] = useState(null);
 
   // Unified collection — same as Lista de Precios
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'lista_precios'), (snap) => {
-      setItems(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
-    return unsub;
+    const unsubs = [
+      onSnapshot(collection(db, 'lista_precios'), (snap) => setItems(snap.docs.map(d => ({ id: d.id, ...d.data() })))),
+      onSnapshot(collection(db, 'materiales_a_favor'), (snap) => setMateriales(snap.docs.map(d => ({ id: d.id, ...d.data() }))), () => {}),
+      onSnapshot(collection(db, 'obras'), (snap) => setObras(snap.docs.map(d => ({ id: d.id, ...d.data() }))), () => {}),
+    ];
+    return () => unsubs.forEach((u) => u());
   }, []);
 
   // Load TC for inventory value
@@ -29,6 +40,17 @@ const Stock = () => {
       try { setTc(await getTipoCambio()); } catch (e) { console.error(e); }
     })();
   }, []);
+
+  // Reservas en vivo: vendidos con entrega pendiente + obras aprobadas sin iniciar
+  const { reservadoPor } = useMemo(() => calcularReservas({ materiales, obras, lista: items }), [materiales, obras, items]);
+  const reservadoDe = (item) => reservadoPor[item.id] || 0;
+  const disponibleDe = (item) => (Number(item.stock) || 0) - reservadoDe(item);
+
+  const cambiarVista = (v, articulo = '') => {
+    setArticuloFiltro(articulo);
+    setVista(v);
+    setParams(v === 'reservados' ? { tab: 'reservados' } : {}, { replace: true });
+  };
 
   // Categories from data
   const categories = useMemo(() => {
@@ -45,29 +67,33 @@ const Stock = () => {
       const term = searchTerm.toLowerCase();
       const matchSearch = !term || item.descripcion?.toLowerCase().includes(term) || item.proveedor?.toLowerCase().includes(term);
       const matchCat = activeTab === 'Todas' || item.categoria === activeTab;
-      
+
       const stock = item.stock ?? 0;
       const minimo = item.stockMinimo ?? 0;
+      const reservado = reservadoPor[item.id] || 0;
+      const disponible = stock - reservado;
       let matchStock = true;
-      if (filterStock === 'negativo') matchStock = stock < 0;
-      if (filterStock === 'bajo') matchStock = stock > 0 && stock <= minimo;
+      if (filterStock === 'faltante') matchStock = disponible < 0;
+      if (filterStock === 'reservado') matchStock = reservado > 0;
+      if (filterStock === 'bajo') matchStock = disponible >= 0 && minimo > 0 && disponible <= minimo;
       if (filterStock === 'sinstock') matchStock = stock === 0;
-      
+
       return matchSearch && matchCat && matchStock;
     });
-  }, [items, searchTerm, activeTab, filterStock]);
+  }, [items, searchTerm, activeTab, filterStock, reservadoPor]);
 
   // Stats
   const stats = useMemo(() => {
     const materiales = items.filter(i => i.tipo !== 'mano_de_obra' && i.tipo !== 'servicio' && i.tipo !== 'gasto');
+    const disp = (i) => (Number(i.stock) || 0) - (reservadoPor[i.id] || 0);
     const conStock = materiales.filter(i => (i.stock ?? 0) > 0);
     const bajoStock = materiales.filter(i => {
-      const s = i.stock ?? 0;
+      const d = disp(i);
       const m = i.stockMinimo ?? 0;
-      return s > 0 && m > 0 && s <= m;
+      return d >= 0 && m > 0 && d <= m;
     });
-    const sinStock = materiales.filter(i => (i.stock ?? 0) === 0 && (i.stockMinimo ?? 0) > 0);
-    const stockNegativo = materiales.filter(i => (i.stock ?? 0) < 0);
+    const faltantes = materiales.filter(i => disp(i) < 0);
+    const conReserva = materiales.filter(i => (reservadoPor[i.id] || 0) > 0);
 
     // Inventory value
     let valorTotal = 0;
@@ -79,8 +105,12 @@ const Stock = () => {
       }
     }
 
-    return { total: materiales.length, conStock: conStock.length, bajoStock: bajoStock.length, sinStock: sinStock.length, stockNegativo: stockNegativo.length, valorTotal };
-  }, [items, tc]);
+    return {
+      total: materiales.length, conStock: conStock.length, bajoStock: bajoStock.length, faltantes: faltantes.length,
+      unidadesFaltantes: faltantes.reduce((a, i) => a - disp(i), 0), conReserva: conReserva.length,
+      unidadesReservadas: conReserva.reduce((a, i) => a + (reservadoPor[i.id] || 0), 0), valorTotal,
+    };
+  }, [items, tc, reservadoPor]);
 
   // Quick stock adjust
   const adjustStock = async (item, amount) => {
@@ -114,41 +144,58 @@ const Stock = () => {
 
   const getStockStatus = (item) => {
     const stock = item.stock ?? 0;
-    const reservado = item.stockReservado ?? 0;
-    const disponible = stock - reservado;
+    const reservado = reservadoDe(item);
+    const disponible = disponibleDe(item);
     const minimo = item.stockMinimo ?? 0;
 
-    if (stock < 0) return { label: 'Stock Negativo', color: 'red', icon: <AlertTriangle size={14} /> };
+    if (disponible < 0) return { label: reservado > 0 ? 'Faltante' : 'Stock negativo', color: 'red', icon: <AlertTriangle size={14} /> };
     if (minimo === 0 && stock === 0) return { label: 'Sin datos', color: 'gray', icon: null };
-    if (disponible <= 0 && stock === 0) return { label: 'Sin stock', color: 'red', icon: <XCircle size={14} /> };
-    if (disponible <= 0 && stock > 0) return { label: 'Todo reservado', color: 'orange', icon: <AlertTriangle size={14} /> };
+    if (disponible === 0 && stock === 0) return { label: 'Sin stock', color: 'red', icon: <XCircle size={14} /> };
+    if (disponible === 0 && stock > 0) return { label: 'Todo reservado', color: 'orange', icon: <AlertTriangle size={14} /> };
     if (minimo > 0 && disponible <= minimo) return { label: 'Bajo', color: 'orange', icon: <AlertTriangle size={14} /> };
     return { label: 'OK', color: 'green', icon: <CheckCircle size={14} /> };
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Pestañas */}
+      <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--border-light)', marginBottom: '0.75rem' }}>
+        {[['inventario', 'Inventario', <Package key="p" size={16} />], ['reservados', `Materiales reservados${stats.unidadesReservadas ? ` (${fmtCant(stats.unidadesReservadas)})` : ''}`, <Bookmark key="b" size={16} />]].map(([id, label, icono]) => (
+          <button key={id} onClick={() => cambiarVista(id)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6, padding: '0.6rem 1rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.88rem',
+              fontWeight: vista === id ? 700 : 500, color: vista === id ? '#0D2A4E' : 'var(--text-secondary)', borderBottom: `3px solid ${vista === id ? '#F5A623' : 'transparent'}`, marginBottom: -1,
+            }}>
+            {icono} {label}
+          </button>
+        ))}
+      </div>
+
+      {vista === 'reservados' ? (
+        <ReservasStock key={articuloFiltro || 'todos'} lista={items} materiales={materiales} obras={obras} tc={tc} articuloInicial={articuloFiltro} verPruebas={false} />
+      ) : (
+      <>
       {/* Stats */}
       <div className="lp-stats" style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}>
         <div className="lp-stat-card">
           <div className="lp-stat-icon blue"><Package size={18} /></div>
-          <div className="lp-stat-content"><div className="lp-stat-value">{stats.total}</div><div className="lp-stat-label">Artículos</div></div>
+          <div className="lp-stat-content"><div className="lp-stat-value">{stats.total}</div><div className="lp-stat-label">Artículos · {stats.conStock} con stock</div></div>
         </div>
-        <div className="lp-stat-card">
-          <div className="lp-stat-icon green"><CheckCircle size={18} /></div>
-          <div className="lp-stat-content"><div className="lp-stat-value">{stats.conStock}</div><div className="lp-stat-label">Con stock</div></div>
+        <div className="lp-stat-card" onClick={() => cambiarVista('reservados')} style={{ cursor: 'pointer' }} title="Ver reporte de materiales reservados">
+          <div className="lp-stat-icon" style={{ background: '#fef3c7', color: '#92400e' }}><Bookmark size={18} /></div>
+          <div className="lp-stat-content"><div className="lp-stat-value">{fmtCant(stats.unidadesReservadas)}</div><div className="lp-stat-label">Unid. reservadas · {stats.conReserva} art.</div></div>
+        </div>
+        <div className="lp-stat-card" onClick={() => setFilterStock(filterStock === 'faltante' ? 'todos' : 'faltante')} style={{ cursor: 'pointer' }} title="Filtrar faltantes">
+          <div className="lp-stat-icon" style={{ background: '#fef2f2', color: '#dc2626' }}><ShoppingCart size={18} /></div>
+          <div className="lp-stat-content"><div className="lp-stat-value">{stats.faltantes}</div><div className="lp-stat-label">Faltantes · {fmtCant(stats.unidadesFaltantes)} unid. a comprar</div></div>
         </div>
         <div className="lp-stat-card">
           <div className="lp-stat-icon orange"><AlertTriangle size={18} /></div>
-          <div className="lp-stat-content"><div className="lp-stat-value">{stats.bajoStock}</div><div className="lp-stat-label">Stock bajo</div></div>
-        </div>
-        <div className="lp-stat-card">
-          <div className="lp-stat-icon" style={{ background: '#fef2f2', color: '#dc2626' }}><XCircle size={18} /></div>
-          <div className="lp-stat-content"><div className="lp-stat-value">{stats.sinStock}</div><div className="lp-stat-label">Sin stock</div></div>
+          <div className="lp-stat-content"><div className="lp-stat-value">{stats.bajoStock}</div><div className="lp-stat-label">Disponible bajo el mínimo</div></div>
         </div>
         <div className="lp-stat-card">
           <div className="lp-stat-icon purple"><DollarSign size={18} /></div>
-          <div className="lp-stat-content"><div className="lp-stat-value">{formatARS(Math.round(stats.valorTotal))}</div><div className="lp-stat-label">Valor inventario</div></div>
+          <div className="lp-stat-content"><div className="lp-stat-value">{formatARS(Math.round(stats.valorTotal))}</div><div className="lp-stat-label">Valor inventario físico</div></div>
         </div>
       </div>
 
@@ -161,8 +208,10 @@ const Stock = () => {
           </div>
           <select className="input-field lp-filter-select" value={filterStock} onChange={e => setFilterStock(e.target.value)}>
             <option value="todos">Todos</option>
-            <option value="bajo">⚠ Stock bajo</option>
-            <option value="sinstock">✕ Sin stock</option>
+            <option value="faltante">⛔ Faltante (disponible negativo)</option>
+            <option value="reservado">🔖 Con reservas</option>
+            <option value="bajo">⚠ Disponible bajo</option>
+            <option value="sinstock">✕ Sin stock físico</option>
           </select>
         </div>
         <div className="lp-tabs">
@@ -204,8 +253,8 @@ const Stock = () => {
                 const status = getStockStatus(item);
                 const stock = item.stock ?? 0;
                 const minimo = item.stockMinimo ?? 0;
-                const reservado = item.stockReservado ?? 0;
-                const disponible = Math.max(0, stock - reservado);
+                const reservado = reservadoDe(item);
+                const disponible = disponibleDe(item);
                 const isEditing = editingId === item.id;
                 const valorLinea = tc && item.costoUSD ? Math.round(item.costoUSD * stock * tc.valor) : null;
 
@@ -241,18 +290,22 @@ const Stock = () => {
                     {/* Reservado */}
                     <td style={{ textAlign: 'center', background: reservado > 0 ? '#fefce8' : 'transparent' }}>
                       {reservado > 0 ? (
-                        <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#92400e', background: '#fef3c7', padding: '0.1rem 0.4rem', borderRadius: '6px' }}>
-                          {reservado}
-                        </span>
+                        <button type="button" onClick={() => cambiarVista('reservados', item.descripcion)} title="Ver a quién está reservado"
+                          style={{ fontWeight: 700, fontSize: '0.85rem', color: '#92400e', background: '#fef3c7', padding: '0.1rem 0.45rem', borderRadius: '6px', border: '1px solid #fde68a', cursor: 'pointer' }}>
+                          {fmtCant(reservado)}
+                        </button>
                       ) : (
                         <span style={{ color: '#cbd5e1', fontSize: '0.8rem' }}>—</span>
                       )}
                     </td>
-                    {/* Disponible */}
-                    <td style={{ textAlign: 'center', background: disponible === 0 && stock > 0 ? '#fef2f2' : disponible <= minimo && minimo > 0 ? '#fff7ed' : 'transparent' }}>
-                      <span style={{ fontWeight: 700, fontSize: '0.9rem', color: disponible === 0 ? '#dc2626' : disponible <= minimo && minimo > 0 ? '#d97706' : '#059669' }}>
-                        {disponible}
+                    {/* Disponible = físico − reservado (puede ser negativo) */}
+                    <td style={{ textAlign: 'center', background: disponible < 0 ? '#fef2f2' : disponible <= minimo && minimo > 0 ? '#fff7ed' : 'transparent' }}>
+                      <span style={{ fontWeight: 700, fontSize: '0.9rem', color: disponible < 0 ? '#dc2626' : disponible === 0 ? '#94a3b8' : disponible <= minimo && minimo > 0 ? '#d97706' : '#059669' }}>
+                        {fmtCant(disponible)}
                       </span>
+                      {disponible < 0 && (
+                        <div style={{ fontSize: '0.65rem', color: '#dc2626', fontWeight: 600 }}>Faltan {fmtCant(-disponible)}</div>
+                      )}
                     </td>
                     {/* Mínimo */}
                     <td style={{ textAlign: 'center' }}>
@@ -289,7 +342,7 @@ const Stock = () => {
                 );
               })}
               {filtered.length === 0 && (
-                <tr><td colSpan="10" className="lp-empty">No se encontraron artículos con los filtros aplicados.</td></tr>
+                <tr><td colSpan="12" className="lp-empty">No se encontraron artículos con los filtros aplicados.</td></tr>
               )}
             </tbody>
           </table>
@@ -297,10 +350,11 @@ const Stock = () => {
         {filtered.length > 0 && (
           <div className="lp-table-footer">
             <span>Mostrando {filtered.length} artículos</span>
-            <span>{stats.bajoStock} con stock bajo · {stats.sinStock} sin stock</span>
+            <span>{stats.bajoStock} con disponible bajo · {stats.faltantes} faltantes ({fmtCant(stats.unidadesFaltantes)} unid.)</span>
           </div>
         )}
       </div>
+      </>)}
     </div>
   );
 };

@@ -437,7 +437,6 @@ const Obras = () => {
         .map(item =>
           updateDoc(doc(db, 'lista_precios', item.listaItemId), {
             stock:          increment(-(Number(item.quantity) || 0)),
-            stockReservado: increment(-(Number(item.quantity) || 0)),
           })
         );
       await Promise.all(stockUpdates);
