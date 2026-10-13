@@ -151,6 +151,16 @@ service cloud.firestore {
       allow read, write: if isSignedIn();
     }
 
+    // Consumo real de materiales en obra (ingeniería de cañería, salidas y devoluciones al depósito).
+    // Se registran desde la obra (también técnicos); solo se anulan, nunca se borran.
+    match /consumos_obra/{consumoId} {
+      allow read, create: if isSignedIn();
+      allow update: if isSignedIn()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estado', 'anuladoPor', 'anuladoEn', 'motivoAnulacion'])
+        && resource.data.estado == 'vigente' && request.resource.data.estado == 'anulado';
+      allow delete: if false;
+    }
+
     // Saldos iniciales de cuenta corriente (migración GesDatta). Solo admin carga/anula.
     match /saldos_iniciales/{saldoId} {
       allow read: if isSignedIn();

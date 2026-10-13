@@ -19,8 +19,9 @@ import ObrasListView from './ObrasListView';
 import ObrasMapView from './ObrasMapView';
 import FacturacionArcaTab from './FacturacionArcaTab';
 import DescontarStockObraModal from './DescontarStockObraModal';
+import ConsumosObraPanel from './ConsumosObraPanel';
 import { descontadoPorItem, esDescuentoLegacy } from '../../services/obraStockService';
-import { TIPOS_SIN_STOCK } from '../../services/remitosService';
+import { esLineaDeStock } from '../../services/remitosService';
 
 const addBusinessDays = (startDateStr, days) => {
   if (!days) return startDateStr;
@@ -177,6 +178,8 @@ const Obras = () => {
 
   // iniciar etapa / descontar materiales: null | 'iniciar' | 'manual'
   const [stockModal, setStockModal] = useState(null);
+  // al iniciar la obra de cañería se abre la carga de ingeniería (caños y piezas reales)
+  const [abrirIngenieria, setAbrirIngenieria] = useState(false);
 
   // survey trigger modal
   const [showSurveyModal, setShowSurveyModal] = useState(false);
@@ -722,6 +725,12 @@ const Obras = () => {
     const presId = selectedObra?.presupuestoId || selectedObra?.quoteId;
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <ConsumosObraPanel
+          key={selectedObra.id}
+          obra={selectedObra}
+          abrirIngenieria={abrirIngenieria}
+          onIngenieriaAbierta={() => setAbrirIngenieria(false)}
+        />
         {presId && (
           <div style={{ padding: '0.75rem 1rem', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', fontSize: '0.875rem', color: '#1d4ed8', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -743,7 +752,7 @@ const Obras = () => {
         ) : (() => {
           const legacy = esDescuentoLegacy(selectedObra);
           const desc = descontadoPorItem(selectedObra);
-          const esStock = (it) => it.listaItemId && !TIPOS_SIN_STOCK.includes(it.tipo) && Number(it.quantity) > 0;
+          const esStock = (it) => esLineaDeStock(it) && Number(it.quantity) > 0;
           const hayPendientes = !legacy && items.some((it, i) => esStock(it) && (desc[i] || 0) < Number(it.quantity) - 0.0001);
           const estadoStock = (it, i) => {
             if (!esStock(it)) return <span style={{ color: 'var(--text-tertiary)' }}>—</span>;
@@ -1266,6 +1275,10 @@ const Obras = () => {
             if (upd && Object.keys(upd).length) {
               setSelectedObra(prev => ({ ...prev, ...upd }));
               setEditForm(prev => ({ ...prev, ...upd }));
+            }
+            if (stockModal === 'iniciar' && selectedObra.phase !== 'Instalación') {
+              setActiveTab('materiales');
+              setAbrirIngenieria(true);
             }
           }}
         />

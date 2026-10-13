@@ -112,7 +112,7 @@ export default function DescontarStockObraModal({ obra: obraProp, modo = 'inicia
         <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
           Se pasa a <strong>En Proceso</strong> y se descuentan del stock los materiales de esta etapa.{' '}
           {etapa === 'obra'
-            ? <>En la <strong>obra de cañería</strong> se descuentan solo los materiales <strong>PEX</strong>; calderas, radiadores, válvulas, etc. se descuentan al iniciar la instalación de equipos.</>
+            ? <>En la <strong>obra de cañería</strong>, al confirmar se abre la <strong>carga de la ingeniería</strong>: los caños, accesorios y piezas reales que salen del depósito. Calderas, radiadores, válvulas, etc. se descuentan al iniciar la instalación de equipos.</>
             : <>En la <strong>instalación de equipos</strong> se descuentan calderas, radiadores, válvulas y el resto de los materiales.</>}
         </div>
       )}
@@ -123,7 +123,7 @@ export default function DescontarStockObraModal({ obra: obraProp, modo = 'inicia
       {items === null ? (
         <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-secondary)' }}><Loader size={18} className="spin" /> Cargando materiales…</div>
       ) : items.length === 0 ? (
-        <Alerta tipo="info">El presupuesto de esta obra no tiene materiales vinculados al stock.</Alerta>
+        etapa === 'obra' ? null : <Alerta tipo="info">El presupuesto de esta obra no tiene materiales vinculados al stock.</Alerta>
       ) : (
         <div style={{ overflowX: 'auto', border: '1px solid var(--border-light)', borderRadius: 8 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>

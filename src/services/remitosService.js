@@ -20,8 +20,11 @@ import { getArcaConfig } from './arcaFacturacionService';
 
 export const COL_REMITOS = 'remitos_entrega';
 export const TIPOS_SIN_STOCK = ['mano_de_obra', 'servicio', 'gasto'];
-/** Línea de factura que representa material físico de la lista de precios. */
-export const esLineaDeStock = (l) => !!l.listaItemId && !TIPOS_SIN_STOCK.includes(l.tipo);
+/** Ítems "globales" como "Mano de obra y materiales para cañería PEX": no son una pieza del depósito.
+ *  Los caños y accesorios reales se descargan como consumo de obra (services/consumosObraService.js). */
+export const RE_ITEM_GLOBAL = /mano\s+de\s+obra/i;
+/** Línea (de factura o presupuesto) que representa material físico de la lista de precios. */
+export const esLineaDeStock = (l) => !!l.listaItemId && !TIPOS_SIN_STOCK.includes(l.tipo) && !RE_ITEM_GLOBAL.test(l.descripcion || '');
 
 const CFG_REF = () => doc(db, 'configuracion', 'ventas');
 const EULER_DEFAULT = {

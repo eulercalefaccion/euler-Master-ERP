@@ -13,7 +13,7 @@ import {
   collection, doc, getDoc, getDocs, query, where, runTransaction, increment, arrayUnion,
 } from 'firebase/firestore';
 import { db } from './firebaseConfig';
-import { registrarEntrega, TIPOS_SIN_STOCK } from './remitosService';
+import { registrarEntrega, esLineaDeStock } from './remitosService';
 
 export const ETAPAS = {
   obra: { id: 'obra', label: 'Obra de cañería', corto: 'Cañería PEX' },
@@ -54,7 +54,7 @@ export const cargarItemsStockObra = async (obra) => {
   const desc = descontadoPorItem(obra);
   const base = (obra?.quoteItems || [])
     .map((it, itemIndex) => ({ it, itemIndex }))
-    .filter(({ it }) => it.listaItemId && !TIPOS_SIN_STOCK.includes(it.tipo) && Number(it.quantity) > 0);
+    .filter(({ it }) => esLineaDeStock(it) && Number(it.quantity) > 0);
 
   const ids = [...new Set(base.map(({ it }) => it.listaItemId))];
   const arts = {};
