@@ -9,7 +9,7 @@ import {
 import { db, storage } from '../../services/firebaseConfig';
 import {
   collection, onSnapshot, query, addDoc, updateDoc, doc, getDoc,
-  serverTimestamp, increment, arrayUnion, arrayRemove
+  serverTimestamp, arrayUnion, arrayRemove
 } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { generarPDFPresupuesto } from '../../services/pdfPresupuesto';
@@ -18,6 +18,9 @@ import { useAuth } from '../../context/AuthContext';
 import ObrasListView from './ObrasListView';
 import ObrasMapView from './ObrasMapView';
 import FacturacionArcaTab from './FacturacionArcaTab';
+import DescontarStockObraModal from './DescontarStockObraModal';
+import { descontadoPorItem, esDescuentoLegacy } from '../../services/obraStockService';
+import { TIPOS_SIN_STOCK } from '../../services/remitosService';
 
 const addBusinessDays = (startDateStr, days) => {
   if (!days) return startDateStr;
@@ -172,10 +175,8 @@ const Obras = () => {
   const [uploadProgress, setUploadProgress]   = useState(null);
   const [isUploading, setIsUploading]         = useState(false);
 
-  // iniciar obra dialog
-  const [showIniciarDialog, setShowIniciarDialog] = useState(false);
-  const [isInitiating, setIsInitiating]           = useState(false);
-  const [diasEstimados, setDiasEstimados]         = useState(1);
+  // iniciar etapa / descontar materiales: null | 'iniciar' | 'manual'
+  const [stockModal, setStockModal] = useState(null);
 
   // survey trigger modal
   const [showSurveyModal, setShowSurveyModal] = useState(false);
@@ -426,43 +427,17 @@ const Obras = () => {
     setIsSaving(false);
   };
 
-  /* ── Iniciar Obra ── */
-  const handleIniciarObra = async () => {
-    if (!selectedObra) return;
-    setIsInitiating(true);
-    try {
-      const items = selectedObra.quoteItems || [];
-      const stockUpdates = items
-        .filter(item => item.listaItemId)
-        .map(item =>
-          updateDoc(doc(db, 'lista_precios', item.listaItemId), {
-            stock:          increment(-(Number(item.quantity) || 0)),
-          })
-        );
-      await Promise.all(stockUpdates);
-
-      const hoy = new Date().toISOString().split('T')[0];
-      const estimatedEndDate = addBusinessDays(hoy, parseInt(diasEstimados) || 1);
-
-      const entry = { texto: 'Obra iniciada — stock descontado. Días estimados: ' + (parseInt(diasEstimados) || 1), fecha: new Date().toISOString() };
-      const existing = selectedObra.bitacoraHistory || [];
-      const isObraPhase = selectedObra.phase === 'Obra';
-      const updatedFields = {
-        estado: 'En Proceso',
-        [isObraPhase ? 'fechaInicioObra' : 'fechaInicioInstalacion']: hoy,
-        [isObraPhase ? 'fechaFinEstimadaObra' : 'fechaFinEstimadaInstalacion']: estimatedEndDate,
-        bitacoraPreview: entry.texto,
-        bitacoraHistory: [entry, ...existing],
-      };
-      await updateDoc(doc(db, 'obras', selectedObra.id), updatedFields);
-      setSelectedObra(prev => ({ ...prev, ...updatedFields }));
-      setEditForm(prev => ({ ...prev, ...updatedFields }));
-      setShowIniciarDialog(false);
-      setDiasEstimados(1);
-    } catch (err) {
-      alert('Error al iniciar obra: ' + err.message);
-    }
-    setIsInitiating(false);
+  /* ── Iniciar etapa (obra de cañería / instalación de equipos) ──
+     El descuento de stock por etapa lo hace DescontarStockObraModal (services/obraStockService.js):
+     cañería → solo materiales PEX; instalación → calderas, radiadores, válvulas y el resto. */
+  const construirUpdatesInicio = (dias) => {
+    const hoy = new Date().toISOString().split('T')[0];
+    const isObraPhase = selectedObra?.phase !== 'Instalación';
+    return {
+      estado: 'En Proceso',
+      [isObraPhase ? 'fechaInicioObra' : 'fechaInicioInstalacion']: hoy,
+      [isObraPhase ? 'fechaFinEstimadaObra' : 'fechaFinEstimadaInstalacion']: addBusinessDays(hoy, dias || 1),
+    };
   };
 
   /* ── Personal: add ── */
@@ -765,12 +740,33 @@ const Obras = () => {
           <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
             No hay materiales registrados para esta obra.
           </div>
-        ) : (
+        ) : (() => {
+          const legacy = esDescuentoLegacy(selectedObra);
+          const desc = descontadoPorItem(selectedObra);
+          const esStock = (it) => it.listaItemId && !TIPOS_SIN_STOCK.includes(it.tipo) && Number(it.quantity) > 0;
+          const hayPendientes = !legacy && items.some((it, i) => esStock(it) && (desc[i] || 0) < Number(it.quantity) - 0.0001);
+          const estadoStock = (it, i) => {
+            if (!esStock(it)) return <span style={{ color: 'var(--text-tertiary)' }}>—</span>;
+            const d = legacy ? Number(it.quantity) : (desc[i] || 0);
+            if (d >= Number(it.quantity) - 0.0001) return <span style={{ color: '#166534', fontWeight: 600 }}>Descontado</span>;
+            if (d > 0) return <span style={{ color: '#b45309', fontWeight: 600 }}>Parcial {d}/{it.quantity}</span>;
+            return <span style={{ color: 'var(--text-secondary)' }}>Pendiente</span>;
+          };
+          return (
+          <>
+          {hayPendientes && selectedObra.estado !== 'Pendiente de Inicio' && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 0.9rem', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, fontSize: '0.8rem', color: '#92400e' }}>
+              <span>Hay materiales del presupuesto sin descontar del stock{selectedObra.phase !== 'Instalación' ? ' (calderas, radiadores, válvulas, etc. se descuentan al iniciar la instalación de equipos)' : ''}.</span>
+              <button className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '0.3rem 0.65rem', whiteSpace: 'nowrap' }} onClick={() => setStockModal('manual')}>
+                <Package size={13} /> Descontar materiales
+              </button>
+            </div>
+          )}
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
               <thead>
                 <tr style={{ background: 'var(--bg-surface-hover)' }}>
-                  {['Descripción', 'Tipo', 'Cant.', 'Unidad', 'P. Unit.', 'Subtotal'].map(h => (
+                  {['Descripción', 'Tipo', 'Cant.', 'Unidad', 'P. Unit.', 'Subtotal', 'Stock'].map(h => (
                     <th key={h} style={{ padding: '0.6rem 0.75rem', textAlign: 'left', fontWeight: '600', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-light)', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
@@ -784,6 +780,7 @@ const Obras = () => {
                     <td style={{ padding: '0.6rem 0.75rem', color: 'var(--text-secondary)' }}>{item.unidad || '—'}</td>
                     <td style={{ padding: '0.6rem 0.75rem' }}>$ {fmt(item.unitPrice)}</td>
                     <td style={{ padding: '0.6rem 0.75rem', fontWeight: '600' }}>$ {fmt(item.subtotal)}</td>
+                    <td style={{ padding: '0.6rem 0.75rem', whiteSpace: 'nowrap', fontSize: '0.75rem' }}>{estadoStock(item, i)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -791,11 +788,14 @@ const Obras = () => {
                 <tr style={{ background: 'var(--bg-surface-hover)' }}>
                   <td colSpan={5} style={{ padding: '0.75rem', fontWeight: '700', textAlign: 'right' }}>TOTAL</td>
                   <td style={{ padding: '0.75rem', fontWeight: '700', color: 'var(--primary-600)' }}>$ {fmt(total)}</td>
+                  <td />
                 </tr>
               </tfoot>
             </table>
           </div>
-        )}
+          </>
+          );
+        })()}
       </div>
     );
   };
@@ -1190,10 +1190,10 @@ const Obras = () => {
                   {selectedObra.estado === 'Pendiente de Inicio' ? (
                     <button
                       className="btn btn-primary"
-                      onClick={() => setShowIniciarDialog(true)}
+                      onClick={() => setStockModal('iniciar')}
                       style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: '#16a34a', borderColor: '#16a34a', fontSize: '0.875rem' }}
                     >
-                      <PlayCircle size={16} /> Iniciar Obra
+                      <PlayCircle size={16} /> {selectedObra.phase === 'Instalación' ? 'Iniciar Instalación' : 'Iniciar Obra'}
                     </button>
                   ) : selectedObra.estado === 'En Proceso' ? (
                     <button
@@ -1254,48 +1254,21 @@ const Obras = () => {
         </>
       )}
 
-      {/* ── Iniciar Obra Confirmation Dialog ── */}
-      {showIniciarDialog && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
-          <div className="card" style={{ width: '420px', display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1.5rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <PlayCircle size={24} color="#16a34a" />
-              <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Confirmar inicio de obra</h3>
-            </div>
-            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
-              Se cambiará el estado a <strong>En Proceso</strong> y se descontará el stock de todos los materiales vinculados al presupuesto de esta obra.
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-              <label style={{ fontSize: '0.85rem', fontWeight: '500', color: '#475569' }}>Días estimados de obra (sin sábados ni domingos)</label>
-              <input 
-                type="number" min="1" 
-                className="input-field" 
-                value={diasEstimados} 
-                onChange={e => setDiasEstimados(e.target.value)} 
-                style={{ padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
-              />
-            </div>
-            {(selectedObra?.quoteItems || []).filter(i => i.listaItemId).length > 0 && (
-              <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '0.75rem', fontSize: '0.8rem', color: '#166534' }}>
-                <Package size={13} style={{ display: 'inline', marginRight: '0.35rem' }} />
-                {(selectedObra?.quoteItems || []).filter(i => i.listaItemId).length} ítem(s) con stock serán descontados.
-              </div>
-            )}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.25rem' }}>
-              <button className="btn btn-secondary" onClick={() => setShowIniciarDialog(false)} disabled={isInitiating}>
-                Cancelar
-              </button>
-              <button
-                className="btn btn-primary"
-                onClick={handleIniciarObra}
-                disabled={isInitiating}
-                style={{ background: '#16a34a', borderColor: '#16a34a', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-              >
-                <PlayCircle size={15} /> {isInitiating ? 'Iniciando...' : 'Confirmar'}
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* ── Iniciar etapa / descontar materiales del stock ── */}
+      {stockModal && selectedObra && (
+        <DescontarStockObraModal
+          key={`${selectedObra.id}-${stockModal}`}
+          obra={selectedObra}
+          modo={stockModal}
+          construirUpdates={construirUpdatesInicio}
+          onClose={() => setStockModal(null)}
+          onDone={(_res, upd) => {
+            if (upd && Object.keys(upd).length) {
+              setSelectedObra(prev => ({ ...prev, ...upd }));
+              setEditForm(prev => ({ ...prev, ...upd }));
+            }
+          }}
+        />
       )}
 
       {/* ── Modal Nueva Obra ── */}
