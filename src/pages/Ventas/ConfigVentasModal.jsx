@@ -3,6 +3,7 @@ import { Loader, Save } from 'lucide-react';
 import { EMPRESA_AYALA, EMPRESA_EULER, saveVentasConfig, formatoNumero } from '../../services/cobranzasService';
 import { inp, card } from './ventasHelpers';
 import { Modal, Campo, Alerta } from './ventasUI';
+import ArcaEstadoPanel from './ArcaEstadoPanel';
 
 /** Numeraciones (Comprobante X y Recibos), datos de EULER CALEFACCIÓN y cuentas destino de transferencias. */
 export default function ConfigVentasModal({ ventasCfg, onClose, onGuardado }) {
@@ -61,6 +62,14 @@ export default function ConfigVentasModal({ ventasCfg, onClose, onGuardado }) {
         Al migrar desde GesDatta, cargá acá el <b>último número emitido</b> en GesDatta (por ejemplo, último FAX 00001-00000343 → punto de venta 1, último 343). El ERP continuará con el siguiente.
         Las facturas A/B de AYALA las numera ARCA automáticamente.
       </Alerta>
+
+      <div style={card}>
+        <b style={{ fontSize: '0.88rem' }}>Conexión con ARCA – AYALA NICOLAS FEDERICO (Canal 1)</b>
+        <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', margin: '4px 0 8px' }}>
+          Verifica certificados, servidores de ARCA, autenticación y el último número de factura autorizado. No emite ningún comprobante.
+        </div>
+        <ArcaEstadoPanel />
+      </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
         <div style={card}>
