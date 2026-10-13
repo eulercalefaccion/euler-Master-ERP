@@ -5,7 +5,7 @@
  *
  * Solo usuarios administradores. La clave privada y los certificados viven en Secret Manager.
  */
-const functions = require('firebase-functions');
+const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
 const arca = require('./arca');
 
