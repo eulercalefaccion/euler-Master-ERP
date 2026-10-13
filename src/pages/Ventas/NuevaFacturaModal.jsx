@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
 import {
-  Receipt, Plus, Trash2, Search, Loader, FileText, Package, RefreshCw, Download, Wallet, MessageCircle, X,
+  Receipt, Plus, Trash2, Search, Loader, FileText, Package, RefreshCw, Download, Wallet, MessageCircle, X, FileSignature,
 } from 'lucide-react';
 import { db } from '../../services/firebaseConfig';
 import { useAuth } from '../../context/AuthContext';
@@ -23,6 +23,8 @@ import {
 } from './ventasHelpers';
 import { Modal, Campo, Alerta, Seg } from './ventasUI';
 import ClienteSelector from './ClienteSelector';
+import { registrarEntregaInmediata, esLineaDeStock } from '../../services/remitosService';
+import RemitoModal from '../Remitos/RemitoModal';
 
 const CLIENTE_VACIO = { id: null, nombre: '', docTipo: 99, docNro: '', condicionIva: 'Consumidor Final', domicilio: '', telefono: '' };
 
@@ -50,6 +52,7 @@ export default function NuevaFacturaModal({ onClose, onCobrar, arcaCfg, ventasCf
   const [error, setError] = useState('');
   const [emitiendo, setEmitiendo] = useState(false);
   const [resultado, setResultado] = useState(null);
+  const [verRemito, setVerRemito] = useState(false);
   const [buscandoPadron, setBuscandoPadron] = useState(false);
 
   const esAyala = empresa === EMPRESA_AYALA;
@@ -246,7 +249,23 @@ export default function NuevaFacturaModal({ onClose, onCobrar, arcaCfg, ventasCf
         res.coleccion = 'comprobantes_venta';
         generarPDFFacturaArca(res, ventasCfg.euler).catch((e) => console.warn('PDF', e));
       }
-      setResultado({ ...res, _cliente: cli });
+      // Materiales que se entregan en el momento → descuentan stock y generan remito de entrega
+      let remito = null;
+      let errorRemito = '';
+      const inmediatas = incluidas.filter((l) => !l.entregaPendiente && esLineaDeStock(l));
+      if (inmediatas.length) {
+        try {
+          remito = await registrarEntregaInmediata({
+            empresaId: esAyala ? EMPRESA_AYALA : EMPRESA_EULER,
+            cli: {
+              clienteId: cli.id || null, clienteNombre: String(cli.nombre || '').trim().toUpperCase(), clienteCuit: String(cli.docNro || '').replace(/\D/g, ''),
+              clienteTelefono: cli.telefono || '', clienteDomicilio: cli.domicilio || '', clienteClave: res.clienteClave || null,
+            },
+            comprobante: res, lineas: inmediatas, prueba: res.coleccion === 'arca_pruebas',
+          }, currentUser);
+        } catch (e) { errorRemito = e.message; console.warn('Remito', e); }
+      }
+      setResultado({ ...res, _cliente: cli, _remito: remito, _errorRemito: errorRemito });
     } catch (e) {
       setError(e.message);
     }
@@ -258,12 +277,24 @@ export default function NuevaFacturaModal({ onClose, onCobrar, arcaCfg, ventasCf
     const r = resultado;
     const esX = r.letra === 'X';
     const nombreCbte = esX ? 'Comprobante X' : `Factura ${r.letra}`;
+    if (verRemito && r._remito) return <RemitoModal remito={r._remito} onClose={() => setVerRemito(false)} />;
     return (
       <Modal titulo={`${nombreCbte} ${r.numeroOriginal} emitido`} onClose={onClose} ancho={620}>
         <Alerta tipo="ok">
           <b>{nombreCbte} N° {r.numeroOriginal}</b> · {r.clienteNombre} · <b>{ars(r.totalComprobante)}</b>
           {!esX && <><br />CAE {r.cae} (vence {fechaAR(r.vencimientoCae)}){r.coleccion === 'arca_pruebas' ? ' · PRUEBA sin validez fiscal' : ''}</>}
         </Alerta>
+        {r._remito && (
+          <div style={{ border: '1px solid #fde68a', background: '#fffbeb', borderRadius: 10, padding: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <FileSignature size={20} color="#b45309" />
+            <div style={{ flex: 1, minWidth: 220, fontSize: '0.83rem' }}>
+              <b>Remito de entrega N° {r._remito.numero}</b> · {r._remito.items.length} material(es){r._remito.prueba ? ' (prueba: no descuenta stock)' : ' descontados del stock'}.
+              <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)' }}>Falta la conformidad del cliente: firma en pantalla, link por WhatsApp o en papel.</div>
+            </div>
+            <button className="btn btn-primary" onClick={() => setVerRemito(true)} style={{ display: 'flex', alignItems: 'center', gap: 6 }}><FileSignature size={15} /> Conformidad / remito</button>
+          </div>
+        )}
+        {r._errorRemito && <Alerta>No se pudo generar el remito ni descontar el stock: {r._errorRemito}. Registrá la entrega manualmente desde Stock.</Alerta>}
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           <button className="btn btn-secondary" onClick={() => generarPDFFacturaArca(r, esX ? ventasCfg.euler : arcaCfg)} style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Download size={15} /> Descargar PDF</button>
           <button className="btn btn-primary" onClick={() => onCobrar(r)} style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Wallet size={15} /> Cobrar ahora (recibo)</button>
@@ -482,6 +513,9 @@ export default function NuevaFacturaModal({ onClose, onCobrar, arcaCfg, ventasCf
           </div>
           {lineas.some((l) => l.entregaPendiente && l.incluir) && (
             <Alerta tipo="info">Los ítems marcados con “Entrega pendiente” quedan registrados como <b>materiales a favor</b> del cliente hasta que registres la entrega en su cuenta corriente.</Alerta>
+          )}
+          {incluidas.some((l) => !l.entregaPendiente && esLineaDeStock(l)) && (
+            <Alerta tipo="info">{incluidas.filter((l) => !l.entregaPendiente && esLineaDeStock(l)).length} material(es) de la lista se entregan en el momento: al emitir <b>se descuentan del stock</b> y se genera un <b>remito de entrega</b> para la conformidad del cliente.</Alerta>
           )}
         </div>
       )}

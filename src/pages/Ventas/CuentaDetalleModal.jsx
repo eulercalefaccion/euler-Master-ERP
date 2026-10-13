@@ -9,6 +9,7 @@ import { EmpresaBadge, Pill } from '../Listados/listadosUI';
 import { cellPad } from '../Listados/listadosHelpers';
 import { thSt, inp, diasDesde, tramoDe, clienteDeCuenta } from './ventasHelpers';
 import { Modal, Alerta, Seg } from './ventasUI';
+import RemitoModal from '../Remitos/RemitoModal';
 
 const empresaDe = (x) => x.empresaId || 'ayala-nicolas';
 const th = (h, right) => <th key={h} style={{ ...cellPad, textAlign: right ? 'right' : 'left', fontWeight: 600, fontSize: '0.72rem' }}>{h}</th>;
@@ -18,10 +19,14 @@ function MaterialCard({ mat, onError }) {
   const [cant, setCant] = useState({});
   const [nota, setNota] = useState('');
   const [guardando, setGuardando] = useState(false);
+  const [remito, setRemito] = useState(null);
   const abierto = mat.estado !== 'entregado' && mat.estado !== 'anulado';
   const registrar = async () => {
     setGuardando(true);
-    try { await registrarEntregaMateriales(mat, cant, nota, currentUser); setCant({}); setNota(''); } catch (e) { onError(e.message); } finally { setGuardando(false); }
+    try {
+      const rem = await registrarEntregaMateriales(mat, cant, nota, currentUser);
+      setCant({}); setNota(''); setRemito(rem);
+    } catch (e) { onError(e.message); } finally { setGuardando(false); }
   };
   const est = { pendiente: ['Pendiente', '#b45309', '#fef3c7'], parcial: ['Entrega parcial', '#1d4ed8', '#dbeafe'], entregado: ['Entregado', '#047857', '#d1fae5'], anulado: ['Anulado', '#b91c1c', '#fee2e2'] }[mat.estado] || ['—', '#475569', '#f1f5f9'];
   return (
@@ -68,10 +73,19 @@ function MaterialCard({ mat, onError }) {
       {(mat.entregas || []).length > 0 && (
         <div style={{ padding: '0.4rem 0.75rem', borderTop: '1px dashed var(--border-light)', fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
           {(mat.entregas || []).map((e, i) => (
-            <div key={i}>{fechaAR(String(e.fecha).slice(0, 10))}: {(e.items || []).map((x) => `${x.cantidad} × ${x.descripcion}`).join(', ')}{e.nota ? ` — ${e.nota}` : ''}</div>
+            <div key={i}>
+              {fechaAR(String(e.fecha).slice(0, 10))}: {(e.items || []).map((x) => `${x.cantidad} × ${x.descripcion}`).join(', ')}{e.nota ? ` — ${e.nota}` : ''}
+              {e.remitoId && !e.anulacion && (
+                <button type="button" onClick={() => setRemito({ id: e.remitoId, numero: e.remitoNumero })}
+                  style={{ marginLeft: 6, border: 'none', background: 'none', color: '#1d4ed8', cursor: 'pointer', fontSize: '0.72rem', textDecoration: 'underline', padding: 0 }}>
+                  Remito {e.remitoNumero}
+                </button>
+              )}
+            </div>
           ))}
         </div>
       )}
+      {remito && <RemitoModal remito={remito} onClose={() => setRemito(null)} />}
     </div>
   );
 }

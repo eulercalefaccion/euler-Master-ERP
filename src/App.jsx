@@ -17,6 +17,7 @@ import Balance from './pages/Balance/Balance';
 import Sueldos from './pages/Sueldos/Sueldos';
 import ListaPrecios from './pages/ListaPrecios/ListaPrecios';
 import EncuestaObra from './pages/EncuestaObra/EncuestaObra';
+import FirmaRemitoPublica from './pages/Remitos/FirmaRemitoPublica';
 import Papelera from './pages/Papelera/Papelera';
 import Estandares from './pages/Estandares/Estandares';
 import FormularioPublico from './pages/PublicForm/FormularioPublico';
@@ -81,6 +82,7 @@ function App() {
       <Routes>
         <Route path="/login" element={currentUser ? <Navigate to="/" /> : <Login />} />
         <Route path="/encuesta/:id" element={<EncuestaObra />} />
+        <Route path="/remito/:id" element={<FirmaRemitoPublica />} />
         <Route path="/presupuesto" element={<FormularioPublico />} />
         <Route path="/ver/:id" element={<div className="servicios-app"><CompartirServicio /></div>} />
         <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />

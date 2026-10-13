@@ -104,6 +104,9 @@ service cloud.firestore {
     match /lista_precios/{itemId} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
+      // Movimientos de stock (entregas / remitos) por cualquier usuario del ERP: solo el contador de stock.
+      allow update: if isSignedIn()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock', 'stockActualizadoEn']);
     }
     
     match /estandares/{estandarId} {
@@ -172,6 +175,22 @@ service cloud.firestore {
 
     match /remitos/{remitoId} {
       allow read, write: if isSignedIn();
+    }
+
+    // Remitos de entrega a clientes. El ID aleatorio funciona como token del link de firma:
+    // cualquiera con el link puede LEER ese remito (get, no list) y FIRMARLO una sola vez.
+    match /remitos_entrega/{remitoId} {
+      allow get: if true;
+      allow list, create, delete: if isSignedIn();
+      allow update: if isSignedIn() || (
+        resource.data.estado == 'vigente'
+        && resource.data.estadoFirma == 'pendiente'
+        && request.resource.data.estadoFirma == 'firmado'
+        && request.resource.data.firma.metodo == 'link'
+        && request.resource.data.firma.imagen is string
+        && request.resource.data.firma.imagen.size() < 400000
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estadoFirma', 'firma', 'firmadoEn'])
+      );
     }
 
     match /cheques/{chequeId} {
@@ -264,6 +283,9 @@ service cloud.firestore {
     match /configuracion/{configId} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
+      // Numeraciones correlativas (remitos, recibos, comprobantes X) para cualquier usuario del ERP.
+      allow update: if isSignedIn() && configId == 'ventas'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['numeracion']);
     }
 
     match /colaboradores/{colabId} {

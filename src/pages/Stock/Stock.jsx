@@ -1,18 +1,19 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, Package, AlertTriangle, Minus, Plus, Edit2, CheckCircle, XCircle, DollarSign, ShoppingCart, Bookmark } from 'lucide-react';
+import { Search, Package, AlertTriangle, Minus, Plus, Edit2, CheckCircle, XCircle, DollarSign, ShoppingCart, Bookmark, FileSignature } from 'lucide-react';
 import { db } from '../../services/firebaseConfig';
 import { collection, onSnapshot, updateDoc, doc } from 'firebase/firestore';
 import { getTipoCambio } from '../../services/tipoCambioService';
 import { calcularReservas } from '../../services/reservasStock';
 import ReservasStock from './ReservasStock';
+import RemitosLista from '../Remitos/RemitosLista';
 
 const formatARS = (n) => n != null ? `$ ${n.toLocaleString('es-AR')}` : '—';
 const fmtCant = (n) => Number(n || 0).toLocaleString('es-AR', { maximumFractionDigits: 2 });
 
 const Stock = () => {
   const [params, setParams] = useSearchParams();
-  const [vista, setVista] = useState(params.get('tab') === 'reservados' ? 'reservados' : 'inventario');
+  const [vista, setVista] = useState(['reservados', 'remitos'].includes(params.get('tab')) ? params.get('tab') : 'inventario');
   const [articuloFiltro, setArticuloFiltro] = useState('');
   const [items, setItems] = useState([]);
   const [materiales, setMateriales] = useState([]);
@@ -51,7 +52,7 @@ const Stock = () => {
   const cambiarVista = (v, articulo = '') => {
     setArticuloFiltro(articulo);
     setVista(v);
-    setParams(v === 'reservados' ? { tab: 'reservados' } : {}, { replace: true });
+    setParams(v === 'inventario' ? {} : { tab: v }, { replace: true });
   };
 
   // Categories from data
@@ -162,7 +163,7 @@ const Stock = () => {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Pestañas */}
       <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--border-light)', marginBottom: '0.75rem' }}>
-        {[['inventario', 'Inventario', <Package key="p" size={16} />], ['reservados', `Materiales reservados${stats.unidadesReservadas ? ` (${fmtCant(stats.unidadesReservadas)})` : ''}`, <Bookmark key="b" size={16} />]].map(([id, label, icono]) => (
+        {[['inventario', 'Inventario', <Package key="p" size={16} />], ['reservados', `Materiales reservados${stats.unidadesReservadas ? ` (${fmtCant(stats.unidadesReservadas)})` : ''}`, <Bookmark key="b" size={16} />], ['remitos', 'Remitos de entrega', <FileSignature key="r" size={16} />]].map(([id, label, icono]) => (
           <button key={id} onClick={() => cambiarVista(id)}
             style={{
               display: 'flex', alignItems: 'center', gap: 6, padding: '0.6rem 1rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.88rem',
@@ -173,7 +174,9 @@ const Stock = () => {
         ))}
       </div>
 
-      {vista === 'reservados' ? (
+      {vista === 'remitos' ? (
+        <RemitosLista />
+      ) : vista === 'reservados' ? (
         <ReservasStock key={articuloFiltro || 'todos'} lista={items} materiales={materiales} comprobantes={comprobantes} recibos={recibos} tc={tc} articuloInicial={articuloFiltro} verPruebas={false} />
       ) : (
       <>

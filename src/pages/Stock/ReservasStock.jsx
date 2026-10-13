@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import {
   Package, Users, AlertTriangle, ShoppingCart, Clock, FileSpreadsheet, Search, X, ChevronDown, ChevronRight, PackageCheck, Link2, MessageCircle, HardHat, Wallet, Loader, Receipt,
 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
 import { calcularReservas } from '../../services/reservasStock';
 import { normalizarNombre, r2 } from '../../services/ventasCalculo';
-import { registrarEntregaMateriales, vincularMaterialArticulo } from '../../services/cobranzasService';
+import { vincularMaterialArticulo } from '../../services/cobranzasService';
+import EntregaModal from '../Remitos/EntregaModal';
 import { ars, fechaAR, abrirWhatsApp, exportarExcel } from '../../services/listadosService';
 import { KpiCard, Pill, EmpresaBadge, IconBtn } from '../Listados/listadosUI';
 import { cellPad, inputSt } from '../Listados/listadosHelpers';
@@ -59,7 +59,6 @@ function VincularModal({ reserva, lista, onClose }) {
  */
 export default function ReservasStock({ lista, materiales, comprobantes, recibos, tc, articuloInicial, verPruebas }) {
   const navigate = useNavigate();
-  const { currentUser } = useAuth();
   const [vista, setVista] = useState('articulo');
   const [busqueda, setBusqueda] = useState(articuloInicial || '');
   const [fuente, setFuente] = useState('reservados'); // reservados | sincobrar
@@ -67,7 +66,7 @@ export default function ReservasStock({ lista, materiales, comprobantes, recibos
   const [soloViejas, setSoloViejas] = useState(false);
   const [abiertos, setAbiertos] = useState({});
   const [vincular, setVincular] = useState(null);
-  const [error, setError] = useState('');
+  const [entrega, setEntrega] = useState(null);
 
   const { reservas, sinCobrar, porArticulo } = useMemo(
     () => calcularReservas({ materiales, lista, comprobantes, recibos, incluirPruebas: verPruebas }),
@@ -131,14 +130,10 @@ export default function ReservasStock({ lista, materiales, comprobantes, recibos
     return { ...k, articulos: k.articulos.size, clientes: k.clientes.size, faltArt: falt.length, faltUnid: falt.reduce((s, a) => s + a.faltante, 0), scUnid, scComps };
   })();
 
-  const entregar = async (r) => {
-    if (!r.pago.pagado && !window.confirm(`Atención: este comprobante todavía NO está cobrado (${pagoDe(r).txt}).\n¿Entregar el material igual?`)) return;
-    const v = window.prompt(`Entregar "${r.descripcion}" a ${r.clienteNombre}.\nPendiente: ${num(r.pendiente)} ${r.unidad}.\n\n¿Cuántas unidades se entregan ahora?${r.articuloId ? '\n(Se descuentan del stock físico)' : '\n(Ítem sin vincular: no descuenta stock)'}`, String(r.pendiente));
-    if (v === null) return;
-    const cant = Number(String(v).replace(',', '.'));
-    if (!(cant > 0)) return;
-    try { await registrarEntregaMateriales(r.ref, { [r.itemIndex]: cant }, 'Entrega desde Reservas de stock', currentUser); } catch (e) { setError(e.message); }
-  };
+  const entregar = (r) => setEntrega({
+    mat: r.ref, itemIndex: r.itemIndex,
+    aviso: r.pago.pagado ? '' : `Atención: el comprobante todavía NO está cobrado (${pagoDe(r).txt}). Verificá antes de entregar.`,
+  });
   const whatsapp = (c) => abrirWhatsApp(c.telefono, `Hola ${(c.nombre || '').split(' ')[0]}, te escribimos de Euler Calefacción. Tenemos registrados estos materiales tuyos pendientes de entrega:\n${c.reservas.map((r) => `• ${num(r.pendiente)} ${r.unidad} ${r.descripcion}`).join('\n')}\n\n¿Coordinamos la entrega/instalación?`);
 
   const exportarDetalle = () => exportarExcel(fuente === 'sincobrar' ? sinCobrarFilt : filtradas, [
@@ -229,7 +224,6 @@ export default function ReservasStock({ lista, materiales, comprobantes, recibos
           <button className="btn btn-secondary" onClick={exportarDetalle} disabled={!(fuente === 'sincobrar' ? sinCobrarFilt : filtradas).length} style={{ display: 'flex', alignItems: 'center', gap: 6 }}><FileSpreadsheet size={15} /> Excel</button>
         </div>
       </div>
-      {error && <Alerta>{error}</Alerta>}
       {fuente === 'sincobrar' && (
         <Alerta tipo="info">Estos materiales se facturaron con entrega pendiente pero el comprobante todavía tiene saldo. <b>No reservan stock</b>: pasan a "Reservados" automáticamente cuando se cobra el total.</Alerta>
       )}
@@ -332,6 +326,7 @@ export default function ReservasStock({ lista, materiales, comprobantes, recibos
         </div>
       </div>
       {vincular && <VincularModal reserva={vincular} lista={lista} onClose={() => setVincular(null)} />}
+      {entrega && <EntregaModal mat={entrega.mat} itemInicial={entrega.itemIndex} aviso={entrega.aviso} onClose={() => setEntrega(null)} />}
     </div>
   );
 }

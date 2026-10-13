@@ -6,10 +6,11 @@
  * Las numeraciones viven en configuracion/ventas y se incrementan dentro de transacciones.
  */
 import {
-  collection, doc, getDoc, getDocs, query, where, runTransaction, writeBatch, addDoc, updateDoc, setDoc, serverTimestamp, arrayUnion, increment,
+  collection, doc, getDoc, getDocs, query, where, runTransaction, writeBatch, addDoc, updateDoc, setDoc, serverTimestamp,
 } from 'firebase/firestore';
 import { db } from './firebaseConfig';
 import { MEDIOS_COBRO, r2, claveBase } from './ventasCalculo';
+import { registrarEntrega } from './remitosService';
 
 export const EMPRESA_AYALA = 'ayala-nicolas';
 export const EMPRESA_EULER = 'euler-calefaccion';
@@ -347,33 +348,12 @@ export const crearMaterialesAFavor = async ({ empresaId, cliente, comprobante, l
 /**
  * entregas: { [indiceItem]: cantidad }
  * La entrega saca el material del depósito: descuenta el stock físico de los ítems vinculados a la lista de precios
- * (salvo materiales de prueba). La reserva baja sola porque se calcula en vivo.
+ * (salvo materiales de prueba) y genera un remito de entrega para la conformidad del cliente.
+ * La reserva baja sola porque se calcula en vivo.
+ * @returns {Promise<object>} remito creado
  */
-export const registrarEntregaMateriales = async (mat, entregas, nota, user) => {
-  const items = (mat.items || []).map((it, i) => {
-    const cant = Number(entregas[i] || 0);
-    const pendiente = Number(it.cantidad) - Number(it.cantidadEntregada || 0);
-    if (cant < 0 || cant > pendiente + 0.0001) throw new Error(`Cantidad inválida para ${it.descripcion}.`);
-    return { ...it, cantidadEntregada: r2(Number(it.cantidadEntregada || 0) + cant) };
-  });
-  const detalle = (mat.items || []).map((it, i) => ({ descripcion: it.descripcion, cantidad: Number(entregas[i] || 0), listaItemId: it.listaItemId || null })).filter((x) => x.cantidad > 0);
-  if (!detalle.length) throw new Error('Indicá al menos una cantidad entregada.');
-  const completo = items.every((it) => it.cantidadEntregada >= Number(it.cantidad) - 0.0001);
-  const batch = writeBatch(db);
-  batch.update(doc(db, 'materiales_a_favor', mat.id), {
-    items,
-    estado: completo ? 'entregado' : 'parcial',
-    entregas: arrayUnion({ fecha: new Date().toISOString(), items: detalle, nota: nota || '', usuario: quien(user), descuentaStock: !mat.prueba }),
-  });
-  if (!mat.prueba) {
-    const porArticulo = {};
-    detalle.forEach((d) => { if (d.listaItemId) porArticulo[d.listaItemId] = (porArticulo[d.listaItemId] || 0) + d.cantidad; });
-    Object.entries(porArticulo).forEach(([id, cant]) => {
-      batch.update(doc(db, 'lista_precios', id), { stock: increment(-cant), stockActualizadoEn: new Date().toISOString() });
-    });
-  }
-  await batch.commit();
-};
+export const registrarEntregaMateriales = (mat, entregas, nota, user, { entregadoPor = '' } = {}) =>
+  registrarEntrega({ mat, entregas, nota, entregadoPor }, user);
 
 /** Vincula un ítem libre de materiales a favor con un artículo de la lista de precios (para que impacte en stock). */
 export const vincularMaterialArticulo = async (mat, idx, articulo) => {
