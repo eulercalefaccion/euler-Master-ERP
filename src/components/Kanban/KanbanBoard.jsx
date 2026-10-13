@@ -1547,8 +1547,8 @@ const KanbanBoard = () => {
         bitacora: arrayUnion(bitacoraAprobado),
       });
 
-      // 2. Reserva de stock: ya no se usa el contador stockReservado.
-      //    Las obras aprobadas "Pendiente de Inicio" se cuentan como reservadas en vivo (services/reservasStock.js).
+      // 2. Reserva de stock: aprobar un presupuesto NO reserva stock.
+      //    Solo se reserva lo facturado con entrega pendiente y totalmente cobrado (services/reservasStock.js).
 
       // 3. Crear obra en Euler Jornadas
       const jornadasObraId = `ob_erp_${Date.now()}`;

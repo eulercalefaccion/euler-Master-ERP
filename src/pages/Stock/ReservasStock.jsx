@@ -1,13 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, onSnapshot } from 'firebase/firestore';
 import {
-  Package, Users, AlertTriangle, ShoppingCart, Clock, FileSpreadsheet, Search, X, ChevronDown, ChevronRight, PackageCheck, Link2, MessageCircle, HardHat, Wallet, Loader,
+  Package, Users, AlertTriangle, ShoppingCart, Clock, FileSpreadsheet, Search, X, ChevronDown, ChevronRight, PackageCheck, Link2, MessageCircle, HardHat, Wallet, Loader, Receipt,
 } from 'lucide-react';
-import { db } from '../../services/firebaseConfig';
 import { useAuth } from '../../context/AuthContext';
 import { calcularReservas } from '../../services/reservasStock';
-import { calcularCartera, normalizarNombre, r2 } from '../../services/ventasCalculo';
+import { normalizarNombre, r2 } from '../../services/ventasCalculo';
 import { registrarEntregaMateriales, vincularMaterialArticulo } from '../../services/cobranzasService';
 import { ars, fechaAR, abrirWhatsApp, exportarExcel } from '../../services/listadosService';
 import { KpiCard, Pill, EmpresaBadge, IconBtn } from '../Listados/listadosUI';
@@ -18,10 +16,7 @@ import { Modal, Seg, Alerta } from '../Ventas/ventasUI';
 const DIAS_ALERTA = 60;
 const num = (n) => Number(n || 0).toLocaleString('es-AR', { maximumFractionDigits: 2 });
 const th = (h, right) => <th key={h} style={{ ...cellPad, textAlign: right ? 'right' : 'left', fontWeight: 600, fontSize: '0.72rem', whiteSpace: 'nowrap' }}>{h}</th>;
-const origenPill = (r) => (r.origen === 'pagado'
-  ? <Pill texto="Vendido · entrega pendiente" color="#b45309" bg="#fef3c7" />
-  : <Pill texto="Obra aprobada sin iniciar" color="#1d4ed8" bg="#dbeafe" />);
-const refTxt = (r) => (r.origen === 'pagado' ? (r.comprobanteNumero || 'Saldo inicial') : `${r.otNumber ? `${r.otNumber} · ` : ''}${r.obraNombre || 'Obra'}`);
+const refTxt = (r) => r.comprobanteNumero || 'Saldo inicial';
 
 function VincularModal({ reserva, lista, onClose }) {
   const [t, setT] = useState(reserva.descripcion || '');
@@ -59,54 +54,45 @@ function VincularModal({ reserva, lista, onClose }) {
 }
 
 /**
- * Reporte de materiales reservados: vendidos con entrega pendiente + obras aprobadas sin iniciar.
+ * Reporte de materiales reservados: facturados con entrega pendiente y totalmente cobrados.
+ * Muestra aparte (sin reservar stock) lo facturado con entrega pendiente que todavía se debe.
  */
-export default function ReservasStock({ lista, materiales, obras, tc, articuloInicial, verPruebas }) {
+export default function ReservasStock({ lista, materiales, comprobantes, recibos, tc, articuloInicial, verPruebas }) {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const [vista, setVista] = useState('articulo');
   const [busqueda, setBusqueda] = useState(articuloInicial || '');
-  const [origen, setOrigen] = useState('');
+  const [fuente, setFuente] = useState('reservados'); // reservados | sincobrar
   const [soloFaltantes, setSoloFaltantes] = useState(false);
   const [soloViejas, setSoloViejas] = useState(false);
   const [abiertos, setAbiertos] = useState({});
   const [vincular, setVincular] = useState(null);
   const [error, setError] = useState('');
-  const [comps, setComps] = useState([]);
-  const [recs, setRecs] = useState([]);
 
-  useEffect(() => {
-    const u1 = onSnapshot(collection(db, 'comprobantes_venta'), (s) => setComps(s.docs.map((d) => ({ id: d.id, ...d.data() }))), () => {});
-    const u2 = onSnapshot(collection(db, 'recibos'), (s) => setRecs(s.docs.map((d) => ({ id: d.id, ...d.data() }))), () => {});
-    return () => { u1(); u2(); };
-  }, []);
-
-  const { reservas, porArticulo } = useMemo(() => calcularReservas({ materiales, obras, lista, incluirPruebas: verPruebas }), [materiales, obras, lista, verPruebas]);
-  const cartera = useMemo(() => calcularCartera(comps, recs, []), [comps, recs]);
-  const compPor = useMemo(() => Object.fromEntries(comps.map((c) => [c.id, c])), [comps]);
+  const { reservas, sinCobrar, porArticulo } = useMemo(
+    () => calcularReservas({ materiales, lista, comprobantes, recibos, incluirPruebas: verPruebas }),
+    [materiales, lista, comprobantes, recibos, verPruebas],
+  );
   const listaPor = useMemo(() => Object.fromEntries(lista.map((i) => [i.id, i])), [lista]);
 
-  const pagoDe = (r) => {
-    if (r.origen !== 'pagado') return null;
-    const c = r.comprobanteId ? compPor[r.comprobanteId] : null;
-    if (!c) return r.comprobanteId ? null : { txt: 'Saldo inicial', ok: true };
-    const p = cartera.pendienteDe(c);
-    return p <= 0.01 ? { txt: 'Cobrado', ok: true } : { txt: `Debe ${ars(p)}`, ok: false };
-  };
+  const pagoDe = (r) => (r.pago.pagado
+    ? { txt: r.pago.txt, ok: true }
+    : { txt: r.pago.deuda ? `Debe ${ars(r.pago.deuda)}` : r.pago.txt, ok: false });
   const costoDe = (r) => {
     const a = r.articuloId ? listaPor[r.articuloId] : null;
     return a?.costoUSD && tc?.valor ? r2(Number(a.costoUSD) * tc.valor * r.pendiente) : 0;
   };
 
-  const filtradas = useMemo(() => {
+  const filtrar = (arr) => {
     const t = normalizarNombre(busqueda);
-    return reservas.filter((r) => {
-      if (origen && r.origen !== origen) return false;
+    return arr.filter((r) => {
       if (soloViejas && diasDesde(r.fecha) <= DIAS_ALERTA) return false;
       if (!t) return true;
       return normalizarNombre([r.descripcion, r.clienteNombre, refTxt(r)].join(' ')).includes(t);
     });
-  }, [reservas, origen, soloViejas, busqueda]);
+  };
+  const filtradas = filtrar(reservas);
+  const sinCobrarFilt = filtrar(sinCobrar);
 
   const articulos = useMemo(() => {
     const keys = new Set(filtradas.map((r) => (r.articuloId || `txt:${normalizarNombre(r.descripcion)}`)));
@@ -119,9 +105,9 @@ export default function ReservasStock({ lista, materiales, obras, tc, articuloIn
     const m = {};
     filtradas.forEach((r) => {
       const k = r.clienteClave || `nom:${normalizarNombre(r.clienteNombre)}`;
-      if (!m[k]) m[k] = { clave: k, ctaClave: r.clienteClave, nombre: r.clienteNombre, telefono: r.clienteTelefono, reservas: [], unidades: 0, fecha: '', origenes: new Set() };
+      if (!m[k]) m[k] = { clave: k, ctaClave: r.clienteClave, nombre: r.clienteNombre, telefono: r.clienteTelefono, reservas: [], unidades: 0, fecha: '' };
       const c = m[k];
-      c.reservas.push(r); c.unidades = r2(c.unidades + r.pendiente); c.origenes.add(r.origen);
+      c.reservas.push(r); c.unidades = r2(c.unidades + r.pendiente);
       if (!c.telefono && r.clienteTelefono) c.telefono = r.clienteTelefono;
       if (r.fecha && (!c.fecha || r.fecha < c.fecha)) c.fecha = r.fecha;
     });
@@ -135,15 +121,18 @@ export default function ReservasStock({ lista, materiales, obras, tc, articuloIn
       k.articulos.add(r.articuloId || r.descripcion);
       k.clientes.add(r.clienteClave || normalizarNombre(r.clienteNombre));
       k.costo += costoDe(r);
-      if (r.origen === 'pagado') k.pagadoValor += r.pendiente * r.precioUnitario;
+      k.pagadoValor += r.pendiente * r.precioUnitario;
       if (diasDesde(r.fecha) > DIAS_ALERTA) k.viejas += 1;
       if (!r.articuloId) k.sinVincular += 1;
     });
     const falt = Object.values(porArticulo).filter((a) => (a.faltante || 0) > 0);
-    return { ...k, articulos: k.articulos.size, clientes: k.clientes.size, faltArt: falt.length, faltUnid: falt.reduce((s, a) => s + a.faltante, 0) };
+    const scUnid = sinCobrar.reduce((s, r) => s + r.pendiente, 0);
+    const scComps = new Set(sinCobrar.map((r) => r.comprobanteId || r.ref.id)).size;
+    return { ...k, articulos: k.articulos.size, clientes: k.clientes.size, faltArt: falt.length, faltUnid: falt.reduce((s, a) => s + a.faltante, 0), scUnid, scComps };
   })();
 
   const entregar = async (r) => {
+    if (!r.pago.pagado && !window.confirm(`Atención: este comprobante todavía NO está cobrado (${pagoDe(r).txt}).\n¿Entregar el material igual?`)) return;
     const v = window.prompt(`Entregar "${r.descripcion}" a ${r.clienteNombre}.\nPendiente: ${num(r.pendiente)} ${r.unidad}.\n\n¿Cuántas unidades se entregan ahora?${r.articuloId ? '\n(Se descuentan del stock físico)' : '\n(Ítem sin vincular: no descuenta stock)'}`, String(r.pendiente));
     if (v === null) return;
     const cant = Number(String(v).replace(',', '.'));
@@ -152,11 +141,10 @@ export default function ReservasStock({ lista, materiales, obras, tc, articuloIn
   };
   const whatsapp = (c) => abrirWhatsApp(c.telefono, `Hola ${(c.nombre || '').split(' ')[0]}, te escribimos de Euler Calefacción. Tenemos registrados estos materiales tuyos pendientes de entrega:\n${c.reservas.map((r) => `• ${num(r.pendiente)} ${r.unidad} ${r.descripcion}`).join('\n')}\n\n¿Coordinamos la entrega/instalación?`);
 
-  const exportarDetalle = () => exportarExcel(filtradas, [
+  const exportarDetalle = () => exportarExcel(fuente === 'sincobrar' ? sinCobrarFilt : filtradas, [
     { titulo: 'Fecha', valor: (r) => fechaAR(r.fecha), ancho: 11 },
     { titulo: 'Días', valor: (r) => diasDesde(r.fecha), ancho: 7 },
-    { titulo: 'Origen', valor: (r) => (r.origen === 'pagado' ? 'Vendido - entrega pendiente' : 'Obra aprobada sin iniciar'), ancho: 26 },
-    { titulo: 'Comprobante / Obra', valor: refTxt, ancho: 28 },
+    { titulo: 'Comprobante', valor: refTxt, ancho: 24 },
     { titulo: 'Cliente', valor: (r) => r.clienteNombre, ancho: 32 },
     { titulo: 'Teléfono', valor: (r) => r.clienteTelefono || '', ancho: 15 },
     { titulo: 'Artículo', valor: (r) => r.descripcion, ancho: 44 },
@@ -187,7 +175,7 @@ export default function ReservasStock({ lista, materiales, obras, tc, articuloIn
       <tr key={r.key} style={{ borderTop: '1px solid var(--border-light)', background: r.prueba ? 'rgba(254, 226, 226, 0.18)' : undefined }}>
         <td style={{ ...cellPad, whiteSpace: 'nowrap' }}>{fechaAR(r.fecha)}<div style={{ fontSize: '0.68rem', color: d > DIAS_ALERTA ? '#b91c1c' : 'var(--text-secondary)', fontWeight: d > DIAS_ALERTA ? 700 : 400 }}>{d} días</div></td>
         <td style={cellPad}><div style={{ fontWeight: 600 }}>{r.clienteNombre}</div><div style={{ display: 'flex', gap: 4, marginTop: 2 }}><EmpresaBadge empresaId={r.empresaId} />{r.prueba && <Pill texto="PRUEBA" color="#b91c1c" bg="#fee2e2" />}</div></td>
-        <td style={cellPad}>{origenPill(r)}<div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: 2 }}>{refTxt(r)}</div></td>
+        <td style={cellPad}><span style={{ fontSize: '0.78rem', fontWeight: 600 }}><Receipt size={12} style={{ verticalAlign: -2 }} /> {refTxt(r)}</span></td>
         {conArticulo && (
           <td style={cellPad}>
             {r.descripcion}
@@ -196,12 +184,12 @@ export default function ReservasStock({ lista, materiales, obras, tc, articuloIn
         )}
         <td style={{ ...cellPad, textAlign: 'right', whiteSpace: 'nowrap' }}>{num(r.cantidad)}{r.entregada ? <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)' }}>entreg. {num(r.entregada)}</div> : null}</td>
         <td style={{ ...cellPad, textAlign: 'right', fontWeight: 700, color: '#b45309', whiteSpace: 'nowrap' }}>{num(r.pendiente)} {r.unidad}</td>
-        <td style={{ ...cellPad, whiteSpace: 'nowrap' }}>{pago ? <span style={{ fontSize: '0.74rem', fontWeight: 600, color: pago.ok ? '#047857' : '#b91c1c' }}>{pago.txt}</span> : <span style={{ color: 'var(--text-secondary)' }}>—</span>}</td>
+        <td style={{ ...cellPad, whiteSpace: 'nowrap' }}><span style={{ fontSize: '0.74rem', fontWeight: 600, color: pago.ok ? '#047857' : '#b91c1c' }}>{pago.txt}</span></td>
         <td style={{ ...cellPad, whiteSpace: 'nowrap' }}>
           <div style={{ display: 'flex', gap: 4 }}>
-            {r.origen === 'pagado' && <IconBtn title="Registrar entrega" onClick={() => entregar(r)} color="#047857" bg="#d1fae5"><PackageCheck size={14} /></IconBtn>}
-            {r.origen === 'pagado' && !r.articuloId && <IconBtn title="Vincular con artículo del stock" onClick={() => setVincular(r)} color="#b91c1c" bg="#fee2e2"><Link2 size={14} /></IconBtn>}
-            {r.origen === 'pagado' && r.clienteClave && <IconBtn title="Cuenta corriente" onClick={() => navigate(`/facturas?cliente=${encodeURIComponent(r.clienteClave)}`)}><Wallet size={14} /></IconBtn>}
+            <IconBtn title="Registrar entrega" onClick={() => entregar(r)} color="#047857" bg="#d1fae5"><PackageCheck size={14} /></IconBtn>
+            {!r.articuloId && <IconBtn title="Vincular con artículo del stock" onClick={() => setVincular(r)} color="#b91c1c" bg="#fee2e2"><Link2 size={14} /></IconBtn>}
+            {r.clienteClave && <IconBtn title="Cuenta corriente" onClick={() => navigate(`/facturas?cliente=${encodeURIComponent(r.clienteClave)}`)}><Wallet size={14} /></IconBtn>}
             {r.obraId && <IconBtn title="Ir a la obra" onClick={() => navigate(`/obras?obra=${r.obraId}`)} color="#0D2A4E" bg="#e8eff7"><HardHat size={14} /></IconBtn>}
           </div>
         </td>
@@ -211,41 +199,56 @@ export default function ReservasStock({ lista, materiales, obras, tc, articuloIn
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '0.25rem 0' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
-        <KpiCard titulo="Unidades reservadas" valor={num(kpi.unidades)} color="#b45309" icono={<Package size={18} />} detalle={`${kpi.articulos} artículo(s) distintos`} />
-        <KpiCard titulo="Clientes con reservas" valor={String(kpi.clientes)} color="#1d4ed8" icono={<Users size={18} />} detalle={kpi.pagadoValor > 0 ? `${ars(kpi.pagadoValor)} vendidos sin entregar` : 'Sin ventas pendientes de entrega'} />
-        <div onClick={() => { setSoloFaltantes((v) => !v); setVista('articulo'); }} style={{ cursor: 'pointer' }} title="Ver solo faltantes">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '0.75rem' }}>
+        <KpiCard titulo="Unidades reservadas" valor={num(kpi.unidades)} color="#b45309" icono={<Package size={18} />} detalle={`${kpi.articulos} artículo(s) · facturado y cobrado`} />
+        <KpiCard titulo="Clientes con reservas" valor={String(kpi.clientes)} color="#1d4ed8" icono={<Users size={18} />} detalle={kpi.pagadoValor > 0 ? `${ars(kpi.pagadoValor)} cobrados sin entregar` : 'Sin materiales pendientes de entrega'} />
+        <div onClick={() => { setFuente('reservados'); setSoloFaltantes((v) => !v); setVista('articulo'); }} style={{ cursor: 'pointer' }} title="Ver solo faltantes">
           <KpiCard titulo="Faltante a comprar" valor={`${num(kpi.faltUnid)} u.`} color="#b91c1c" icono={<ShoppingCart size={18} />} detalle={`${kpi.faltArt} artículo(s) con disponible negativo`} />
         </div>
         <KpiCard titulo="Costo de lo reservado" valor={ars(kpi.costo)} color="#7c3aed" icono={<AlertTriangle size={18} />} detalle={tc ? `al costo, TC ${num(tc.valor)}` : 'sin tipo de cambio'} />
         <div onClick={() => setSoloViejas((v) => !v)} style={{ cursor: 'pointer' }} title={`Reservas de más de ${DIAS_ALERTA} días`}>
           <KpiCard titulo={`Reservas de +${DIAS_ALERTA} días`} valor={String(kpi.viejas)} color={kpi.viejas ? '#b91c1c' : '#047857'} icono={<Clock size={18} />} detalle={kpi.sinVincular ? `${kpi.sinVincular} ítem(s) sin vincular al stock` : 'Todo vinculado al stock'} />
         </div>
+        <div onClick={() => setFuente(fuente === 'sincobrar' ? 'reservados' : 'sincobrar')} style={{ cursor: 'pointer' }} title="Facturado con entrega pendiente, todavía no cobrado (no reserva stock)">
+          <KpiCard titulo="Facturado sin cobrar" valor={`${num(kpi.scUnid)} u.`} color="#64748b" icono={<Receipt size={18} />} detalle={`${kpi.scComps} comprobante(s) · no reserva stock`} />
+        </div>
       </div>
 
       <div className="card" style={{ padding: '0.75rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
         <div style={{ position: 'relative', flex: '1 1 240px', minWidth: 200 }}>
           <Search size={15} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-          <input style={{ ...inputSt, width: '100%', paddingLeft: 32, boxSizing: 'border-box' }} placeholder="Buscar artículo, cliente, comprobante u obra…" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
+          <input style={{ ...inputSt, width: '100%', paddingLeft: 32, boxSizing: 'border-box' }} placeholder="Buscar artículo, cliente o comprobante…" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
           {busqueda && <button onClick={() => setBusqueda('')} style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', display: 'flex' }}><X size={14} /></button>}
         </div>
-        <Seg opciones={[['articulo', 'Por artículo'], ['cliente', 'Por cliente'], ['detalle', 'Detalle']]} valor={vista} onChange={setVista} />
-        <Seg opciones={[['', 'Todo'], ['pagado', 'Vendido sin entregar'], ['obra', 'Obras sin iniciar']]} valor={origen} onChange={setOrigen} />
-        {soloFaltantes && <span onClick={() => setSoloFaltantes(false)} style={{ cursor: 'pointer' }}><Pill texto="Solo faltantes ✕" color="#b91c1c" bg="#fee2e2" /></span>}
+        <Seg opciones={[['reservados', `Reservados (${reservas.length})`], ['sincobrar', `Facturado sin cobrar (${sinCobrar.length})`]]} valor={fuente} onChange={setFuente} />
+        {fuente === 'reservados' && <Seg opciones={[['articulo', 'Por artículo'], ['cliente', 'Por cliente'], ['detalle', 'Detalle']]} valor={vista} onChange={setVista} />}
+        {soloFaltantes && fuente === 'reservados' && <span onClick={() => setSoloFaltantes(false)} style={{ cursor: 'pointer' }}><Pill texto="Solo faltantes ✕" color="#b91c1c" bg="#fee2e2" /></span>}
         {soloViejas && <span onClick={() => setSoloViejas(false)} style={{ cursor: 'pointer' }}><Pill texto={`+${DIAS_ALERTA} días ✕`} color="#b91c1c" bg="#fee2e2" /></span>}
         <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
           <button className="btn btn-secondary" onClick={exportarCompras} disabled={!kpi.faltArt} style={{ display: 'flex', alignItems: 'center', gap: 6 }}><ShoppingCart size={15} /> Lista de compras</button>
-          <button className="btn btn-secondary" onClick={exportarDetalle} disabled={!filtradas.length} style={{ display: 'flex', alignItems: 'center', gap: 6 }}><FileSpreadsheet size={15} /> Excel</button>
+          <button className="btn btn-secondary" onClick={exportarDetalle} disabled={!(fuente === 'sincobrar' ? sinCobrarFilt : filtradas).length} style={{ display: 'flex', alignItems: 'center', gap: 6 }}><FileSpreadsheet size={15} /> Excel</button>
         </div>
       </div>
       {error && <Alerta>{error}</Alerta>}
+      {fuente === 'sincobrar' && (
+        <Alerta tipo="info">Estos materiales se facturaron con entrega pendiente pero el comprobante todavía tiene saldo. <b>No reservan stock</b>: pasan a "Reservados" automáticamente cuando se cobra el total.</Alerta>
+      )}
 
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ overflowX: 'auto' }}>
-          {filtradas.length === 0 ? (
+          {fuente === 'sincobrar' ? (
+            sinCobrarFilt.length === 0 ? (
+              <div style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--text-secondary)' }}>No hay materiales facturados pendientes de cobro.</div>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.83rem' }}>
+                <thead><tr style={thSt}>{th('Fecha')}{th('Cliente')}{th('Comprobante')}{th('Artículo')}{th('Cantidad', 1)}{th('Pendiente', 1)}{th('Pago')}{th('Acciones')}</tr></thead>
+                <tbody>{[...sinCobrarFilt].sort((a, b) => (a.fecha || '').localeCompare(b.fecha || '')).map((r) => filaReserva(r, true))}</tbody>
+              </table>
+            )
+          ) : filtradas.length === 0 ? (
             <div style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-              No hay materiales reservados{busqueda || origen ? ' para los filtros elegidos' : ''}.
-              <div style={{ fontSize: '0.78rem', marginTop: 6 }}>Se reservan al facturar ítems con “Entrega pendiente” y con las obras aprobadas que todavía no se iniciaron.</div>
+              No hay materiales reservados{busqueda || soloViejas ? ' para los filtros elegidos' : ''}.
+              <div style={{ fontSize: '0.78rem', marginTop: 6 }}>Un material queda reservado cuando se factura con “Entrega pendiente” y el comprobante está totalmente cobrado.</div>
             </div>
           ) : vista === 'articulo' ? (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.83rem' }}>
@@ -265,7 +268,7 @@ export default function ReservasStock({ lista, materiales, obras, tc, articuloIn
                         <td style={{ ...cellPad, textAlign: 'right' }}>{a.stock === null ? '—' : num(a.stock)}</td>
                         <td style={{ ...cellPad, textAlign: 'right', whiteSpace: 'nowrap' }}>
                           <b style={{ color: '#b45309' }}>{num(a.reservado)}</b>
-                          <div style={{ fontSize: '0.66rem', color: 'var(--text-secondary)' }}>{[a.reservadoPagado && `${num(a.reservadoPagado)} vend.`, a.reservadoObra && `${num(a.reservadoObra)} obras`].filter(Boolean).join(' · ')}</div>
+                          
                         </td>
                         <td style={{ ...cellPad, textAlign: 'right', fontWeight: 800, color: a.disponible === null ? 'var(--text-secondary)' : a.disponible < 0 ? '#dc2626' : '#059669' }}>{a.disponible === null ? '—' : num(a.disponible)}</td>
                         <td style={{ ...cellPad, textAlign: 'right', fontWeight: 700, color: '#dc2626' }}>{a.faltante ? num(a.faltante) : '—'}</td>
@@ -275,7 +278,7 @@ export default function ReservasStock({ lista, materiales, obras, tc, articuloIn
                       {ab && (
                         <tr><td colSpan={8} style={{ padding: '0 0.75rem 0.75rem 2.2rem', background: 'var(--bg-surface-hover, #f8fafc)' }}>
                           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', background: 'var(--bg-primary, #fff)', border: '1px solid var(--border-light)', borderRadius: 6 }}>
-                            <thead><tr style={thSt}>{th('Fecha')}{th('Cliente')}{th('Origen')}{th('Cantidad', 1)}{th('Pendiente', 1)}{th('Pago')}{th('')}</tr></thead>
+                            <thead><tr style={thSt}>{th('Fecha')}{th('Cliente')}{th('Comprobante')}{th('Cantidad', 1)}{th('Pendiente', 1)}{th('Pago')}{th('')}</tr></thead>
                             <tbody>{a._res.map((r) => filaReserva(r, false))}</tbody>
                           </table>
                         </td></tr>
@@ -310,7 +313,7 @@ export default function ReservasStock({ lista, materiales, obras, tc, articuloIn
                       {ab && (
                         <tr><td colSpan={6} style={{ padding: '0 0.75rem 0.75rem 2.2rem', background: 'var(--bg-surface-hover, #f8fafc)' }}>
                           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', background: 'var(--bg-primary, #fff)', border: '1px solid var(--border-light)' }}>
-                            <thead><tr style={thSt}>{th('Fecha')}{th('Cliente')}{th('Origen')}{th('Artículo')}{th('Cantidad', 1)}{th('Pendiente', 1)}{th('Pago')}{th('')}</tr></thead>
+                            <thead><tr style={thSt}>{th('Fecha')}{th('Cliente')}{th('Comprobante')}{th('Artículo')}{th('Cantidad', 1)}{th('Pendiente', 1)}{th('Pago')}{th('')}</tr></thead>
                             <tbody>{c.reservas.map((r) => filaReserva(r, true))}</tbody>
                           </table>
                         </td></tr>
@@ -322,7 +325,7 @@ export default function ReservasStock({ lista, materiales, obras, tc, articuloIn
             </table>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.83rem' }}>
-              <thead><tr style={thSt}>{th('Fecha')}{th('Cliente')}{th('Origen')}{th('Artículo')}{th('Cantidad', 1)}{th('Pendiente', 1)}{th('Pago')}{th('Acciones')}</tr></thead>
+              <thead><tr style={thSt}>{th('Fecha')}{th('Cliente')}{th('Comprobante')}{th('Artículo')}{th('Cantidad', 1)}{th('Pendiente', 1)}{th('Pago')}{th('Acciones')}</tr></thead>
               <tbody>{[...filtradas].sort((a, b) => (a.fecha || '').localeCompare(b.fecha || '')).map((r) => filaReserva(r, true))}</tbody>
             </table>
           )}

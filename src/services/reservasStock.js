@@ -1,18 +1,17 @@
 /**
  * Reservas de stock (cálculo en vivo, sin contadores).
  *
- * Un material está RESERVADO cuando ya tiene dueño pero todavía no salió del depósito:
- *   1. "pagado": vendido/facturado con "Entrega pendiente" (colección materiales_a_favor, estado pendiente|parcial).
- *   2. "obra":   presupuesto aprobado convertido en obra que todavía no se inició (estado 'Pendiente de Inicio').
- *               Al iniciar la obra el stock físico se descuenta y la reserva desaparece sola.
+ * Un material está RESERVADO si y solo si:
+ *   - fue FACTURADO con "Entrega pendiente" (colección materiales_a_favor, estado pendiente|parcial), y
+ *   - el comprobante está totalmente COBRADO (saldo pendiente 0).
+ *   Los materiales a favor cargados manualmente (saldo inicial, sin comprobante) se consideran ya pagados.
+ *
+ * Lo facturado con entrega pendiente que todavía se debe (total o parcialmente) NO reserva stock:
+ * se devuelve aparte en `sinCobrar` solo a título informativo.
  *
  * Disponible = stock físico − reservado. Puede ser NEGATIVO: indica lo que falta comprar.
- * Si una obra ya tiene materiales a favor asociados (se facturó con entrega pendiente), no se duplica la reserva.
  */
-import { normalizarNombre, r2 } from './ventasCalculo';
-
-export const ESTADO_OBRA_RESERVA = 'Pendiente de Inicio';
-const NO_STOCK = ['mano_de_obra', 'servicio', 'gasto'];
+import { calcularCartera, normalizarNombre, r2 } from './ventasCalculo';
 
 const fechaISO = (v) => {
   if (!v) return '';
@@ -24,51 +23,50 @@ const fechaISO = (v) => {
 export const claveArticulo = (r) => (r.articuloId ? r.articuloId : `txt:${normalizarNombre(r.descripcion)}`);
 
 /**
- * @returns {{ reservas: object[], porArticulo: Record<string, object>, reservadoPor: Record<string, number> }}
+ * Estado de pago del comprobante que originó un doc de materiales_a_favor.
+ * @returns {{ pagado: boolean, deuda: number, txt: string }}
  */
-export const calcularReservas = ({ materiales = [], obras = [], lista = [], incluirPruebas = false } = {}) => {
+const estadoPago = (m, compPor, cartera) => {
+  if (!m.comprobanteId) return { pagado: true, deuda: 0, txt: 'Saldo inicial (pagado)' };
+  const c = compPor[m.comprobanteId];
+  if (!c) return { pagado: false, deuda: 0, txt: 'Comprobante no encontrado' };
+  if (c.estado === 'anulado') return null; // comprobante anulado: no cuenta para nada
+  const deuda = cartera.pendienteDe(c);
+  return deuda <= 0.01 ? { pagado: true, deuda: 0, txt: 'Cobrado' } : { pagado: false, deuda, txt: `Debe ${deuda.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' })}` };
+};
+
+/**
+ * @param {{ materiales?: object[], lista?: object[], comprobantes?: object[], recibos?: object[], incluirPruebas?: boolean }} p
+ * @returns {{ reservas: object[], sinCobrar: object[], porArticulo: Record<string, object>, reservadoPor: Record<string, number> }}
+ */
+export const calcularReservas = ({ materiales = [], lista = [], comprobantes = [], recibos = [], incluirPruebas = false } = {}) => {
   const listaPor = Object.fromEntries(lista.map((i) => [i.id, i]));
+  const compPor = Object.fromEntries(comprobantes.map((c) => [c.id, c]));
+  const cartera = calcularCartera(comprobantes, recibos, []);
   const reservas = [];
-  const matsActivos = materiales.filter((m) => (m.estado === 'pendiente' || m.estado === 'parcial') && (incluirPruebas || !m.prueba));
-  const obrasConMats = new Set(matsActivos.filter((m) => m.obraId).map((m) => m.obraId));
+  const sinCobrar = [];
 
-  matsActivos.forEach((m) => {
-    (m.items || []).forEach((it, idx) => {
-      const pendiente = r2(Number(it.cantidad || 0) - Number(it.cantidadEntregada || 0));
-      if (pendiente <= 0.0001) return;
-      const art = it.listaItemId ? listaPor[it.listaItemId] : null;
-      reservas.push({
-        key: `m-${m.id}-${idx}`, origen: 'pagado', ref: m, itemIndex: idx,
-        articuloId: art ? art.id : null, descripcion: art?.descripcion || it.descripcion, unidad: it.unidad || art?.unidad || 'u',
-        cantidad: Number(it.cantidad || 0), entregada: Number(it.cantidadEntregada || 0), pendiente,
-        precioUnitario: Number(it.precioUnitario || 0),
-        empresaId: m.empresaId, clienteNombre: m.clienteNombre, clienteClave: m.clienteClave, clienteTelefono: m.clienteTelefono,
-        comprobanteId: m.comprobanteId, comprobanteColeccion: m.comprobanteColeccion, comprobanteNumero: m.comprobanteNumero || (m.nota ? 'Saldo inicial' : ''),
-        obraId: m.obraId || null, fecha: m.fecha || fechaISO(m.createdAt), prueba: !!m.prueba,
+  materiales
+    .filter((m) => (m.estado === 'pendiente' || m.estado === 'parcial') && (incluirPruebas || !m.prueba))
+    .forEach((m) => {
+      const pago = estadoPago(m, compPor, cartera);
+      if (!pago) return;
+      (m.items || []).forEach((it, idx) => {
+        const pendiente = r2(Number(it.cantidad || 0) - Number(it.cantidadEntregada || 0));
+        if (pendiente <= 0.0001) return;
+        const art = it.listaItemId ? listaPor[it.listaItemId] : null;
+        (pago.pagado ? reservas : sinCobrar).push({
+          key: `m-${m.id}-${idx}`, ref: m, itemIndex: idx,
+          articuloId: art ? art.id : null, descripcion: art?.descripcion || it.descripcion, unidad: it.unidad || art?.unidad || 'u',
+          cantidad: Number(it.cantidad || 0), entregada: Number(it.cantidadEntregada || 0), pendiente,
+          precioUnitario: Number(it.precioUnitario || 0),
+          empresaId: m.empresaId, clienteNombre: m.clienteNombre, clienteClave: m.clienteClave, clienteTelefono: m.clienteTelefono,
+          comprobanteId: m.comprobanteId, comprobanteColeccion: m.comprobanteColeccion, comprobanteNumero: m.comprobanteNumero || (m.comprobanteId ? '' : 'Saldo inicial'),
+          obraId: m.obraId || null, fecha: m.fecha || fechaISO(m.createdAt), prueba: !!m.prueba,
+          pago,
+        });
       });
     });
-  });
-
-  obras.forEach((o) => {
-    if (o.deleted || o.estado !== ESTADO_OBRA_RESERVA || obrasConMats.has(o.id)) return;
-    (o.quoteItems || []).forEach((q, idx) => {
-      if (!q.listaItemId) return;
-      const art = listaPor[q.listaItemId];
-      if (art && NO_STOCK.includes(art.tipo)) return;
-      if (!art && NO_STOCK.includes(q.tipo)) return;
-      const cant = Number(q.quantity) || 0;
-      if (cant <= 0) return;
-      reservas.push({
-        key: `o-${o.id}-${idx}`, origen: 'obra', ref: o, itemIndex: idx,
-        articuloId: q.listaItemId, descripcion: art?.descripcion || q.descripcion, unidad: art?.unidad || q.unidad || 'u',
-        cantidad: cant, entregada: 0, pendiente: cant, precioUnitario: Number(q.unitPrice || 0),
-        empresaId: (o.canal === 'canal2' || o.canal === 'descuento') ? 'euler-calefaccion' : 'ayala-nicolas',
-        clienteNombre: o.clientName || o.name, clienteClave: null, clienteTelefono: o.telefono || o.clientPhone || o.contactoTelefono || '',
-        comprobanteNumero: '', obraId: o.id, otNumber: o.otNumber || '', obraNombre: o.name || '',
-        fecha: fechaISO(o.createdAt) || fechaISO(o.fechaAprobacion), prueba: false,
-      });
-    });
-  });
 
   const porArticulo = {};
   const reservadoPor = {};
@@ -78,13 +76,11 @@ export const calcularReservas = ({ materiales = [], obras = [], lista = [], incl
     if (!porArticulo[k]) {
       porArticulo[k] = {
         clave: k, articuloId: r.articuloId, articulo: art, descripcion: r.descripcion, unidad: r.unidad,
-        stock: art ? Number(art.stock || 0) : null, reservado: 0, reservadoPagado: 0, reservadoObra: 0, reservas: [], clientes: new Set(), fechaMasVieja: '',
+        stock: art ? Number(art.stock || 0) : null, reservado: 0, reservas: [], clientes: new Set(), fechaMasVieja: '',
       };
     }
     const a = porArticulo[k];
     a.reservado = r2(a.reservado + r.pendiente);
-    if (r.origen === 'pagado') a.reservadoPagado = r2(a.reservadoPagado + r.pendiente);
-    else a.reservadoObra = r2(a.reservadoObra + r.pendiente);
     a.reservas.push(r);
     a.clientes.add(r.clienteClave || normalizarNombre(r.clienteNombre));
     if (r.fecha && (!a.fechaMasVieja || r.fecha < a.fechaMasVieja)) a.fechaMasVieja = r.fecha;
@@ -97,5 +93,5 @@ export const calcularReservas = ({ materiales = [], obras = [], lista = [], incl
     a.faltante = a.disponible === null ? null : Math.max(0, -a.disponible);
   });
 
-  return { reservas, porArticulo, reservadoPor };
+  return { reservas, sinCobrar, porArticulo, reservadoPor };
 };

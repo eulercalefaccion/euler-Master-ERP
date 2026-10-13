@@ -16,7 +16,8 @@ const Stock = () => {
   const [articuloFiltro, setArticuloFiltro] = useState('');
   const [items, setItems] = useState([]);
   const [materiales, setMateriales] = useState([]);
-  const [obras, setObras] = useState([]);
+  const [comprobantes, setComprobantes] = useState([]);
+  const [recibos, setRecibos] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('Todas');
   const [filterStock, setFilterStock] = useState('todos'); // todos, faltante, bajo, sinstock
@@ -29,7 +30,8 @@ const Stock = () => {
     const unsubs = [
       onSnapshot(collection(db, 'lista_precios'), (snap) => setItems(snap.docs.map(d => ({ id: d.id, ...d.data() })))),
       onSnapshot(collection(db, 'materiales_a_favor'), (snap) => setMateriales(snap.docs.map(d => ({ id: d.id, ...d.data() }))), () => {}),
-      onSnapshot(collection(db, 'obras'), (snap) => setObras(snap.docs.map(d => ({ id: d.id, ...d.data() }))), () => {}),
+      onSnapshot(collection(db, 'comprobantes_venta'), (snap) => setComprobantes(snap.docs.map(d => ({ id: d.id, ...d.data() }))), () => {}),
+      onSnapshot(collection(db, 'recibos'), (snap) => setRecibos(snap.docs.map(d => ({ id: d.id, ...d.data() }))), () => {}),
     ];
     return () => unsubs.forEach((u) => u());
   }, []);
@@ -41,8 +43,8 @@ const Stock = () => {
     })();
   }, []);
 
-  // Reservas en vivo: vendidos con entrega pendiente + obras aprobadas sin iniciar
-  const { reservadoPor } = useMemo(() => calcularReservas({ materiales, obras, lista: items }), [materiales, obras, items]);
+  // Reservas en vivo: facturado con entrega pendiente y totalmente cobrado
+  const { reservadoPor } = useMemo(() => calcularReservas({ materiales, lista: items, comprobantes, recibos }), [materiales, items, comprobantes, recibos]);
   const reservadoDe = (item) => reservadoPor[item.id] || 0;
   const disponibleDe = (item) => (Number(item.stock) || 0) - reservadoDe(item);
 
@@ -172,7 +174,7 @@ const Stock = () => {
       </div>
 
       {vista === 'reservados' ? (
-        <ReservasStock key={articuloFiltro || 'todos'} lista={items} materiales={materiales} obras={obras} tc={tc} articuloInicial={articuloFiltro} verPruebas={false} />
+        <ReservasStock key={articuloFiltro || 'todos'} lista={items} materiales={materiales} comprobantes={comprobantes} recibos={recibos} tc={tc} articuloInicial={articuloFiltro} verPruebas={false} />
       ) : (
       <>
       {/* Stats */}

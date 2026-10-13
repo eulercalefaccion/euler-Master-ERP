@@ -112,6 +112,8 @@ const Dashboard = () => {
   const [listaPrecios, setListaPrecios] = useState([]);
   const [transacciones, setTransacciones] = useState([]);
   const [materialesAFavor, setMaterialesAFavor] = useState([]);
+  const [comprobantesVenta, setComprobantesVenta] = useState([]);
+  const [recibos, setRecibos] = useState([]);
   const [tipoCambio, setTipoCambio] = useState(null);
   const [tcLoading, setTcLoading] = useState(true);
 
@@ -132,6 +134,12 @@ const Dashboard = () => {
       ),
       onSnapshot(collection(db, 'materiales_a_favor'), (snap) =>
         setMaterialesAFavor(snap.docs.map(d => ({ id: d.id, ...d.data() }))), () => {}
+      ),
+      onSnapshot(collection(db, 'comprobantes_venta'), (snap) =>
+        setComprobantesVenta(snap.docs.map(d => ({ id: d.id, ...d.data() }))), () => {}
+      ),
+      onSnapshot(collection(db, 'recibos'), (snap) =>
+        setRecibos(snap.docs.map(d => ({ id: d.id, ...d.data() }))), () => {}
       ),
     ];
 
@@ -187,7 +195,7 @@ const Dashboard = () => {
   }, [obras]);
 
   // ── Derived: Alertas de Stock (disponible = físico − reservado en vivo) ──
-  const { reservadoPor } = useMemo(() => calcularReservas({ materiales: materialesAFavor, obras, lista: listaPrecios }), [materialesAFavor, obras, listaPrecios]);
+  const { reservadoPor } = useMemo(() => calcularReservas({ materiales: materialesAFavor, lista: listaPrecios, comprobantes: comprobantesVenta, recibos }), [materialesAFavor, listaPrecios, comprobantesVenta, recibos]);
   const alertasStock = useMemo(() => {
     return listaPrecios
       .map(item => {
