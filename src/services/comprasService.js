@@ -1,5 +1,5 @@
 import { db } from './firebaseConfig';
-import { collection, getDocs, addDoc, doc, updateDoc, query, where, orderBy, serverTimestamp, increment } from 'firebase/firestore';
+import { collection, getDocs, getDoc, addDoc, doc, updateDoc, query, where, orderBy, serverTimestamp, increment } from 'firebase/firestore';
 import { registrarAsientoContable } from './contabilidadService';
 
 export const ALICUOTAS_IVA = [
@@ -23,6 +23,33 @@ export const getCompras = async (empresaId = null) => {
   }
 };
 
+/** Línea de la factura que es el flete/transporte (no es mercadería). */
+export const RE_FLETE = /\b(flete|fletes|transporte|env[ií]o|encomienda|acarreo)\b/i;
+export const esLineaFlete = (l) => !l.itemId && RE_FLETE.test(String(l.descripcion || ''));
+
+/** Precio unitario neto efectivo (con descuento) de una línea de compra. */
+export const precioNetoLinea = (l) => {
+  const pu = Number(l.precioUnitario || 0);
+  if (l.precioConDto !== undefined && l.precioConDto !== null && l.precioConDto !== '' && Number(l.precioConDto) > 0) return Number(l.precioConDto);
+  return pu * (1 - Number(l.descuentoPorc || 0) / 100);
+};
+export const netoLineaCompra = (l) => Math.round(((Number(l.cantidad || 1) * precioNetoLinea(l)) - Number(l.descuento || 0)) * 100) / 100;
+
+/**
+ * Costo unitario "puesto en depósito" de cada línea de mercadería: precio neto con descuento + flete prorrateado
+ * por importe (flete asignado a la compra + líneas de flete de la misma factura).
+ */
+export const costosConFlete = (compra) => {
+  const lineas = compra.lineas || [];
+  // Compras en moneda extranjera: se pasan a pesos con la cotización de la compra
+  const tc = compra.moneda && compra.moneda !== 'ARS' ? Number(compra.cotizacion || 1) : 1;
+  const merc = lineas.filter((l) => !esLineaFlete(l));
+  const netoMerc = merc.reduce((a, l) => a + netoLineaCompra(l), 0) * tc;
+  const flete = Number(compra.fleteARS || 0) + lineas.filter(esLineaFlete).reduce((a, l) => a + netoLineaCompra(l), 0) * tc;
+  const pct = netoMerc > 0 ? flete / netoMerc : 0;
+  return { pctFlete: pct, flete, lineas: merc.map((l) => ({ ...l, costoUnitSinFlete: precioNetoLinea(l) * tc, costoUnit: precioNetoLinea(l) * tc * (1 + pct) })) };
+};
+
 export const crearComprobanteCompra = async (compraData) => {
   const {
     gesdattaId = null,
@@ -40,22 +67,20 @@ export const crearComprobanteCompra = async (compraData) => {
     cotizacion = 1,
     lineas = [],
     ingresaStock = false,
+    fleteARS = 0,
     estado = 'pendiente', // pendiente, parcial, pagado
     adjuntoUrl = null,
     observaciones = ''
   } = compraData;
 
-  // Calcular subtotal, IVA, exentos y total
+  // Calcular subtotal, IVA, exentos y total (respeta el % de descuento / precio con descuento de cada línea)
   let subtotalNeto = 0;
   let totalIva = 0;
   let totalExento = 0;
 
   lineas.forEach(l => {
-    const cant = Number(l.cantidad || 1);
-    const precio = Number(l.precioUnitario || 0);
-    const desc = Number(l.descuento || 0);
-    const netoLinea = (cant * precio) - desc;
-    const alicuota = Number(l.alicuotaIva || 0.21);
+    const netoLinea = netoLineaCompra(l);
+    const alicuota = Number(l.alicuotaIva ?? 0.21);
 
     subtotalNeto += netoLinea;
     if (alicuota > 0) {
@@ -93,15 +118,19 @@ export const crearComprobanteCompra = async (compraData) => {
       cantidad: Number(l.cantidad || 1),
       unidad: l.unidad || 'unidades',
       precioUnitario: Number(l.precioUnitario || 0),
+      descuentoPorc: Number(l.descuentoPorc || 0),
+      precioConDto: Math.round(precioNetoLinea(l) * 100) / 100,
       descuento: Number(l.descuento || 0),
-      neto: Number(l.neto || (Number(l.cantidad || 1) * Number(l.precioUnitario || 0))),
-      alicuotaIva: Number(l.alicuotaIva || 0.21),
+      neto: netoLineaCompra(l),
+      alicuotaIva: Number(l.alicuotaIva ?? 0.21),
       cuentaCodigo: l.cuentaCodigo || '5.1.01',
       cuentaNombre: l.cuentaNombre || 'Costo de Mercadería Vendida (CMV)',
       centroCosto: l.centroCosto || 'COSTO VARIABLE',
       obraId: l.obraId || null
     })),
     ingresaStock,
+    // Flete de traslado (p. ej. Bs. As. → Rosario) asignado a esta compra para el costo; no suma al total de esta factura.
+    fleteARS: Math.round(Number(fleteARS || 0) * 100) / 100,
     estado,
     adjuntoUrl,
     observaciones,
@@ -111,9 +140,10 @@ export const crearComprobanteCompra = async (compraData) => {
   // Guardar en Firestore
   const docRef = await addDoc(collection(db, 'comprobantes_compra'), docData);
 
-  // Si ingresa a stock y tiene itemId, actualizar cantidades en lista_precios
+  // Si ingresa a stock y tiene itemId: suma stock y registra el último costo de compra (con flete prorrateado)
   if (ingresaStock) {
-    for (const line of lineas) {
+    const { lineas: conCosto } = costosConFlete(docData);
+    for (const line of conCosto) {
       if (line.itemId) {
         try {
           await updateDoc(doc(db, 'lista_precios', line.itemId), {
@@ -122,6 +152,17 @@ export const crearComprobanteCompra = async (compraData) => {
           });
         } catch (e) {
           console.error('Error actualizando stock por compra:', e);
+        }
+        try {
+          await updateDoc(doc(db, 'lista_precios', line.itemId), {
+            ultimoCostoARS: Math.round(line.costoUnit * 100) / 100,
+            ultimoCostoSinFleteARS: Math.round(line.costoUnitSinFlete * 100) / 100,
+            ultimaCompraFecha: fechaEmision || new Date().toISOString().slice(0, 10),
+            ultimaCompraProveedor: proveedorNombre || '',
+            ultimaCompraId: docRef.id,
+          });
+        } catch (e) {
+          console.warn('No se pudo registrar el último costo de compra:', e);
         }
       }
     }
@@ -132,7 +173,7 @@ export const crearComprobanteCompra = async (compraData) => {
   // Haber: Proveedores
   const lineasAsiento = [];
   lineas.forEach(l => {
-    const neto = (Number(l.cantidad || 1) * Number(l.precioUnitario || 0)) - Number(l.descuento || 0);
+    const neto = netoLineaCompra(l);
     lineasAsiento.push({
       cuentaCodigo: l.cuentaCodigo || (ingresaStock ? '1.1.07' : '5.1.01'),
       cuentaNombre: l.cuentaNombre || (ingresaStock ? 'Bienes de Cambio / Stock' : 'Costo de Mercadería Vendida'),
@@ -171,4 +212,27 @@ export const crearComprobanteCompra = async (compraData) => {
   });
 
   return { id: docRef.id, ...docData };
+};
+
+/**
+ * Asigna (o corrige) el flete de traslado de una compra ya cargada — p. ej. cuando llega después la factura del transporte.
+ * Actualiza el último costo de los artículos cuya última compra es esta.
+ */
+export const asignarFleteCompra = async (compra, fleteARS) => {
+  const monto = Math.round(Number(fleteARS || 0) * 100) / 100;
+  if (monto < 0) throw new Error('El flete no puede ser negativo.');
+  await updateDoc(doc(db, 'comprobantes_compra', compra.id), { fleteARS: monto });
+  if (!compra.ingresaStock) return;
+  const { lineas } = costosConFlete({ ...compra, fleteARS: monto });
+  for (const l of lineas) {
+    if (!l.itemId) continue;
+    try {
+      const s = await getDoc(doc(db, 'lista_precios', l.itemId));
+      if (s.exists() && s.data().ultimaCompraId === compra.id) {
+        await updateDoc(doc(db, 'lista_precios', l.itemId), { ultimoCostoARS: Math.round(l.costoUnit * 100) / 100 });
+      }
+    } catch (e) {
+      console.warn('No se pudo actualizar el costo con flete:', e);
+    }
+  }
 };

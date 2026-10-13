@@ -10,6 +10,7 @@ import ClienteDetalleERP from './pages/Clientes/ClienteDetalleERP';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard/Dashboard';
 import Obras from './pages/Obras/Obras';
+import RentabilidadObras from './pages/Obras/RentabilidadObras';
 import Stock from './pages/Stock/Stock';
 import Jornadas from './pages/Jornadas/Jornadas';
 import Colaboradores from './pages/Colaboradores/Colaboradores';
@@ -102,6 +103,7 @@ function App() {
         <Route path="/servicios/nuevo" element={<PrivateRoute><div className="servicios-app"><NuevoServicio /></div></PrivateRoute>} />
         <Route path="/presupuestos" element={<PrivateRoute><PresupuestosCRM /></PrivateRoute>} />
         <Route path="/obras" element={<PrivateRoute><Obras /></PrivateRoute>} />
+        <Route path="/rentabilidad-obras" element={<PrivateRoute requiredRole="administrador"><RentabilidadObras /></PrivateRoute>} />
         <Route path="/stock" element={<PrivateRoute><Stock /></PrivateRoute>} />
         <Route path="/lista-precios" element={<PrivateRoute><ListaPrecios /></PrivateRoute>} />
         <Route path="/estandares" element={<PrivateRoute><Estandares /></PrivateRoute>} />

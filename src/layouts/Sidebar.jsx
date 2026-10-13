@@ -55,6 +55,7 @@ const Sidebar = ({ className = '', isMobile, onClose }) => {
       label: 'ANÁLISIS',
       items: [
         { name: 'Reportes e IA', icon: <BarChart2 size={20} />, path: '/reportes' },
+        { name: 'Rentabilidad de Obras', icon: <TrendingUp size={20} />, path: '/rentabilidad-obras' },
       ]
     },
     {

@@ -14,12 +14,13 @@ import {
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { generarPDFPresupuesto } from '../../services/pdfPresupuesto';
 import { getTipoCambio } from '../../services/tipoCambioService';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth, isSuperAdminEmail } from '../../context/AuthContext';
 import ObrasListView from './ObrasListView';
 import ObrasMapView from './ObrasMapView';
 import FacturacionArcaTab from './FacturacionArcaTab';
 import DescontarStockObraModal from './DescontarStockObraModal';
 import ConsumosObraPanel from './ConsumosObraPanel';
+import RentabilidadObraTab from './RentabilidadObraTab';
 import { descontadoPorItem, esDescuentoLegacy } from '../../services/obraStockService';
 import { esLineaDeStock } from '../../services/remitosService';
 
@@ -64,6 +65,7 @@ const TABS = [
   { id: 'archivos',   label: '📁 Archivos'  },
   { id: 'bitacora',   label: '📝 Bitácora'  },
   { id: 'facturacion', label: '🧾 Facturación', soloCanal1: true },
+  { id: 'rentabilidad', label: '💰 Rentabilidad', soloAdmin: true },
 ];
 
 /* ─────────────────────────────────────────────────────── */
@@ -150,6 +152,7 @@ const fmt = (v) =>
 /* ─────────────────────────────────────────────────────── */
 const Obras = () => {
   const { currentUser } = useAuth();
+  const esAdmin = currentUser?.role === 'administrador' || isSuperAdminEmail(currentUser?.email);
   
   /* ── state ── */
   const [obras, setObras]             = useState([]);
@@ -1225,7 +1228,7 @@ const Obras = () => {
 
             {/* Tab bar */}
             <div style={{ display: 'flex', borderBottom: '1px solid var(--border-light)', backgroundColor: 'var(--bg-primary)', flexShrink: 0, overflowX: 'auto' }}>
-              {TABS.filter(tab => !tab.soloCanal1 || (selectedObra.canal || 'iva') === 'iva').map(tab => (
+              {TABS.filter(tab => (!tab.soloCanal1 || (selectedObra.canal || 'iva') === 'iva') && (!tab.soloAdmin || esAdmin)).map(tab => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
@@ -1257,6 +1260,9 @@ const Obras = () => {
               {activeTab === 'bitacora'   && renderBitacora()}
               {activeTab === 'facturacion' && (selectedObra.canal || 'iva') === 'iva' && (
                 <FacturacionArcaTab key={selectedObra.id} obra={selectedObra} />
+              )}
+              {activeTab === 'rentabilidad' && esAdmin && (
+                <RentabilidadObraTab key={selectedObra.id} obra={selectedObra} />
               )}
             </div>
           </div>

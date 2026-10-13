@@ -161,6 +161,15 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Otros gastos imputados a una obra (rentabilidad). Solo admin; no se borran, se anulan.
+    match /gastos_obra/{gastoId} {
+      allow read, create: if isAdmin();
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estado', 'anuladoPor', 'anuladoEn', 'motivoAnulacion'])
+        && resource.data.estado == 'vigente' && request.resource.data.estado == 'anulado';
+      allow delete: if false;
+    }
+
     // Saldos iniciales de cuenta corriente (migración GesDatta). Solo admin carga/anula.
     match /saldos_iniciales/{saldoId} {
       allow read: if isSignedIn();

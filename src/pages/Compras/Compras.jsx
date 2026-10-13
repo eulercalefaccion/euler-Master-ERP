@@ -4,7 +4,7 @@ import {
   Camera, Upload, Sparkles, Trash2, Check, HelpCircle, RefreshCw, Settings, 
   ExternalLink, ChevronDown, Box, ArrowRight, X, ArrowUpRight
 } from 'lucide-react';
-import { getCompras, crearComprobanteCompra, ALICUOTAS_IVA } from '../../services/comprasService';
+import { getCompras, crearComprobanteCompra, asignarFleteCompra, ALICUOTAS_IVA } from '../../services/comprasService';
 import { getEmpresas } from '../../services/empresasService';
 import { getPlanCuentas, CENTROS_COSTO_BASE } from '../../services/contabilidadService';
 import { parseFacturaConIA } from '../../services/aiOcrService';
@@ -419,7 +419,8 @@ const Compras = () => {
             unidad: l.unidad || l.nuevoArticuloData?.unidad || 'UN',
             tipo: 'material',
             markup: 1.35,
-            stockInicial: formData.ingresaStock ? Number(l.cantidad || 0) : 0,
+            // El stock lo suma crearComprobanteCompra (si ingresa a stock); acá arranca en 0 para no duplicarlo.
+            stockInicial: 0,
             stockMinimo: 5
           };
 
@@ -594,6 +595,20 @@ const Compras = () => {
                       </a>
                     ) : (
                       <span style={{ color: '#94a3b8', fontSize: '0.75rem' }}>Sin adjunto</span>
+                    )}
+                    {c.ingresaStock && (
+                      <div>
+                        <button
+                          onClick={async () => {
+                            const v = window.prompt(`Flete de traslado asignado a ${c.tipoComprobante} ${c.numeroOriginal} (${c.proveedorNombre}).\nImporte neto sin IVA (se reparte en el costo de los artículos):`, c.fleteARS || '');
+                            if (v === null) return;
+                            try { await asignarFleteCompra(c, String(v).replace(',', '.')); await cargarDatos(); } catch (err) { alert(err.message); }
+                          }}
+                          style={{ background: 'none', border: 'none', padding: 0, marginTop: 4, cursor: 'pointer', fontSize: '0.72rem', color: c.fleteARS ? '#7c3aed' : '#64748b', textDecoration: 'underline' }}
+                        >
+                          {c.fleteARS ? `Flete $ ${Number(c.fleteARS).toLocaleString('es-AR')}` : '+ Asignar flete'}
+                        </button>
+                      </div>
                     )}
                   </td>
                   <td style={{ padding: '0.75rem 1rem' }}>
@@ -788,6 +803,12 @@ const Compras = () => {
                       Ingresar a Stock físico
                     </label>
                   </div>
+                  {formData.ingresaStock && (
+                    <div title="Flete de traslado de esta mercadería (p. ej. Bs. As. → Rosario), neto sin IVA. Se reparte en el costo de cada artículo; no suma al total de esta factura.">
+                      <label style={{ fontSize: '0.7rem', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '0.15rem' }}>Flete de esta compra ($ neto)</label>
+                      <input type="number" min="0" step="any" className="input-field" style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem' }} placeholder="0" value={formData.fleteARS ?? ''} onChange={e => setFormData({...formData, fleteARS: e.target.value})} />
+                    </div>
+                  )}
                 </div>
 
                 {/* ASISTENTE INTELIGENTE DE COTEJO CON ERP */}
