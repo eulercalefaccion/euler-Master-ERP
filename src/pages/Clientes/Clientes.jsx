@@ -9,7 +9,7 @@ import { parseConstanciaCuitConIA } from '../../services/aiOcrService';
 
 const Clientes = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const urlRol = searchParams.get('rol');
 
   const [clientes, setClientes] = useState([]);
@@ -21,7 +21,14 @@ const Clientes = () => {
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [rolFiltro, setRolFiltro] = useState('Todos'); // Todos, cliente, proveedor, ambos
+  // Filtro por tipo de contacto sincronizado con la URL (?rol=cliente|proveedor|ambos|tecnico)
+  const ROLES_FILTRO = ['cliente', 'proveedor', 'ambos', 'tecnico'];
+  const rolFiltro = ROLES_FILTRO.includes(urlRol) ? urlRol : 'Todos';
+  const setRolFiltro = (rol) => {
+    const next = new URLSearchParams(searchParams);
+    if (rol === 'Todos') next.delete('rol'); else next.set('rol', rol);
+    setSearchParams(next, { replace: true });
+  };
   
   // ARCA CUIT Lookup States
   const [isConsultandoArca, setIsConsultandoArca] = useState(false);
@@ -30,7 +37,7 @@ const Clientes = () => {
 
   const [formData, setFormData] = useState({
     name: '',
-    rolContacto: 'cliente', // cliente, proveedor, ambos
+    rolContacto: 'cliente', // cliente, proveedor, ambos, tecnico
     type: 'Propietario',
     email: '',
     phone: '',
@@ -58,13 +65,6 @@ const Clientes = () => {
   const types = ['Todos', 'Propietario', 'Arquitecto', 'Estudio de Arquitectura', 'Constructora', 'Desarrolladora', 'Cliente SSTT'];
   const formTypes = ['Propietario', 'Arquitecto', 'Estudio de Arquitectura', 'Constructora', 'Desarrolladora', 'Cliente SSTT'];
 
-  useEffect(() => {
-    if (urlRol === 'proveedor') {
-      setRolFiltro('proveedor');
-    } else if (urlRol === 'cliente') {
-      setRolFiltro('cliente');
-    }
-  }, [urlRol]);
 
   useEffect(() => {
     const q = query(collection(db, 'clientes')); 
@@ -122,6 +122,7 @@ const Clientes = () => {
     clientes: clientes.filter(c => (c.rolContacto || 'cliente') === 'cliente' || c.rolContacto === 'ambos').length,
     proveedores: clientes.filter(c => c.rolContacto === 'proveedor' || c.rolContacto === 'ambos').length,
     ambos: clientes.filter(c => c.rolContacto === 'ambos').length,
+    tecnicos: clientes.filter(c => c.rolContacto === 'tecnico').length,
   };
 
   const filteredClientes = clientes.filter(cliente => {
@@ -140,6 +141,8 @@ const Clientes = () => {
       matchesRol = rol === 'proveedor' || rol === 'ambos';
     } else if (rolFiltro === 'ambos') {
       matchesRol = rol === 'ambos';
+    } else if (rolFiltro === 'tecnico') {
+      matchesRol = rol === 'tecnico';
     }
 
     return matchesSearch && matchesType && matchesRol;
@@ -280,6 +283,7 @@ const Clientes = () => {
     let defaultRol = 'cliente';
     if (rolFiltro === 'proveedor') defaultRol = 'proveedor';
     if (rolFiltro === 'ambos') defaultRol = 'ambos';
+    if (rolFiltro === 'tecnico') defaultRol = 'tecnico';
 
     setFormData({
       name: '',
@@ -456,9 +460,9 @@ const Clientes = () => {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <div>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: '600', margin: 0 }}>Directorio de Contactos</h2>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: '600', margin: 0 }}>Contactos</h2>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginTop: '0.25rem' }}>
-            Base unificada: {clientes.length} contactos en total
+            Directorio único de clientes, proveedores y técnicos externos · {clientes.length} contactos en total
           </p>
         </div>
         <div style={{ display: 'flex', gap: '1rem' }}>
@@ -522,6 +526,18 @@ const Clientes = () => {
         >
           🔄 Cliente y Proveedor ({counts.ambos})
         </button>
+        <button
+          type="button"
+          onClick={() => setRolFiltro('tecnico')}
+          style={{
+            padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid var(--border-light)',
+            fontWeight: '600', fontSize: '0.85rem', cursor: 'pointer',
+            backgroundColor: rolFiltro === 'tecnico' ? '#0f766e' : 'var(--bg-surface)',
+            color: rolFiltro === 'tecnico' ? '#fff' : 'var(--text-secondary)'
+          }}
+        >
+          🔧 Técnicos ({counts.tecnicos})
+        </button>
       </div>
 
       {/* Toolbox */}
@@ -584,6 +600,10 @@ const Clientes = () => {
                           ) : cliente.rolContacto === 'proveedor' ? (
                             <span style={{ fontSize: '0.65rem', padding: '0.15rem 0.4rem', borderRadius: '4px', backgroundColor: '#fef3c7', color: '#92400e', fontWeight: '700', letterSpacing: '0.03em' }}>
                               PROVEEDOR
+                            </span>
+                          ) : cliente.rolContacto === 'tecnico' ? (
+                            <span style={{ fontSize: '0.65rem', padding: '0.15rem 0.4rem', borderRadius: '4px', backgroundColor: '#ccfbf1', color: '#0f766e', fontWeight: '700', letterSpacing: '0.03em' }}>
+                              TÉCNICO
                             </span>
                           ) : (
                             <span style={{ fontSize: '0.65rem', padding: '0.15rem 0.4rem', borderRadius: '4px', backgroundColor: '#dbeafe', color: '#1e40af', fontWeight: '700', letterSpacing: '0.03em' }}>
@@ -722,7 +742,7 @@ const Clientes = () => {
             
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label className="form-label" style={{ fontWeight: '600', color: 'var(--text-primary)' }}>¿Qué rol cumple este contacto?</label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', marginTop: '0.25rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginTop: '0.25rem' }}>
                 <button
                   type="button"
                   onClick={() => setFormData(prev => ({ ...prev, rolContacto: 'cliente' }))}
@@ -761,6 +781,20 @@ const Clientes = () => {
                   }}
                 >
                   🔄 Cliente y Proveedor
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, rolContacto: 'tecnico' }))}
+                  style={{
+                    padding: '0.625rem 0.25rem', borderRadius: '8px',
+                    border: formData.rolContacto === 'tecnico' ? '2px solid #0f766e' : '1px solid var(--border-light)',
+                    backgroundColor: formData.rolContacto === 'tecnico' ? '#ccfbf1' : 'var(--bg-surface)',
+                    color: formData.rolContacto === 'tecnico' ? '#0f766e' : 'var(--text-primary)',
+                    fontWeight: '600', fontSize: '0.8rem', cursor: 'pointer', textAlign: 'center'
+                  }}
+                  title="Técnico externo, subcontratista o gasista matriculado"
+                >
+                  🔧 Técnico externo
                 </button>
               </div>
             </div>

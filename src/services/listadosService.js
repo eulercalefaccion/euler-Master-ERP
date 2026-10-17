@@ -30,6 +30,22 @@ export const ESTADOS_PRESUPUESTO = {
   rechazado:         { label: 'Rechazado',         color: '#b91c1c', bg: '#fee2e2' },
 };
 
+/** Estados en los que el presupuesto ya fue presentado al cliente. */
+export const ESTADOS_PRESENTADOS = ['enviado', 'seguimiento', 'aprobado', 'rechazado'];
+
+/**
+ * Tasa de aprobación = aprobados / presupuestos enviados al cliente.
+ * Los enviados que siguen sin respuesta (enviado / seguimiento) cuentan en el denominador:
+ * 9 aprobados + 1 enviado = 90 %, no 100 %.
+ */
+export const calcularTasaAprobacion = (estados = []) => {
+  const presentados = estados.filter((e) => ESTADOS_PRESENTADOS.includes(e)).length;
+  const aprobados = estados.filter((e) => e === 'aprobado').length;
+  return { aprobados, presentados, tasa: presentados ? (aprobados / presentados) * 100 : null };
+};
+
+export const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
 const toDate = (v) => {
   if (!v) return null;
   const d = v.toDate ? v.toDate() : new Date(v);

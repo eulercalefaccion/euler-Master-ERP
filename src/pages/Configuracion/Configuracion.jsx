@@ -1,17 +1,24 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { collection, getDocs, doc, updateDoc, setDoc } from 'firebase/firestore';
 import { sendPasswordResetEmail, getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { initializeApp } from 'firebase/app';
 import { db, firebaseConfig, auth } from '../../services/firebaseConfig';
 import { useAuth, isSuperAdminEmail } from '../../context/AuthContext';
-import { Settings, UserX, UserCheck, ShieldAlert, Shield, Plus, KeyRound, Edit2, X, Save, Building, Landmark, Trash2, CheckCircle } from 'lucide-react';
+import { Settings, UserX, UserCheck, ShieldAlert, Shield, Plus, KeyRound, Edit2, X, Save, Building, Landmark, Trash2, CheckCircle, DatabaseZap } from 'lucide-react';
 
 import { getEmpresas, crearEmpresa, actualizarEmpresa, eliminarEmpresa } from '../../services/empresasService';
 import { getCuentasBancarias, crearCuentaBancaria, actualizarCuentaBancaria, eliminarCuentaBancaria } from '../../services/bancosService';
 
+const TABS_CONFIG = ['usuarios', 'empresas', 'bancos'];
+
 const Configuracion = () => {
   const { currentUser, isSuperAdmin } = useAuth();
-  const [activeTab, setActiveTab] = useState('usuarios'); // usuarios, empresas, bancos
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  // La pestaña vive en la URL (?tab=usuarios|empresas|bancos) para que el submenú del sidebar la abra directo
+  const activeTab = TABS_CONFIG.includes(searchParams.get('tab')) ? searchParams.get('tab') : 'usuarios';
+  const setActiveTab = (t) => setSearchParams({ tab: t }, { replace: true });
   
   // Users state
   const [users, setUsers] = useState([]);
@@ -239,6 +246,11 @@ const Configuracion = () => {
             </p>
           </div>
         </div>
+        {isSuperAdmin || currentUser?.role === 'administrador' ? (
+          <button type="button" className="btn btn-secondary" onClick={() => navigate('/migracion-gesdatta')} title="Importación de datos desde el sistema anterior" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <DatabaseZap size={16} /> Migración GesDatta
+          </button>
+        ) : null}
       </div>
 
       {/* Tabs */}

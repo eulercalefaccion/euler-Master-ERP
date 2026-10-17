@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../../services/firebaseConfig';
 import { Loader, Clock, CheckCircle, TrendingUp, Send, Zap, Filter } from 'lucide-react';
 import { calcularMinutosEfectivos, calcularMinutosTotales } from '../../utils/workTimeCalculator';
 import { formatDuracionEfectiva, formatDuracionCalendario } from '../../utils/formatDuration';
+import { fechaPresupuestoISO, calcularTasaAprobacion, MESES, fechaAR } from '../../services/listadosService';
 
 // ─── Colores por KPI ──────────────────────────────────────────────────────────
 const KPI_COLORS = {
@@ -14,14 +15,21 @@ const KPI_COLORS = {
   conv: { bg: '#fff1f2', border: '#fecdd3', text: '#9f1239', accent: '#e11d48', icon: CheckCircle},
 };
 
-// ─── Períodos disponibles ─────────────────────────────────────────────────────
-const PERIOD_OPTIONS = [
-  { label: 'Últimos 30 días', days: 30 },
-  { label: 'Últimos 60 días', days: 60 },
-  { label: 'Últimos 90 días', days: 90 },
-  { label: 'Este año',        days: 365 },
-  { label: 'Todo el tiempo',  days: 0 },
+// ─── Períodos rápidos (además de Año / Mes) ───────────────────────────────────
+const PERIODOS_RAPIDOS = [
+  { value: 'todo', label: 'Todo el tiempo' },
+  { value: '30', label: 'Últimos 30 días' },
+  { value: '60', label: 'Últimos 60 días' },
+  { value: '90', label: 'Últimos 90 días' },
 ];
+
+const isoHaceDias = (dias) => {
+  const d = new Date();
+  d.setDate(d.getDate() - dias);
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+};
+
+const selectStyle = { padding: '0.35rem 0.65rem', border: '1px solid var(--border-strong)', borderRadius: '6px', fontSize: '0.82rem', background: 'var(--bg-primary)', color: 'var(--text-primary)', cursor: 'pointer' };
 
 // ─── Helper: extrae fecha ISO de un campo Firestore timestamp o string ─────────
 const toISO = (val) => {
@@ -109,30 +117,42 @@ const KpiCard = ({ code, label, subtitle, avgMin, count, formatter, colores }) =
 const ReportesTiempos = () => {
   const [presupuestos, setPresupuestos] = useState([]);
   const [loading, setLoading]           = useState(true);
-  const [periodDays, setPeriodDays]     = useState(90);
+  // periodo: 'todo' | '30' | '60' | '90' | año ('2026'); mes: '' (todo el año) | '01'..'12'
+  const [periodo, setPeriodo] = useState(String(new Date().getFullYear()));
+  const [mes, setMes]         = useState('');
 
   useEffect(() => {
-    const q = query(collection(db, 'presupuestos'), orderBy('createdAt', 'desc'));
-    const unsub = onSnapshot(q, (snap) => {
+    // Sin orderBy: Firestore excluiría los presupuestos que no tienen createdAt (ej. importados)
+    const unsub = onSnapshot(collection(db, 'presupuestos'), (snap) => {
       const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setPresupuestos(data);
+      setPresupuestos(data.filter(p => !p.deleted).map(p => ({ ...p, _fecha: fechaPresupuestoISO(p) })));
       setLoading(false);
     });
     return () => unsub();
   }, []);
 
-  // ─── Filtrado por período ──────────────────────────────────────────────────
+  // Años disponibles según los presupuestos cargados (+ año actual)
+  const anios = useMemo(() => {
+    const set = new Set([String(new Date().getFullYear())]);
+    presupuestos.forEach(p => { if (p._fecha) set.add(p._fecha.slice(0, 4)); });
+    return [...set].sort((a, b) => b.localeCompare(a));
+  }, [presupuestos]);
+
+  const esAnio = /^\d{4}$/.test(periodo);
+  const etiquetaPeriodo = esAnio
+    ? (mes ? `${MESES[Number(mes) - 1]} ${periodo}` : `Año ${periodo}`)
+    : PERIODOS_RAPIDOS.find(o => o.value === periodo)?.label;
+
+  // ─── Filtrado por período (misma fecha que el Listado de Presupuestos) ─────
   const filtered = useMemo(() => {
-    if (!periodDays) return presupuestos.filter(p => !p.deleted);
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - periodDays);
-    return presupuestos.filter(p => {
-      if (p.deleted) return false;
-      const created = toISO(p.createdAt);
-      if (!created) return false;
-      return new Date(created) >= cutoff;
-    });
-  }, [presupuestos, periodDays]);
+    if (periodo === 'todo') return presupuestos;
+    if (esAnio) {
+      const prefijo = mes ? `${periodo}-${mes}` : periodo;
+      return presupuestos.filter(p => (p._fecha || '').startsWith(prefijo));
+    }
+    const desde = isoHaceDias(Number(periodo));
+    return presupuestos.filter(p => (p._fecha || '') >= desde);
+  }, [presupuestos, periodo, mes, esAnio]);
 
   // ─── Cálculo de promedios KPI ─────────────────────────────────────────────
   const kpiStats = useMemo(() => {
@@ -140,8 +160,6 @@ const ReportesTiempos = () => {
     const tce = { totalMin: 0, count: 0 };
     const tde = { totalMin: 0, count: 0 };
     const tat = { totalMin: 0, count: 0 };
-    let totalEnviados = 0;
-    let totalAprobados = 0;
 
     filtered.forEach(p => {
       const { tapMin, tceMin, tdeMin, tatMin } = calcularKPIsIndividual(p);
@@ -149,12 +167,10 @@ const ReportesTiempos = () => {
       if (tceMin !== null && tceMin > 0) { tce.totalMin += tceMin; tce.count++; }
       if (tdeMin !== null && tdeMin > 0) { tde.totalMin += tdeMin; tde.count++; }
       if (tatMin !== null && tatMin > 0) { tat.totalMin += tatMin; tat.count++; }
-
-      // Tasa de aprobación: contar todos los que llegaron a "enviado" (en pipeline) y los aprobados
-      const status = p.status;
-      if (['enviado', 'seguimiento', 'aprobado', 'rechazado'].includes(status)) totalEnviados++;
-      if (status === 'aprobado') totalAprobados++;
     });
+
+    // Tasa de aprobación: misma fórmula que el Listado (aprobados / enviados al cliente)
+    const tasa = calcularTasaAprobacion(filtered.map(p => p.status));
 
     return {
       tapAvg: tap.count ? Math.round(tap.totalMin / tap.count) : null,
@@ -165,27 +181,21 @@ const ReportesTiempos = () => {
       tdeCount: tde.count,
       tatAvg: tat.count ? Math.round(tat.totalMin / tat.count) : null,
       tatCount: tat.count,
-      tasaAprobacion: totalEnviados > 0 ? ((totalAprobados / totalEnviados) * 100).toFixed(1) : null,
+      tasaAprobacion: tasa.tasa !== null ? tasa.tasa.toFixed(1) : null,
       totalPresupuestos: filtered.length,
-      totalAprobados,
-      totalEnviados,
+      totalAprobados: tasa.aprobados,
+      totalEnviados: tasa.presentados,
     };
   }, [filtered]);
 
-  // ─── Tabla detalle por presupuesto ────────────────────────────────────────
+  // ─── Tabla detalle: TODOS los presupuestos del período (sin datos de tiempo → "—") ─
   const detailRows = useMemo(() => {
     return filtered
       .map(p => ({
         ...p,
         kpis: calcularKPIsIndividual(p),
       }))
-      .filter(p => p.kpis.tapMin !== null || p.kpis.tceMin !== null || p.kpis.tatMin !== null)
-      .sort((a, b) => {
-        const da = toISO(a.createdAt) || '';
-        const db_ = toISO(b.createdAt) || '';
-        return db_.localeCompare(da);
-      })
-      .slice(0, 50); // Máx 50 filas para no saturar
+      .sort((a, b) => (b._fecha || '').localeCompare(a._fecha || ''));
   }, [filtered]);
 
   if (loading) {
@@ -209,18 +219,38 @@ const ReportesTiempos = () => {
             TCE excluye horario no laboral (8–16 hs, Lun–Vie, sin feriados AR). TAP y TDE cuentan tiempo real.
           </p>
         </div>
-        {/* Selector de período */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        {/* Selector de período: rango rápido o Año + Mes */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
           <Filter size={15} color="var(--text-secondary)" />
           <select
-            value={periodDays}
-            onChange={e => setPeriodDays(Number(e.target.value))}
-            style={{ padding: '0.35rem 0.65rem', border: '1px solid var(--border-strong)', borderRadius: '6px', fontSize: '0.82rem', background: 'var(--bg-primary)', color: 'var(--text-primary)', cursor: 'pointer' }}
+            id="reportes-periodo"
+            aria-label="Período"
+            value={periodo}
+            onChange={e => { setPeriodo(e.target.value); if (!/^\d{4}$/.test(e.target.value)) setMes(''); }}
+            style={selectStyle}
           >
-            {PERIOD_OPTIONS.map(o => (
-              <option key={o.days} value={o.days}>{o.label}</option>
-            ))}
+            <optgroup label="Por año">
+              {anios.map(a => <option key={a} value={a}>{a}</option>)}
+            </optgroup>
+            <optgroup label="Rangos rápidos">
+              {PERIODOS_RAPIDOS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </optgroup>
           </select>
+          {esAnio && (
+            <select
+              id="reportes-mes"
+              aria-label="Mes"
+              value={mes}
+              onChange={e => setMes(e.target.value)}
+              style={selectStyle}
+            >
+              <option value="">Todo el año</option>
+              {MESES.map((m, i) => {
+                const v = String(i + 1).padStart(2, '0');
+                return <option key={v} value={v}>{m}</option>;
+              })}
+            </select>
+          )}
         </div>
       </div>
 
@@ -284,7 +314,7 @@ const ReportesTiempos = () => {
             {kpiStats.tasaAprobacion !== null ? `${kpiStats.tasaAprobacion}%` : '—'}
           </div>
           <div style={{ fontSize: '0.72rem', color: KPI_COLORS.conv.text, opacity: 0.75 }}>
-            {kpiStats.totalAprobados} aprobados / {kpiStats.totalEnviados} enviados
+            {kpiStats.totalAprobados} aprobados / {kpiStats.totalEnviados} enviados al cliente
           </div>
           {/* Referencia 2025 */}
           <div style={{ marginTop: '0.25rem', padding: '0.35rem 0.6rem', background: 'rgba(225,29,72,0.08)', borderRadius: '6px', fontSize: '0.7rem', color: KPI_COLORS.conv.text }}>
@@ -296,7 +326,7 @@ const ReportesTiempos = () => {
       {/* ── RESUMEN CONTADORES ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '0.75rem' }}>
         {[
-          { label: 'Total en período', val: kpiStats.totalPresupuestos },
+          { label: `Presupuestos · ${etiquetaPeriodo}`, val: kpiStats.totalPresupuestos },
           { label: 'Con TCE registrado', val: kpiStats.tceCount },
           { label: 'Aprobados', val: kpiStats.totalAprobados },
         ].map(item => (
@@ -311,13 +341,13 @@ const ReportesTiempos = () => {
       {detailRows.length > 0 && (
         <div style={{ border: '1px solid var(--border-light)', borderRadius: '12px', overflow: 'hidden' }}>
           <div style={{ padding: '0.75rem 1rem', background: 'var(--bg-surface-hover)', fontWeight: '700', fontSize: '0.875rem', color: 'var(--text-primary)' }}>
-            📋 Detalle por Presupuesto <span style={{ fontWeight: '400', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>(últimos {detailRows.length})</span>
+            📋 Detalle por Presupuesto <span style={{ fontWeight: '400', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>({detailRows.length} presupuesto{detailRows.length !== 1 ? 's' : ''} · {etiquetaPeriodo} · "—" = sin registro de tiempo)</span>
           </div>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
               <thead>
                 <tr style={{ background: 'var(--bg-primary)', borderBottom: '1px solid var(--border-light)' }}>
-                  {['Número', 'Cliente', 'Sistema', 'TAP', 'TCE', 'TDE', 'TAT', 'Estado'].map(h => (
+                  {['Fecha', 'Número', 'Cliente', 'Sistema', 'TAP', 'TCE', 'TDE', 'TAT', 'Estado'].map(h => (
                     <th key={h} style={{ padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: '700', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
@@ -337,8 +367,9 @@ const ReportesTiempos = () => {
                   const badge = STATUS_BADGE[p.status] || { bg: '#f1f5f9', color: '#475569', label: p.status };
                   return (
                     <tr key={p.id} style={{ borderBottom: '1px solid var(--border-light)', background: idx % 2 === 0 ? 'transparent' : 'var(--bg-surface-hover)' }}>
+                      <td style={{ padding: '0.5rem 0.75rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{fechaAR(p._fecha)}</td>
                       <td style={{ padding: '0.5rem 0.75rem', fontWeight: '600', color: 'var(--primary-700)', whiteSpace: 'nowrap' }}>{p.presupuestoNumber || '—'}</td>
-                      <td style={{ padding: '0.5rem 0.75rem', color: 'var(--text-primary)', maxWidth: '130px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.name}>{p.name || '—'}</td>
+                      <td style={{ padding: '0.5rem 0.75rem', color: 'var(--text-primary)', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.clientName || p.name}>{p.clientName || p.name || '—'}</td>
                       <td style={{ padding: '0.5rem 0.75rem', color: 'var(--text-secondary)', maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.paramSistema || '—'}</td>
                       <td style={{ padding: '0.5rem 0.75rem', color: KPI_COLORS.tap.text, whiteSpace: 'nowrap' }}>{tapMin !== null ? formatDuracionCalendario(tapMin) : '—'}</td>
                       <td style={{ padding: '0.5rem 0.75rem', color: KPI_COLORS.tce.text, whiteSpace: 'nowrap' }}>{tceMin !== null ? formatDuracionEfectiva(tceMin) : '—'}</td>
@@ -360,7 +391,7 @@ const ReportesTiempos = () => {
 
       {detailRows.length === 0 && (
         <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)', fontSize: '0.875rem', fontStyle: 'italic' }}>
-          No hay presupuestos con datos de KPI en el período seleccionado.<br />
+          No hay presupuestos en {etiquetaPeriodo}.<br />
           <span style={{ fontSize: '0.75rem' }}>Los KPIs se registran automáticamente al mover tarjetas entre las columnas del Kanban.</span>
         </div>
       )}

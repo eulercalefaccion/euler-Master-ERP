@@ -8,14 +8,14 @@ import { db } from '../../services/firebaseConfig';
 import { generarPDFPresupuesto } from '../../services/pdfPresupuesto';
 import {
   EMPRESAS_LISTADO, ESTADOS_PRESUPUESTO, empresaDeCanal, fechaPresupuestoISO, totalPresupuesto,
-  rangoPeriodo, enRango, ars, fechaAR, abrirWhatsApp, exportarExcel,
+  rangoPeriodo, enRango, ars, fechaAR, abrirWhatsApp, exportarExcel, calcularTasaAprobacion,
 } from '../../services/listadosService';
 import { KpiCard, Pill, EmpresaBadge, SortTh, IconBtn, BarraFiltros } from './listadosUI';
 import { ordenar, cellPad } from './listadosHelpers';
 
 const EN_CURSO = ['pendiente', 'en_calculo', 'listo_para_enviar', 'enviado', 'seguimiento'];
 
-export default function ListadoPresupuestos() {
+export default function ListadoPresupuestos({ embedded = false } = {}) {
   const navigate = useNavigate();
   const [presupuestos, setPresupuestos] = useState([]);
   const [obras, setObras] = useState([]);
@@ -83,8 +83,10 @@ export default function ListadoPresupuestos() {
       if (p._estado === 'rechazado') k.rech += 1;
       if (EN_CURSO.includes(p._estado)) { k.curso += 1; k.cursoMonto += p._total; }
     });
-    const cerrados = k.aprob + k.rech;
-    k.tasa = cerrados ? Math.round((k.aprob / cerrados) * 100) : null;
+    // Tasa = aprobados / enviados al cliente (incluye los que esperan respuesta)
+    const t = calcularTasaAprobacion(delPeriodo.map((p) => p._estado));
+    k.presentados = t.presentados;
+    k.tasa = t.tasa == null ? null : Math.round(t.tasa);
     return k;
   }, [delPeriodo]);
 
@@ -116,7 +118,8 @@ export default function ListadoPresupuestos() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+      <div style={{ display: 'flex', justifyContent: embedded ? 'flex-end' : 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+        {!embedded && (
         <div>
           <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Calculator size={24} color="var(--primary-600)" /> Listado de Presupuestos
@@ -125,6 +128,7 @@ export default function ListadoPresupuestos() {
             Todos los presupuestos realizados, de Canal 1 (Ayala Nicolás Federico) y Canal 2 (Euler Calefacción).
           </p>
         </div>
+        )}
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           <button className="btn btn-secondary" onClick={exportar} disabled={!filtrados.length} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             <FileSpreadsheet size={16} /> Exportar Excel
@@ -142,7 +146,7 @@ export default function ListadoPresupuestos() {
         <KpiCard titulo="Aprobados" valor={ars(kpi.aprobMonto)} color="#047857" icono={<CheckCircle size={18} />} detalle={`${kpi.aprob} aprobado(s)`} />
         <KpiCard titulo="En curso" valor={ars(kpi.cursoMonto)} color="#b45309" icono={<Clock size={18} />} detalle={`${kpi.curso} sin cerrar (pendientes, enviados, seguimiento)`} />
         <KpiCard titulo="Tasa de aprobación" valor={kpi.tasa == null ? '—' : `${kpi.tasa}%`} color="#7c3aed" icono={<Target size={18} />}
-          detalle={`${kpi.aprob} aprobados / ${kpi.aprob + kpi.rech} cerrados`} />
+          detalle={`${kpi.aprob} aprobados / ${kpi.presentados} enviados al cliente`} />
       </div>
 
       <BarraFiltros

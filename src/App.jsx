@@ -1,5 +1,6 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BookUser } from 'lucide-react';
 import { JornadasProvider } from './context/JornadasContext';
 import { useAuth, isSuperAdminEmail } from './context/AuthContext';
 import { TecnicosProvider } from './servicios_app/components/PinLock';
@@ -33,11 +34,11 @@ import CompartirServicio from './servicios_app/pages/CompartirServicio';
 
 import Compras from './pages/Compras/Compras';
 import VentasCobranzas from './pages/Ventas/VentasCobranzas';
-import ListadoPresupuestos from './pages/Listados/ListadoPresupuestos';
 import Tesoreria from './pages/Tesoreria/Tesoreria';
 import Contabilidad from './pages/Contabilidad/Contabilidad';
 import FlujoFondos from './pages/FlujoFondos/FlujoFondos';
 import MigracionGesDatta from './pages/Migracion/MigracionGesDatta';
+import Articulos from './pages/Articulos/Articulos';
 
 import './servicios_app/index.css';
 
@@ -73,6 +74,28 @@ const PrivateRoute = ({ children, requiredRole }) => {
   return <MainLayout>{children}</MainLayout>;
 };
 
+/**
+ * /facturas = "Ventas y Facturación". Compatibilidad con links anteriores:
+ *  - ?tab=recibos            → /tesoreria?tab=cobranzas
+ *  - ?tab=cuentas o ?cliente → /cuentas-corrientes (conserva ?cliente)
+ */
+const FacturasRoute = () => {
+  const { search } = useLocation();
+  const params = new URLSearchParams(search);
+  const tab = params.get('tab');
+  if (tab === 'recibos') return <Navigate to="/tesoreria?tab=cobranzas" replace />;
+  if (tab === 'cuentas' || params.get('cliente')) {
+    params.delete('tab');
+    const qs = params.toString();
+    return <Navigate to={`/cuentas-corrientes${qs ? `?${qs}` : ''}`} replace />;
+  }
+  return (
+    <PrivateRoute>
+      <VentasCobranzas key="ventas" tabs={['comprobantes']} titulo="Ventas y Facturación" subtitulo="Facturas, notas de crédito y comprobantes ARCA" />
+    </PrivateRoute>
+  );
+};
+
 function App() {
   const { currentUser } = useAuth();
 
@@ -91,8 +114,9 @@ function App() {
         <Route path="/clientes/:id" element={<PrivateRoute><ClienteDetalleERP /></PrivateRoute>} />
         <Route path="/compras" element={<PrivateRoute><Compras /></PrivateRoute>} />
         <Route path="/ventas" element={<Navigate to="/facturas" replace />} />
-        <Route path="/facturas" element={<PrivateRoute><VentasCobranzas /></PrivateRoute>} />
-        <Route path="/listado-presupuestos" element={<PrivateRoute><ListadoPresupuestos /></PrivateRoute>} />
+        <Route path="/facturas" element={<FacturasRoute />} />
+        <Route path="/cuentas-corrientes" element={<PrivateRoute><VentasCobranzas key="cuentas" tabs={['cuentas']} titulo="Cuentas Corrientes" subtitulo="Saldo de cada cliente: qué facturamos, qué cobró y qué debe" icono={BookUser} /></PrivateRoute>} />
+        <Route path="/listado-presupuestos" element={<Navigate to="/presupuestos?vista=listado" replace />} />
         <Route path="/tesoreria" element={<PrivateRoute><Tesoreria /></PrivateRoute>} />
         <Route path="/flujo-fondos" element={<PrivateRoute><FlujoFondos /></PrivateRoute>} />
         <Route path="/contabilidad" element={<PrivateRoute><Contabilidad /></PrivateRoute>} />
@@ -107,6 +131,7 @@ function App() {
         <Route path="/stock" element={<PrivateRoute><Stock /></PrivateRoute>} />
         <Route path="/lista-precios" element={<PrivateRoute><ListaPrecios /></PrivateRoute>} />
         <Route path="/estandares" element={<PrivateRoute><Estandares /></PrivateRoute>} />
+        <Route path="/articulos" element={<PrivateRoute><Articulos /></PrivateRoute>} />
         <Route path="/jornadas" element={<PrivateRoute><Jornadas /></PrivateRoute>} />
         <Route path="/colaboradores" element={<PrivateRoute><Colaboradores /></PrivateRoute>} />
         <Route path="/personas" element={<Navigate to="/colaboradores" replace />} />

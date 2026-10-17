@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { Receipt, FilePlus, Wallet, Settings, FileText, Users, Loader } from 'lucide-react';
 import { db } from '../../services/firebaseConfig';
@@ -21,12 +21,32 @@ const TABS = [
   ['cuentas', 'Cuentas corrientes', <Users key="u" size={16} />],
 ];
 
+// Accesos cruzados entre las tres pantallas que comparten este módulo
+const RELACIONADOS = [
+  ['comprobantes', 'Ventas y Facturación', '/facturas'],
+  ['recibos', 'Cobranzas (Tesorería)', '/tesoreria?tab=cobranzas'],
+  ['cuentas', 'Cuentas Corrientes', '/cuentas-corrientes'],
+];
+
 /**
- * Ventas, Cobranzas y Cuentas Corrientes (menú único).
+ * Ventas, Cobranzas y Cuentas Corrientes — módulo único, configurable por props.
+ * Se usa en tres lugares del menú:
+ *  - /facturas            → tabs={['comprobantes']}  "Ventas y Facturación"
+ *  - /cuentas-corrientes  → tabs={['cuentas']}       "Cuentas Corrientes"
+ *  - /tesoreria?tab=cobranzas → tabs={['recibos']} embedded (dentro de Tesorería)
+ * Los modales (factura, recibo, nota de crédito) quedan disponibles desde cualquier vista.
  * Deep links: ?tab=comprobantes|recibos|cuentas · ?nueva=1&presupuesto=ID · ?cliente=CLAVE
  */
-export default function VentasCobranzas() {
+export default function VentasCobranzas({
+  tabs = ['comprobantes', 'recibos', 'cuentas'],
+  titulo = 'Ventas y Cobranzas',
+  subtitulo = 'Facturación, recibos y cuentas corrientes',
+  icono = Receipt,
+  embedded = false,
+} = {}) {
+  const Icono = icono;
   const { currentUser } = useAuth();
+  const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const [reales, setReales] = useState([]);
   const [pruebas, setPruebas] = useState([]);
@@ -40,16 +60,21 @@ export default function VentasCobranzas() {
   const [error, setError] = useState('');
   const [verPruebas, setVerPruebas] = useState(false);
 
-  const [tab, setTab] = useState(() => params.get('tab') || (params.get('cliente') ? 'cuentas' : 'comprobantes'));
+  const tabsVisibles = TABS.filter(([id]) => tabs.includes(id));
+  const [tab, setTab] = useState(() => {
+    const pedido = params.get('tab') || (params.get('cliente') ? 'cuentas' : null);
+    return pedido && tabs.includes(pedido) ? pedido : tabs[0];
+  });
   const [modalFactura, setModalFactura] = useState(() => (params.get('nueva') ? { presupuestoId: params.get('presupuesto') || undefined } : null));
   const [modalRecibo, setModalRecibo] = useState(null);
   const [modalNC, setModalNC] = useState(null);
   const [modalConfig, setModalConfig] = useState(false);
   const [clienteInicial] = useState(() => params.get('cliente') || null);
 
-  // Limpia los parámetros de un solo uso
+  // Limpia los parámetros de un solo uso (no toca la URL si está embebido en otra pantalla)
   useEffect(() => {
-    if (params.get('nueva') || params.get('cliente')) setParams({ tab }, { replace: true });
+    if (embedded) return;
+    if (params.get('nueva') || params.get('cliente')) setParams(tabsVisibles.length > 1 ? { tab } : {}, { replace: true });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -77,7 +102,7 @@ export default function VentasCobranzas() {
   const materialesVis = useMemo(() => materiales.filter((m) => verPruebas || !m.prueba), [materiales, verPruebas]);
   const cartera = useMemo(() => calcularCartera(comprobantes, recibosVis, saldosIni), [comprobantes, recibosVis, saldosIni]);
 
-  const cambiarTab = (t) => { setTab(t); setParams({ tab: t }, { replace: true }); };
+  const cambiarTab = (t) => { setTab(t); if (!embedded) setParams({ tab: t }, { replace: true }); };
 
   const cobrarComprobante = (c, cliente = null) => {
     const pend = Math.max(0, cartera.pendienteDe(c));
@@ -109,13 +134,14 @@ export default function VentasCobranzas() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      {!embedded && (
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
         <div>
           <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Receipt size={24} color="var(--primary-600)" /> Ventas y Cobranzas
+            <Icono size={24} color="var(--primary-600)" /> {titulo}
           </h2>
           <p style={{ margin: '0.2rem 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-            Facturación, recibos y cuentas corrientes · AYALA NICOLAS FEDERICO (Canal 1) y EULER CALEFACCIÓN (Canal 2)
+            {subtitulo} · AYALA NICOLAS FEDERICO (Canal 1) y EULER CALEFACCIÓN (Canal 2)
             {arcaCfg && !esProduccion && <span style={{ marginLeft: 8, color: '#b45309', fontWeight: 600 }}>· ARCA en homologación</span>}
           </p>
         </div>
@@ -131,9 +157,23 @@ export default function VentasCobranzas() {
           </button>
         </div>
       </div>
+      )}
 
+      {!embedded && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '-0.35rem' }}>
+          <span>Relacionado:</span>
+          {RELACIONADOS.filter(([id]) => !tabs.includes(id)).map(([id, label, path]) => (
+            <button key={id} type="button" onClick={() => navigate(path)}
+              style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-light)', borderRadius: 999, padding: '0.2rem 0.7rem', fontSize: '0.78rem', color: 'var(--primary-600)', fontWeight: 600, cursor: 'pointer' }}>
+              {label} →
+            </button>
+          ))}
+        </div>
+      )}
+
+      {tabsVisibles.length > 1 && (
       <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--border-light)' }}>
-        {TABS.map(([id, label, icono]) => (
+        {tabsVisibles.map(([id, label, icono]) => (
           <button key={id} onClick={() => cambiarTab(id)}
             style={{
               display: 'flex', alignItems: 'center', gap: 6, padding: '0.6rem 1rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.88rem',
@@ -143,6 +183,7 @@ export default function VentasCobranzas() {
           </button>
         ))}
       </div>
+      )}
 
       {error && <div style={{ padding: '0.75rem', background: '#fef2f2', color: '#b91c1c', borderRadius: 8, fontSize: '0.85rem' }}>{error}</div>}
       {cargando ? (

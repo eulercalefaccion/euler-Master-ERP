@@ -78,7 +78,7 @@ const CrmMapView = ({ items, onCardClick }) => {
       <MapContainer center={defaultCenter} zoom={12} style={{ height: '100%', width: '100%', zIndex: 1 }}>
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         
         {geocodedItems.map((item) => (

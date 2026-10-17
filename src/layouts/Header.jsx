@@ -5,23 +5,24 @@ import { LogOut, User, Bell, CheckCircle, X, Menu, Copy } from 'lucide-react';
 import { db } from '../services/firebaseConfig';
 import { collection, query, onSnapshot, where, orderBy, updateDoc, doc } from 'firebase/firestore';
 
-const pageNames = {
-  '/': 'Dashboard',
-  '/clientes': 'Directorio de Clientes',
-  '/presupuestos': 'Presupuestos (CRM)',
-  '/lista-precios': 'Lista de Precios',
-  '/obras': 'Gestión de Obras',
-  '/stock': 'Inventario / Stock',
-  '/jornadas': 'Control de Jornadas',
-  '/personas': 'Gestión de Personas',
-  '/sueldos': 'Liquidación de Sueldos',
-  '/balance': 'Balance General',
+import { NAV_SECTIONS, findNavByLocation } from './navigation';
+
+// Títulos de rutas que no figuran en el menú (detalles / subpáginas)
+const titulosExtra = {
+  '/servicios/clientes': { area: 'OPERACIONES', page: 'Clientes de Servicios' },
+  '/servicios/nuevo': { area: 'OPERACIONES', page: 'Nuevo Servicio' },
 };
+
+const capitalizarArea = (label = '') => (label.length <= 4 ? label : label.charAt(0) + label.slice(1).toLowerCase());
 
 const Header = ({ onOpenMenu }) => {
   const { currentUser, logout } = useAuth();
   const location = useLocation();
-  const pageName = pageNames[location.pathname] || 'Panel de Control';
+  const navActual = findNavByLocation(location, NAV_SECTIONS);
+  const extra = titulosExtra[location.pathname];
+  const areaName = extra ? capitalizarArea(extra.area) : navActual ? capitalizarArea(navActual.section.label) : null;
+  const parentName = !extra && navActual?.parent ? navActual.parent.name : null;
+  const pageName = extra?.page || navActual?.item.name || 'Panel de Control';
 
   const [notifications, setNotifications] = React.useState([]);
   const [showNotifications, setShowNotifications] = React.useState(false);
@@ -99,7 +100,16 @@ const Header = ({ onOpenMenu }) => {
         >
           <Menu size={24} />
         </button>
-        <h1 style={{ fontSize: '1.25rem', fontWeight: '600', margin: 0 }}>{pageName}</h1>
+        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+          {areaName && areaName !== 'Principal' && (
+            <nav aria-label="Ubicación" style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', fontWeight: 500, letterSpacing: '0.02em', display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+              <span>{areaName}</span>
+              {parentName && <><span style={{ opacity: 0.5 }}>›</span><span>{parentName}</span></>}
+              <span style={{ opacity: 0.5 }}>›</span>
+            </nav>
+          )}
+          <h1 style={{ fontSize: '1.25rem', fontWeight: '600', margin: 0, lineHeight: 1.2 }}>{pageName}</h1>
+        </div>
       </div>
       
       <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>

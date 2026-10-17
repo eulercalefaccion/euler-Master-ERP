@@ -1,17 +1,24 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Landmark, ArrowUpRight, ArrowDownRight, Plus, CreditCard, CheckCircle, FileSpreadsheet, RefreshCw, Camera, Sparkles, FileText, ExternalLink } from 'lucide-react';
 import { db } from '../../services/firebaseConfig';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { registrarReciboCobro, registrarOrdenPago, MEDIOS_PAGO } from '../../services/tesoreriaService';
 import { getEmpresas } from '../../services/empresasService';
 import { parseEcheqConIA } from '../../services/aiOcrService';
+import VentasCobranzas from '../Ventas/VentasCobranzas';
+
+const TABS_TESORERIA = ['cobranzas', 'recibos', 'opas', 'tarjetas'];
 
 const Tesoreria = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [recibos, setRecibos] = useState([]);
   const [ordenesPago, setOrdenesPago] = useState([]);
   const [tarjetas, setTarjetas] = useState([]);
   const [empresas, setEmpresas] = useState([]);
-  const [activeTab, setActiveTab] = useState('recibos'); // recibos, opas, tarjetas
+  // cobranzas (módulo completo de recibos), recibos (manuales, anterior), opas, tarjetas
+  const [activeTab, setActiveTabState] = useState(() => (TABS_TESORERIA.includes(searchParams.get('tab')) ? searchParams.get('tab') : 'cobranzas'));
+  const setActiveTab = (t) => { setActiveTabState(t); setSearchParams({ tab: t }, { replace: true }); };
   const [isReciboModalOpen, setIsReciboModalOpen] = useState(false);
   const [isOpaModalOpen, setIsOpaModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -168,15 +175,15 @@ const Tesoreria = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Landmark size={24} color="var(--primary-600)" /> Tesorería & Caja / Bancos
+            <Landmark size={24} color="var(--primary-600)" /> Tesorería y Bancos
           </h2>
           <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-            Lectura inteligente de E-Cheqs, pagos por transferencia y archivo permanente de comprobantes.
+            Cobranzas a clientes, órdenes de pago, E-Cheqs, tarjetas y archivo de comprobantes.
           </p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem' }}>
-          <button onClick={() => setIsReciboModalOpen(true)} className="btn btn-primary" style={{ backgroundColor: '#059669', borderColor: '#047857' }}>
-            + Cobro Recibo (REC)
+          <button onClick={() => setIsReciboModalOpen(true)} className="btn btn-primary" title="Registro manual simple (con lectura de E-Cheq por IA). Para cobrar facturas usá la pestaña Cobranzas." style={{ backgroundColor: '#059669', borderColor: '#047857' }}>
+            + Recibo manual (REC)
           </button>
           <button onClick={() => setIsOpaModalOpen(true)} className="btn btn-primary" style={{ backgroundColor: '#dc2626', borderColor: '#b91c1c' }}>
             - Orden de Pago (OPA / E-Cheq)
@@ -201,12 +208,12 @@ const Tesoreria = () => {
       </div>
 
       {/* Navigation Tabs */}
-      <div style={{ display: 'flex', borderBottom: '2px solid var(--border-light)', gap: '1rem' }}>
+      <div style={{ display: 'flex', borderBottom: '2px solid var(--border-light)', gap: '1rem', flexWrap: 'wrap' }}>
         <button 
-          onClick={() => setActiveTab('recibos')} 
-          style={{ padding: '0.5rem 1rem', border: 'none', background: 'none', fontWeight: '600', cursor: 'pointer', color: activeTab === 'recibos' ? 'var(--primary-600)' : '#64748b', borderBottom: activeTab === 'recibos' ? '2px solid var(--primary-600)' : 'none' }}
+          onClick={() => setActiveTab('cobranzas')} 
+          style={{ padding: '0.5rem 1rem', border: 'none', background: 'none', fontWeight: '600', cursor: 'pointer', color: activeTab === 'cobranzas' ? 'var(--primary-600)' : '#64748b', borderBottom: activeTab === 'cobranzas' ? '2px solid var(--primary-600)' : 'none' }}
         >
-          Recibos de Cobro ({recibos.length})
+          Cobranzas
         </button>
         <button 
           onClick={() => setActiveTab('opas')} 
@@ -220,9 +227,20 @@ const Tesoreria = () => {
         >
           Tarjetas a Cobrar ({tarjetas.length})
         </button>
+        <button 
+          onClick={() => setActiveTab('recibos')} 
+          title="Vista anterior de recibos (registro manual simple)"
+          style={{ padding: '0.5rem 1rem', border: 'none', background: 'none', fontWeight: '600', cursor: 'pointer', color: activeTab === 'recibos' ? 'var(--primary-600)' : '#94a3b8', borderBottom: activeTab === 'recibos' ? '2px solid var(--primary-600)' : 'none' }}
+        >
+          Recibos manuales (anterior) ({recibos.length})
+        </button>
       </div>
 
       {/* Tab Contents */}
+      {activeTab === 'cobranzas' && (
+        <VentasCobranzas tabs={['recibos']} embedded />
+      )}
+
       {activeTab === 'recibos' && (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>

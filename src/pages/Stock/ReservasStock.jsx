@@ -184,7 +184,7 @@ export default function ReservasStock({ lista, materiales, comprobantes, recibos
           <div style={{ display: 'flex', gap: 4 }}>
             <IconBtn title="Registrar entrega" onClick={() => entregar(r)} color="#047857" bg="#d1fae5"><PackageCheck size={14} /></IconBtn>
             {!r.articuloId && <IconBtn title="Vincular con artículo del stock" onClick={() => setVincular(r)} color="#b91c1c" bg="#fee2e2"><Link2 size={14} /></IconBtn>}
-            {r.clienteClave && <IconBtn title="Cuenta corriente" onClick={() => navigate(`/facturas?cliente=${encodeURIComponent(r.clienteClave)}`)}><Wallet size={14} /></IconBtn>}
+            {r.clienteClave && <IconBtn title="Cuenta corriente" onClick={() => navigate(`/cuentas-corrientes?cliente=${encodeURIComponent(r.clienteClave)}`)}><Wallet size={14} /></IconBtn>}
             {r.obraId && <IconBtn title="Ir a la obra" onClick={() => navigate(`/obras?obra=${r.obraId}`)} color="#0D2A4E" bg="#e8eff7"><HardHat size={14} /></IconBtn>}
           </div>
         </td>
@@ -300,7 +300,7 @@ export default function ReservasStock({ lista, materiales, comprobantes, recibos
                         <td style={{ ...cellPad, whiteSpace: 'nowrap' }} onClick={(e) => e.stopPropagation()}>
                           <div style={{ display: 'flex', gap: 4 }}>
                             <IconBtn title={c.telefono ? 'Coordinar entrega por WhatsApp' : 'Sin teléfono'} onClick={() => whatsapp(c)} disabled={!c.telefono} color="#15803d" bg="#dcfce7"><MessageCircle size={14} /></IconBtn>
-                            {c.ctaClave && <IconBtn title="Cuenta corriente" onClick={() => navigate(`/facturas?cliente=${encodeURIComponent(c.ctaClave)}`)}><Wallet size={14} /></IconBtn>}
+                            {c.ctaClave && <IconBtn title="Cuenta corriente" onClick={() => navigate(`/cuentas-corrientes?cliente=${encodeURIComponent(c.ctaClave)}`)}><Wallet size={14} /></IconBtn>}
                           </div>
                         </td>
                       </tr>
