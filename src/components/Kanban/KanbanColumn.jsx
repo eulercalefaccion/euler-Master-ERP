@@ -1,9 +1,11 @@
 import React from 'react';
 import { Droppable } from '@hello-pangea/dnd';
 import KanbanCard from './KanbanCard';
+import { importeTarjeta } from '../../services/presupuestoAlcance';
 
 const KanbanColumn = ({ column, items, onCardClick, globalLabels = {} }) => {
-  const totalAmount = items.reduce((acc, item) => item.amount ? acc + item.amount : acc, 0);
+  // En Aprobado, las tarjetas con aprobación por ítem suman lo efectivamente aprobado (no el total cotizado)
+  const totalAmount = items.reduce((acc, item) => acc + importeTarjeta(item), 0);
 
   return (
     <div className="mobile-kanban-column" style={{

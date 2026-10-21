@@ -160,7 +160,7 @@ export default function FacturacionArcaTab({ obra }) {
           condicionIvaId: Number(receptor.condicionIvaId),
           domicilio: receptor.domicilio,
         },
-        lineas: lineasIncluidas.map((l) => ({ descripcion: l.descripcion, cantidad: Number(l.cantidad), precioUnitario: Number(l.precioUnitario) })),
+        lineas: lineasIncluidas.map((l) => ({ descripcion: l.descripcion, cantidad: Number(l.cantidad), precioUnitario: Number(l.precioUnitario), presupuestoItemId: l.presupuestoItemId || null, listaItemId: l.listaItemId || null })),
         concepto,
         fchServDesde, fchServHasta, fchVtoPago,
         observaciones,

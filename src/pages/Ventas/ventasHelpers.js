@@ -50,6 +50,28 @@ export const lineasDesdePresupuesto = (p, empresaId) => (p.quoteItems || []).map
   };
 });
 
+/**
+ * Líneas facturables de un presupuesto según su alcance (services/presupuestoAlcance.facturablesPorItem):
+ * por defecto, lo APROBADO pendiente de facturar (en ambos canales); lo no aprobado aparece desmarcado y
+ * solo se factura con confirmación explícita de aprobación. Usa el precio neto aprobado (congelado).
+ */
+export const lineasFacturablesDesdePresupuesto = (facturables, empresaId) => facturables.map((f, i) => {
+  const it = f.item || {};
+  const cant = Number(f.cantidadSugerida) || 0;
+  const netoUnit = Number(f.precioUnitarioNeto) || 0;
+  let precio = netoUnit;
+  if (empresaId !== EMPRESA_AYALA) {
+    const base = cant > 0 ? cant : 1;
+    const r = calcularItemDescuento({ ...it, quantity: base, unitPrice: netoUnit });
+    precio = Math.round((r.finalConDescuento / base) * 100) / 100;
+  }
+  return {
+    key: `p${i}_${Date.now()}`, incluir: !!f.incluir, descripcion: it.descripcion || '', cantidad: cant, precioUnitario: precio,
+    unidad: it.unidad || '', listaItemId: it.listaItemId || null, tipo: it.tipo || '', categoria: getItemCategory(it), entregaPendiente: false,
+    presupuestoItemId: f.key, maxCantidad: f.maxCantidad, aprobadoPendiente: f.aprobadoPendiente, entregadoSinFacturar: f.entregadaSinFacturar || 0,
+  };
+});
+
 /** Cliente (para facturar) a partir de un presupuesto. */
 export const clienteDesdePresupuesto = (p = {}) => {
   const igual = p.facturacionIgualCliente !== false;

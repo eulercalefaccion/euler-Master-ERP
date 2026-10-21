@@ -85,6 +85,7 @@ const remitoDoc = ({ num, empresaId, emisor, origen, cli, comprobante, materialI
   items: items.map((it) => ({
     descripcion: String(it.descripcion || '').slice(0, 250), cantidad: r2(it.cantidad), unidad: it.unidad || '',
     listaItemId: it.listaItemId || null, itemIndex: it.itemIndex ?? null,
+    presupuestoItemId: it.presupuestoItemId || null,
   })),
   fecha: hoyISO(),
   nota: String(nota || '').slice(0, 300),
@@ -154,6 +155,7 @@ export const registrarEntrega = async ({ mat, entregas, nota = '', entregadoPor 
 export const registrarEntregaInmediata = async ({ empresaId, cli, comprobante, lineas, prueba = false, entregadoPor = '' }, user) => {
   const items = (lineas || []).filter((l) => Number(l.cantidad) > 0).map((l) => ({
     descripcion: l.descripcion, cantidad: Number(l.cantidad), unidad: l.unidad || '', listaItemId: l.listaItemId || null,
+    presupuestoItemId: l.presupuestoItemId || null,
   }));
   if (!items.length) return null;
   const emisor = await emisorDe(empresaId);

@@ -11,6 +11,7 @@ import {
   rangoPeriodo, enRango, ars, fechaAR, abrirWhatsApp, exportarExcel, calcularTasaAprobacion,
 } from '../../services/listadosService';
 import { KpiCard, Pill, EmpresaBadge, SortTh, IconBtn, BarraFiltros } from './listadosUI';
+import { aprobacionKPI } from '../../services/presupuestoAlcance';
 import { ordenar, cellPad } from './listadosHelpers';
 
 const EN_CURSO = ['pendiente', 'en_calculo', 'listo_para_enviar', 'enviado', 'seguimiento'];
@@ -50,6 +51,8 @@ export default function ListadoPresupuestos({ embedded = false } = {}) {
     _ref: p.direccionObra || p.location || '',
     _estado: ESTADOS_PRESUPUESTO[p.status] ? p.status : 'pendiente',
     _obra: obraPorPresupuesto[p.id],
+    // Aprobación: importe efectivamente aprobado por ítem; registros históricos sin detalle → criterio anterior (total)
+    _aprob: aprobacionKPI(p, totalPresupuesto(p)),
   })), [presupuestos, obraPorPresupuesto]);
 
   const [desde, hasta] = rangoPeriodo(periodo, custom);
@@ -75,11 +78,25 @@ export default function ListadoPresupuestos({ embedded = false } = {}) {
   }), [delPeriodo, estado, orden]);
 
   const kpi = useMemo(() => {
-    const k = { total: 0, cant: delPeriodo.length, aprob: 0, aprobMonto: 0, rech: 0, curso: 0, cursoMonto: 0, porEstado: {} };
+    const k = {
+      total: 0, cant: delPeriodo.length, aprob: 0, aprobMonto: 0, rech: 0, curso: 0, cursoMonto: 0, porEstado: {},
+      aprobTotal: 0, aprobParcial: 0, aprobHistorica: 0, convAprobado: 0, convCotizado: 0,
+    };
     delPeriodo.forEach((p) => {
       k.total += p._total;
       k.porEstado[p._estado] = (k.porEstado[p._estado] || 0) + 1;
-      if (p._estado === 'aprobado') { k.aprob += 1; k.aprobMonto += p._total; }
+      if (p._estado === 'aprobado') {
+        k.aprob += 1;
+        k.aprobMonto += p._aprob.importeAprobado;
+        if (p._aprob.tipo === 'total') k.aprobTotal += 1;
+        else if (p._aprob.tipo === 'parcial') k.aprobParcial += 1;
+        else k.aprobHistorica += 1;
+      }
+      // Conversión por importe: aprobado / cotizado del MISMO conjunto (presentados al cliente), mismo criterio de impuestos
+      if (['enviado', 'seguimiento', 'aprobado', 'rechazado'].includes(p._estado)) {
+        k.convAprobado += p._estado === 'aprobado' ? p._aprob.importeAprobado : 0;
+        k.convCotizado += p._aprob.tipo === 'historica' || !p._aprob.aprobado ? p._total : p._aprob.importeCotizado;
+      }
       if (p._estado === 'rechazado') k.rech += 1;
       if (EN_CURSO.includes(p._estado)) { k.curso += 1; k.cursoMonto += p._total; }
     });
@@ -87,6 +104,7 @@ export default function ListadoPresupuestos({ embedded = false } = {}) {
     const t = calcularTasaAprobacion(delPeriodo.map((p) => p._estado));
     k.presentados = t.presentados;
     k.tasa = t.tasa == null ? null : Math.round(t.tasa);
+    k.conversion = k.convCotizado > 0 ? Math.round((k.convAprobado / k.convCotizado) * 1000) / 10 : null;
     return k;
   }, [delPeriodo]);
 
@@ -143,10 +161,13 @@ export default function ListadoPresupuestos({ embedded = false } = {}) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '0.75rem' }}>
         <KpiCard titulo="Presupuestado en el período" valor={ars(kpi.total)} color="#0D2A4E" icono={<TrendingUp size={18} />}
           detalle={`${kpi.cant} presupuesto(s) · promedio ${ars(kpi.cant ? kpi.total / kpi.cant : 0)}`} />
-        <KpiCard titulo="Aprobados" valor={ars(kpi.aprobMonto)} color="#047857" icono={<CheckCircle size={18} />} detalle={`${kpi.aprob} aprobado(s)`} />
+        <KpiCard titulo="Aprobados (importe aprobado)" valor={ars(kpi.aprobMonto)} color="#047857" icono={<CheckCircle size={18} />}
+          detalle={`${kpi.aprob} aprobado(s): ${kpi.aprobTotal} total · ${kpi.aprobParcial} parcial${kpi.aprobHistorica ? ` · ${kpi.aprobHistorica} histórico(s) sin detalle` : ''}`} />
         <KpiCard titulo="En curso" valor={ars(kpi.cursoMonto)} color="#b45309" icono={<Clock size={18} />} detalle={`${kpi.curso} sin cerrar (pendientes, enviados, seguimiento)`} />
         <KpiCard titulo="Tasa de aprobación" valor={kpi.tasa == null ? '—' : `${kpi.tasa}%`} color="#7c3aed" icono={<Target size={18} />}
-          detalle={`${kpi.aprob} aprobados / ${kpi.presentados} enviados al cliente`} />
+          detalle={`Con al menos un ítem aprobado: ${kpi.aprob} (${kpi.aprobTotal} total · ${kpi.aprobParcial} parcial${kpi.aprobHistorica ? ` · ${kpi.aprobHistorica} hist.` : ''}) / ${kpi.presentados} enviados al cliente`} />
+        <KpiCard titulo="Conversión por importe" valor={kpi.conversion == null ? '—' : `${kpi.conversion}%`} color="#0e7490" icono={<TrendingUp size={18} />}
+          detalle={`${ars(kpi.convAprobado)} aprobados / ${ars(kpi.convCotizado)} cotizados (enviados al cliente)`} />
       </div>
 
       <BarraFiltros
@@ -210,7 +231,10 @@ export default function ListadoPresupuestos({ embedded = false } = {}) {
                     <td style={{ ...cellPad, maxWidth: 280 }}>
                       <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={p._ref}>{p._ref ? `REF.: ${p._ref}` : '—'}</div>
                     </td>
-                    <td style={cellPad}><Pill texto={est.label} color={est.color} bg={est.bg} /></td>
+                    <td style={cellPad}>
+                      <Pill texto={est.label} color={est.color} bg={est.bg} />
+                      {p._estado === 'aprobado' && p._aprob.tipo === 'parcial' && <div style={{ fontSize: '0.68rem', color: '#92400e', marginTop: 2 }}>Parcial · {ars(p._aprob.importeAprobado)}</div>}
+                    </td>
                     <td style={{ ...cellPad, textAlign: 'right', fontWeight: 700, whiteSpace: 'nowrap' }}>{ars(p._total)}</td>
                     <td style={{ ...cellPad, whiteSpace: 'nowrap' }}>
                       <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>

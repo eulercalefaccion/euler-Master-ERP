@@ -83,6 +83,8 @@ export const lineasDesdeObra = (obra = {}) =>
     cantidad: Number(it.quantity) || 1,
     precioUnitario: Math.round((Number(it.unitPrice) || 0) * 100) / 100,
     tipo: it.tipo || '',
+    presupuestoItemId: it.presupuestoItemId ?? (it.id !== undefined && it.id !== null ? String(it.id) : null),
+    listaItemId: it.listaItemId || null,
   }));
 
 export const calcularTotales = (lineas = []) => {

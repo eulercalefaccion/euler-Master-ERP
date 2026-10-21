@@ -217,6 +217,9 @@ exports.arcaEmitirFactura = runtime.https.onCall(async (data, context) => {
         cantidad: Number(l.cantidad),
         precioUnitario: arca.round2(Number(l.precioUnitario)),
         entregaPendiente: !!l.entregaPendiente,
+        // Trazabilidad opcional con el ítem del presupuesto y el artículo de la lista de precios
+        presupuestoItemId: l.presupuestoItemId ? String(l.presupuestoItemId).slice(0, 80) : null,
+        listaItemId: l.listaItemId ? String(l.listaItemId).slice(0, 80) : null,
       }))
       .filter((l) => l.descripcion && l.cantidad > 0 && l.precioUnitario > 0);
     if (!lineas.length) throw new HttpsError('invalid-argument', 'El comprobante no tiene líneas válidas.');
@@ -389,6 +392,8 @@ async function persistir(db, c) {
       centroCosto: 'General',
       obraId: c.obraId,
       entregaPendiente: !!l.entregaPendiente,
+      presupuestoItemId: l.presupuestoItemId || null,
+      listaItemId: l.listaItemId || null,
     })),
     estado: esNC ? 'aplicada' : 'pendiente',
     observaciones: c.observaciones,

@@ -8,6 +8,7 @@ import { db } from '../../services/firebaseConfig';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { getTipoCambio } from '../../services/tipoCambioService';
 import { calcularReservas } from '../../services/reservasStock';
+import { importeTarjeta } from '../../services/presupuestoAlcance';
 
 // ─── helpers ───────────────────────────────────────────────────────────────
 const fmt = (n) =>
@@ -160,7 +161,8 @@ const Dashboard = () => {
       const key = p.status || 'pendiente';
       if (map[key]) {
         map[key].count += 1;
-        map[key].total += Number(p.amount) || 0;
+        // Aprobado con detalle por ítem: suma lo aprobado; resto (y registros históricos): el monto de siempre
+        map[key].total += importeTarjeta(p);
       }
     });
     return map;

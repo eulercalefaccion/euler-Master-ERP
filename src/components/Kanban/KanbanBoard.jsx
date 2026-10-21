@@ -12,17 +12,18 @@ import CrmListView from './CrmListView';
 import CrmMapView from './CrmMapView';
 import BalanceTermico from './BalanceTermico';
 import FolletosManagerModal from './FolletosManagerModal';
+import AprobacionModal from './AprobacionModal';
+import GestionComercialTab from './GestionComercialTab';
 import { db, storage } from '../../services/firebaseConfig';
-import { dbJornadas } from '../../services/firebaseJornadas';
 import {
   collection, onSnapshot, query, addDoc, updateDoc, deleteDoc, doc,
-  serverTimestamp, setDoc, arrayUnion, arrayRemove, getDocs, where
+  serverTimestamp, arrayUnion, arrayRemove, getDocs, where
 } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { getTipoCambio, calcularPrecios, calcularPrecioManoDeObra, IVA } from '../../services/tipoCambioService';
 import { generarPDFPresupuesto } from '../../services/pdfPresupuesto';
 import { calcularDescuentosPresupuesto, getItemCategory } from '../../services/descuentosService';
-import { getNextSequenceValue, formatPresupuestoNumber, formatObraNumber } from '../../utils/sequenceGenerator';
+import { getNextSequenceValue, formatPresupuestoNumber } from '../../utils/sequenceGenerator';
 import { useAuth } from '../../context/AuthContext';
 
 // ─── Cálculo de precio base por ítem (Neto sin IVA) ─────────────────────────
@@ -253,10 +254,8 @@ const KanbanBoard = () => {
   const [isRevModalOpen, setIsRevModalOpen]   = useState(false);
   const [pendingMove, setPendingMove]         = useState(null);
 
-  // Approval form
-  const [paymentStatus, setPaymentStatus] = useState('Pendiente');
-  const [paymentAmount, setPaymentAmount] = useState('');
-  const [isApproving, setIsApproving]     = useState(false);
+  // Approval form (AprobacionModal): presupuesto a aprobar al usar «Aprobar ítems pendientes» desde una tarjeta ya aprobada
+  const [approvalLeadId, setApprovalLeadId] = useState(null);
 
   // Return modal (when moving backward)
   const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
@@ -1648,141 +1647,21 @@ const KanbanBoard = () => {
     }
   };
 
-  // ─── Approval: reserva stock + crea obra ERP + crea obra Jornadas ──────────
-  const confirmApproval = async () => {
-    if (!pendingMove) return;
-    const { draggableId } = pendingMove;
-    const item = data.items[draggableId];
-    if (!item) return;
-    setIsApproving(true);
-
-    try {
-      // 1. Actualizar presupuesto a "aprobado"
-      const now = new Date().toISOString();
-      const nombre = currentUser?.name || currentUser?.email || 'Desconocido';
-      const moveEvent = {
-        status: 'aprobado',
-        date: now,
-        user: currentUser?.email || 'Desconocido',
-        displayName: nombre,
-      };
-      const bitacoraAprobado = {
-        tipo: 'aprobado',
-        icono: '🏆',
-        descripcion: `Presupuesto aprobado y convertido en Obra por ${nombre}`,
-        fecha: now,
-        usuario: nombre,
-        email: currentUser?.email || 'Desconocido',
-      };
-      await updateDoc(doc(db, 'presupuestos', draggableId), {
-        status: 'aprobado',
-        paymentStatus: paymentStatus,
-        amount: paymentAmount ? Math.round(parseFloat(String(paymentAmount).replace(',', '.')) || 0) : (item.amount || 0),
-        statusHistory: arrayUnion(moveEvent),
-        bitacora: arrayUnion(bitacoraAprobado),
-      });
-
-      // 2. Reserva de stock: aprobar un presupuesto NO reserva stock.
-      //    Solo se reserva lo facturado con entrega pendiente y totalmente cobrado (services/reservasStock.js).
-
-      // 3. Crear obra en Euler Jornadas
-      const jornadasObraId = `ob_erp_${Date.now()}`;
-      const obraNombre = `${item.name} — ${item.paramSistema || 'Instalación'}`;
-      try {
-        await setDoc(doc(dbJornadas, 'obras', jornadasObraId), {
-          id:            jornadasObraId,
-          nombre:        obraNombre,
-          activa:        true,
-          lat:           null,
-          lng:           null,
-          radio:         200,
-          radioTolerancia: 50,
-          erpObraId:     null, // se actualizará después
-          creadaDesdeERP: true,
-          creadaEn:      new Date().toISOString(),
-        });
-      } catch (e) { console.warn('Error al crear obra en Jornadas:', e); }
-
-      // 3.5 Generar número de OT secuencial
-      let otNumber = '';
-      try {
-        const seq = await getNextSequenceValue('obrasSeq');
-        otNumber = formatObraNumber(seq);
-      } catch (e) {
-        console.error("Error generando OT sequence:", e);
-        otNumber = `OT-${new Date().getFullYear()}-FALLBACK-${Math.floor(Math.random()*1000)}`;
-      }
-
-      // 4. Crear obra en ERP
-      const obraRef = await addDoc(collection(db, 'obras'), {
-        otNumber:       otNumber,
-        name:           obraNombre,
-        location:       item.direccionObra || item.location || 'S/D',
-        clientId:       item.clientId || '',
-        clientName:     item.name || 'S/D',
-        system:         item.paramSistema || 'S/D',
-        phase:          'Obra',
-        estado:         'Pendiente de Inicio',
-        progress:       0,
-        operarios:      '',
-        personal:       [],
-        quoteItems:     item.quoteItems || [],
-        presupuestoId:  draggableId,
-        presupuestoNum: item.presupuestoNumber || '',
-        presupuestoOrigen: item.presupuestoNumber || '', // Trazabilidad estricta
-        canal:          item.canal || 'iva',
-        jornadasObraId: jornadasObraId,
-        bitacoraPreview: `Vinculado al Presupuesto: ${item.presupuestoNumber || 'S/N'}. Aprobado.`,
-        bitacoraHistory: [{ texto: `Obra creada desde Presupuesto ${item.presupuestoNumber || ''}. Aprobado el ${new Date().toLocaleDateString('es-AR')}. OT generada: ${otNumber}`, fecha: new Date().toISOString() }],
-        fechaInicio:    '',
-        fechaFinEstimada: '',
-        fechaFinReal:   '',
-        archivos:       (item.archivos || []).map(a => ({ ...a, subidoEn: new Date().toISOString() })),
-        createdAt:      serverTimestamp(),
-
-        // Copy new CRM fields to Obra
-        tipoCliente:    item.tipoCliente || 'consumidor_final',
-        email:          item.email || '',
-        telefono:       item.telefono || '',
-        dni:            item.dni || '',
-        cuit:           item.cuit || '',
-        direccionCliente: item.direccionCliente || '',
-        contactoNombre: item.contactoNombre || '',
-        contactoTelefono: item.contactoTelefono || '',
-        arquitectos: item.arquitectos || [],
-        direccionObra:  item.direccionObra || '',
-        tipoObra:       item.tipoObra || 'VIVIENDA UNIFAMILIAR',
-        estadoObra:     item.estadoObra || 'OBRA NUEVA',
-        tipoProyecto:   item.tipoProyecto || 'LLAVE EN MANO (CAÑERIA+EQUIPOS+MANO DE OBRA)',
-        
-        // Facturación
-        facturacionIgualCliente: item.facturacionIgualCliente !== false,
-        facturacionNombre: item.facturacionNombre || '',
-        facturacionCuit: item.facturacionCuit || '',
-        facturacionDni: item.facturacionDni || '',
-        facturacionDireccion: item.facturacionDireccion || '',
-      });
-
-      // 5. Actualizar obra en Jornadas con el ID del ERP
-      try {
-        await updateDoc(doc(dbJornadas, 'obras', jornadasObraId), { erpObraId: obraRef.id });
-      } catch (e) { console.warn('No se pudo actualizar erpObraId en Jornadas:', e); }
-
-    } catch (err) {
-      console.error('Error al confirmar venta:', err);
-      alert('Error en la base de datos al cerrar el presupuesto: ' + err.message);
-    }
-
-    closeApprovalModal();
-    setIsApproving(false);
-  };
-
+  // ─── Aprobación parcial o total por ítem (AprobacionModal + services/aprobacionesService.js) ──────────
+  // Crea / actualiza la obra ERP y Euler Jornadas solo con el alcance aprobado. Aprobar NO reserva stock
+  // (regla vigente: reserva lo aprobado, facturado con entrega posterior y cobrado — services/reservasStock.js).
+  // Cancelar no persiste nada: la columna sale de presupuesto.status (onSnapshot) y la tarjeta vuelve a su lugar.
   const closeApprovalModal = () => {
     setIsApprovalOpen(false);
     setPendingMove(null);
-    setPaymentStatus('Pendiente');
-    setPaymentAmount('');
+    setApprovalLeadId(null);
   };
+  const abrirAprobarPendientes = (leadId) => {
+    setPendingMove(null);
+    setApprovalLeadId(leadId);
+    setIsApprovalOpen(true);
+  };
+  const approvalLead = isApprovalOpen ? data.items[pendingMove?.draggableId || approvalLeadId] : null;
 
   const handleCloseModal = () => {
     // Check for unsaved changes in Cotizador
@@ -2194,47 +2073,14 @@ const KanbanBoard = () => {
       {/* ──────────────────────────────────────────────────────────────────────
           MODAL: Aprobar presupuesto
       ────────────────────────────────────────────────────────────────────── */}
-      {isApprovalOpen && (
-        <div style={{ position:'fixed',top:0,left:0,right:0,bottom:0,backgroundColor:'rgba(0,0,0,0.5)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000 }}>
-          <div className="card" style={{ width:'440px',display:'flex',flexDirection:'column',gap:'1rem' }}>
-            <h3 style={{ margin:0,display:'flex',alignItems:'center',gap:'0.5rem' }}>
-              <Target size={20} color="var(--success)" /> Aprobar Presupuesto
-            </h3>
-            <p style={{ fontSize:'0.875rem',color:'var(--text-secondary)',margin:0 }}>
-              Al aprobar:
-              <br />• Se crea la <strong>Obra en el ERP</strong> y en <strong>Euler Jornadas</strong>
-              <br />• Los artículos del presupuesto quedan <strong>reservados en stock</strong>
-            </p>
-            <div className="form-group">
-              <label className="form-label">Estado de Pago</label>
-              <select className="input-field" value={paymentStatus} onChange={e => setPaymentStatus(e.target.value)}>
-                <option value="Pendiente">Pendiente de Pago</option>
-                <option value="Seña Abonada">Seña Abonada</option>
-                <option value="Pago Completo">Pago Completo (100%)</option>
-              </select>
-            </div>
-            {paymentStatus !== 'Pendiente' && (
-              <div className="form-group">
-                <label className="form-label">Monto Abonado ($)</label>
-                <input 
-                  type="text" 
-                  inputMode="decimal" 
-                  className="input-field" 
-                  placeholder="Ej: 500000" 
-                  value={paymentAmount} 
-                  onChange={e => setPaymentAmount(e.target.value)} 
-                  onFocus={e => e.target.select()} 
-                />
-              </div>
-            )}
-            <div style={{ display:'flex',justifyContent:'flex-end',gap:'0.5rem' }}>
-              <button className="btn btn-secondary" onClick={closeApprovalModal} disabled={isApproving}>Cancelar</button>
-              <button className="btn btn-primary" onClick={confirmApproval} disabled={isApproving}>
-                {isApproving ? 'Procesando...' : '✓ Cerrar Venta y Generar Obra'}
-              </button>
-            </div>
-          </div>
-        </div>
+      {isApprovalOpen && approvalLead && (
+        <AprobacionModal
+          presupuesto={approvalLead}
+          listaItems={listaItems}
+          currentUser={currentUser}
+          modo={pendingMove ? 'mover' : 'pendientes'}
+          onClose={closeApprovalModal}
+        />
       )}
 
       {/* ──────────────────────────────────────────────────────────────────────
@@ -2895,12 +2741,18 @@ const KanbanBoard = () => {
                       🏷️ Descuento Comercial
                     </span>
                   )}
+                  {selectedLead.status === 'aprobado' && (data.items[selectedLead.id]?.aprobacionResumen?.tipo || 'historica') !== 'total' && (
+                    <button onClick={() => abrirAprobarPendientes(selectedLead.id)} title="Aprobar ítems o cantidades que el cliente todavía no aprobó (misma obra)" style={{ fontSize:'0.7rem',padding:'0.15rem 0.55rem',backgroundColor:'#ecfdf5',color:'#047857',border:'1px solid #a7f3d0',borderRadius:'12px',fontWeight:'700',cursor:'pointer' }}>
+                      {data.items[selectedLead.id]?.aprobacionResumen ? 'Aprobación parcial · ' : ''}Aprobar ítems pendientes
+                    </button>
+                  )}
                 </h3>
                 <div style={{ display:'flex',gap:'0.5rem' }}>
                   <button onClick={() => setDetailTab('cotizador')} style={{ padding:'0.35rem 0.75rem',fontSize:'0.85rem',fontWeight:'600',color:detailTab==='cotizador'?'var(--primary-600)':'var(--text-secondary)',backgroundColor:detailTab==='cotizador'?'var(--primary-50)':'transparent',border:'none',borderRadius:'6px',cursor:'pointer',transition:'all 0.2s' }}>💰 Cotizador</button>
                   <button onClick={() => setDetailTab('balance')} style={{ padding:'0.35rem 0.75rem',fontSize:'0.85rem',fontWeight:'600',color:detailTab==='balance'?'var(--primary-600)':'var(--text-secondary)',backgroundColor:detailTab==='balance'?'var(--primary-50)':'transparent',border:'none',borderRadius:'6px',cursor:'pointer',transition:'all 0.2s' }}>🌡️ Balance Térmico</button>
                   <button onClick={() => setDetailTab('datos')} style={{ padding:'0.35rem 0.75rem',fontSize:'0.85rem',fontWeight:'600',color:detailTab==='datos'?'var(--primary-600)':'var(--text-secondary)',backgroundColor:detailTab==='datos'?'var(--primary-50)':'transparent',border:'none',borderRadius:'6px',cursor:'pointer',transition:'all 0.2s' }}>📋 Datos del Lead</button>
                   <button onClick={() => setDetailTab('historial')} style={{ padding:'0.35rem 0.75rem',fontSize:'0.85rem',fontWeight:'600',color:detailTab==='historial'?'var(--primary-600)':'var(--text-secondary)',backgroundColor:detailTab==='historial'?'var(--primary-50)':'transparent',border:'none',borderRadius:'6px',cursor:'pointer',transition:'all 0.2s' }}>🕰️ Historial {(selectedLead.revisionsHistory?.length||0)>0?` (${selectedLead.revisionsHistory.length})`:''}</button>
+                  <button onClick={() => setDetailTab('comercial')} style={{ padding:'0.35rem 0.75rem',fontSize:'0.85rem',fontWeight:'600',color:detailTab==='comercial'?'var(--primary-600)':'var(--text-secondary)',backgroundColor:detailTab==='comercial'?'var(--primary-50)':'transparent',border:'none',borderRadius:'6px',cursor:'pointer',transition:'all 0.2s' }}>🧾 Gestión comercial</button>
                 </div>
               </div>
               <div style={{ display:'flex',alignItems:'center',gap:'1rem' }}>
@@ -3946,6 +3798,13 @@ const KanbanBoard = () => {
                 </div>
               )}
 
+              {detailTab === 'comercial' && (
+                <GestionComercialTab
+                  presupuesto={data.items[selectedLead.id] || selectedLead}
+                  onAprobarPendientes={() => abrirAprobarPendientes(selectedLead.id)}
+                />
+              )}
+
               {detailTab === 'balance' && (
                 <BalanceTermico
                   selectedLead={selectedLead}
@@ -4498,7 +4357,7 @@ const KanbanBoard = () => {
               <button onClick={deleteLead} style={{ display:'flex',alignItems:'center',gap:'0.35rem',background:'none',border:'none',color:'#dc2626',cursor:'pointer',fontSize:'0.8rem',fontWeight:'600' }}>
                 <Trash2 size={16}/> Eliminar Lead
               </button>
-              {detailTab !== 'historial' && (
+              {detailTab !== 'historial' && detailTab !== 'comercial' && (
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                   <button 
                     onClick={handleSoftDeleteLead}

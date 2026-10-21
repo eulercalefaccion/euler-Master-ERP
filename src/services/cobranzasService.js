@@ -99,9 +99,18 @@ export const emitirComprobanteX = async (p, user) => {
       unidad: l.unidad || '',
       entregaPendiente: !!l.entregaPendiente,
       listaItemId: l.listaItemId || null,
+      // Trazabilidad con el ítem del presupuesto (opcional)
+      presupuestoItemId: l.presupuestoItemId ? String(l.presupuestoItemId) : null,
+      // Cantidad que queda como material a favor (menor si parte ya se entregó antes sin facturar)
+      pendienteEntrega: l.cantidadPendienteEntrega !== undefined && l.cantidadPendienteEntrega !== null ? Number(l.cantidadPendienteEntrega) : null,
     }))
     .filter((l) => l.descripcion && l.cantidad > 0 && l.precioUnitario > 0)
     .map((l) => ({ ...l, neto: r2(l.cantidad * l.precioUnitario) }));
+  const pendientesEntrega = lineas
+    .filter((l) => l.entregaPendiente)
+    .map((l) => ({ ...l, cantidad: l.pendienteEntrega ?? l.cantidad }))
+    .filter((l) => l.cantidad > 0);
+  lineas.forEach((l) => { delete l.pendienteEntrega; });
   if (!lineas.length) throw new Error('El comprobante no tiene líneas válidas.');
   const cli = datosCliente(p.cliente);
   if (!cli.clienteNombre) throw new Error('Falta el cliente.');
@@ -160,10 +169,9 @@ export const emitirComprobanteX = async (p, user) => {
       empresaId: EMPRESA_EULER, fecha, concepto: `Venta FAX ${numeroOriginal} - ${cli.clienteNombre}`, origenDoc: `VENTA-${ref.id}`, origenId: ref.id,
       lineas: [{ ...CXC, debe: total, haber: 0, obraId: comprobante.obraId }, { ...VENTAS, debe: 0, haber: total, obraId: comprobante.obraId }],
     }));
-    const pendientes = lineas.filter((l) => l.entregaPendiente);
-    if (pendientes.length) {
+    if (pendientesEntrega.length) {
       tx.set(doc(collection(db, 'materiales_a_favor')), materialDoc({
-        empresaId: EMPRESA_EULER, cli, comprobanteId: ref.id, comprobanteColeccion: 'comprobantes_venta', comprobanteNumero: `FAX ${numeroOriginal}`, obraId: comprobante.obraId, fecha, lineas: pendientes, user,
+        empresaId: EMPRESA_EULER, cli, comprobanteId: ref.id, comprobanteColeccion: 'comprobantes_venta', comprobanteNumero: `FAX ${numeroOriginal}`, obraId: comprobante.obraId, fecha, lineas: pendientesEntrega, user,
       }));
     }
     return { ...comprobante, id: ref.id, createdAt: null };
@@ -324,6 +332,7 @@ function materialDoc({ empresaId, cli, comprobanteId = null, comprobanteColeccio
     items: lineas.map((l) => ({
       descripcion: l.descripcion, cantidad: Number(l.cantidad) || 0, cantidadEntregada: 0, unidad: l.unidad || '',
       precioUnitario: r2(l.precioUnitario), listaItemId: l.listaItemId || null,
+      presupuestoItemId: l.presupuestoItemId ? String(l.presupuestoItemId) : null,
     })),
     entregas: [],
     estado: 'pendiente',

@@ -1,20 +1,24 @@
 import React from 'react';
 import { Draggable } from '@hello-pangea/dnd';
 import { MapPin, Calendar, CheckCircle, Tag, DollarSign, FileText } from 'lucide-react';
+import { importeTarjeta } from '../../services/presupuestoAlcance';
 
 const KanbanCard = ({ item, index, onCardClick, globalLabels = {} }) => {
   const getPaymentBadge = (status) => {
     switch(status) {
       case 'Pago Completo':
-        return <span className="badge badge-success" style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}><CheckCircle size={12}/> Pagado</span>;
+        return <span className="badge badge-success" title="Declaración manual al aprobar (referida al alcance aprobado). No es un registro de cobro." style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}><CheckCircle size={12}/> Pagado</span>;
       case 'Seña Abonada':
-        return <span className="badge badge-warning" style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}><DollarSign size={12}/> Seña</span>;
+        return <span className="badge badge-warning" title="Declaración manual al aprobar (referida al alcance aprobado). No es un registro de cobro." style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}><DollarSign size={12}/> Seña</span>;
       default:
         return null;
     }
   };
 
   const hasRevisions = (item.revision || 0) > 0;
+  // Aprobación con detalle por ítem: se muestra lo aprobado (no el total de la tarjeta)
+  const resumenAprob = item.status === 'aprobado' ? item.aprobacionResumen : null;
+  const montoTarjeta = importeTarjeta(item);
   const isCanal2 = item.canal === 'canal2';
 
   return (
@@ -107,9 +111,14 @@ const KanbanCard = ({ item, index, onCardClick, globalLabels = {} }) => {
               <Tag size={10} />
               {item.paramSistema || item.type || 'S/D'}
             </span>
-            {item.amount > 0 && (
-              <span style={{ fontSize: '0.7rem', fontWeight: '600', padding: '0.1rem 0.5rem', color: 'var(--primary-700)', backgroundColor: '#f0f9ff', borderRadius: '4px', border: '1px solid #bae6fd' }}>
-                $ {item.amount.toLocaleString('es-AR')}
+            {montoTarjeta > 0 && (
+              <span title={resumenAprob ? `Aprobado $ ${Math.round(resumenAprob.importeAprobado).toLocaleString('es-AR')} de $ ${Math.round(resumenAprob.importeCotizado).toLocaleString('es-AR')} cotizados` : undefined} style={{ fontSize: '0.7rem', fontWeight: '600', padding: '0.1rem 0.5rem', color: 'var(--primary-700)', backgroundColor: '#f0f9ff', borderRadius: '4px', border: '1px solid #bae6fd' }}>
+                $ {Math.round(montoTarjeta).toLocaleString('es-AR')}
+              </span>
+            )}
+            {resumenAprob && (
+              <span style={{ fontSize: '0.65rem', fontWeight: '700', padding: '0.1rem 0.4rem', borderRadius: '4px', color: resumenAprob.tipo === 'total' ? '#166534' : '#92400e', backgroundColor: resumenAprob.tipo === 'total' ? '#f0fdf4' : '#fffbeb', border: `1px solid ${resumenAprob.tipo === 'total' ? '#bbf7d0' : '#fde68a'}` }}>
+                {resumenAprob.tipo === 'total' ? 'Aprob. total' : `Aprob. parcial ${resumenAprob.importeCotizado > 0 ? Math.round((resumenAprob.importeAprobado / resumenAprob.importeCotizado) * 100) : 0}%`}
               </span>
             )}
             {item.status === 'aprobado' && (
