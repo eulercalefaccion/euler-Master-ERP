@@ -206,3 +206,7 @@ Tu respuesta DEBE ser ÚNICAMENTE un JSON válido sin markdown ni texto extra. L
 const arcaFunctions = require('./arcaFunctions');
 exports.arcaEstado = arcaFunctions.arcaEstado;
 exports.arcaEmitirFactura = arcaFunctions.arcaEmitirFactura;
+
+// ─── Formulario público de solicitud de presupuesto (ver publicFormFunctions.js) ─
+const publicFormFunctions = require('./publicFormFunctions');
+exports.crearSolicitudPresupuesto = publicFormFunctions.crearSolicitudPresupuesto;

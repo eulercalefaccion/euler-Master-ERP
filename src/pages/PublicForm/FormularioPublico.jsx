@@ -3,11 +3,10 @@ import { Camera, Video, UploadCloud, X, CheckCircle, Loader, MapPin, User } from
 import './FormularioPublico.css';
 import MapPicker from '../../components/MapPicker/MapPicker';
 
-import { db, storage, auth } from '../../services/firebaseConfig';
-import { collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc, doc, arrayUnion } from 'firebase/firestore';
+import { storage, auth, functions } from '../../services/firebaseConfig';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { signInAnonymously } from 'firebase/auth';
-import { getNextSequenceValue, formatPresupuestoNumber } from '../../utils/sequenceGenerator';
+import { httpsCallable } from 'firebase/functions';
 
 const FormularioPublico = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -212,129 +211,37 @@ const FormularioPublico = () => {
         size: a.size
       }));
 
-      // 2. Obtener próximo número de presupuesto
-      let presupuestoNumber = '';
-      try {
-        const seq = await getNextSequenceValue('presupuestosSeq');
-        presupuestoNumber = formatPresupuestoNumber(seq);
-      } catch (e) {
-        console.error("Error generando PRE sequence:", e);
-        const now = new Date();
-        const dateStr = `${now.getFullYear().toString().slice(-2)}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
-        presupuestoNumber = `PRE-${dateStr}-FALLBACK`;
-      }
-
-      // Buscar si el cliente ya existe en la base de presupuestos por CUIT o Email
-      const leadsRef = collection(db, 'presupuestos');
-      let existingLeads = [];
-      
-      if (formData.documento) {
-        const qCuit = query(leadsRef, where("cuit", "==", formData.documento));
-        const qsCuit = await getDocs(qCuit);
-        qsCuit.forEach(d => existingLeads.push({ id: d.id, ...d.data() }));
-      }
-      
-      if (existingLeads.length === 0 && formData.email) {
-        const qEmail = query(leadsRef, where("email", "==", formData.email));
-        const qsEmail = await getDocs(qEmail);
-        qsEmail.forEach(d => existingLeads.push({ id: d.id, ...d.data() }));
-      }
-
-      // 3. Preparar datos para el CRM
-      const isProf = ['Arquitecto/Estudio de Arquitectura', 'Constructora', 'Desarrolladora'].includes(formData.tipoContacto);
-      
-      const leadData = {
-        name: isProf && formData.estudioArquitectura
-          ? `${formData.estudioArquitectura} - ${formData.nombre} ${formData.apellido}`.trim()
-          : `${formData.nombre} ${formData.apellido}`.trim(),
+      // 2. Enviar al servidor (Cloud Function). El cliente no tiene cuenta en el ERP,
+      //    así que el número PRE, la detección de cliente existente, el alta del lead
+      //    y la notificación se hacen del lado del servidor (ver functions/publicFormFunctions.js).
+      const lead = {
+        nombre: formData.nombre,
+        apellido: formData.apellido,
+        tipoContacto: formData.tipoContacto,
         telefono: `${formData.codArea.trim()}-${formData.telefonoNumero.trim()}`,
         email: formData.email,
         cuit: formData.documento,
         tipoCliente: formData.tipoContacto === 'Otro' ? formData.tipoContactoOtro : formData.tipoContacto,
         estudioArquitectura: formData.estudioArquitectura || null,
-        empresaOEstudio: formData.estudioArquitectura || null,
         tipoObra: formData.tipoObra === 'Otro' ? formData.tipoObraOtro : formData.tipoObra,
         estadoObra: formData.estadoObra === 'Otro' ? formData.estadoObraOtro : formData.estadoObra,
-        
+
         direccionObra: getDireccionCompleta(),
-        location: getDireccionCompleta(), // Usado por KanbanBoard
         latitudObra: formData.ubicacionLat,
         longitudObra: formData.ubicacionLng,
-        
+
         paramSistema: formData.sistema === 'OTRO (COMPLETE ESCRIBIENDO)' ? formData.sistemaOtro : formData.sistema,
         notasLead: formData.notasLead,
-        
+
         // Datos específicos de profesional o dueño (contacto secundario)
         contactoNombre: formData.profesionalPropietarioNombre,
         contactoTelefono: formData.profesionalPropietarioTelefono,
-        
-        // Datos internos
-        status: 'pendiente', // Columna: Presupuesto Pendiente
-        canal: 'iva',
-        canalLlegada: 'Formulario Web',
-        presupuestoNumber: presupuestoNumber,
-        createdAt: serverTimestamp(),
-        date: new Date().toLocaleDateString('es-AR'),
-        amount: 0,
-        quoteItems: [],
-        // KPI: Bitácora de eventos con timestamp exacto del envío
-        statusHistory: [{
-          status: 'pendiente',
-          date: new Date().toISOString(),
-          user: 'sistema',
-          displayName: 'Formulario Web',
-          descripcion: 'Solicitud recibida por formulario web del cliente'
-        }],
-        bitacora: [{
-          tipo: 'solicitud_web',
-          icono: '📋',
-          descripcion: 'Cliente completó el formulario de solicitud de presupuesto vía web',
-          fecha: new Date().toISOString(),
-          usuario: 'Formulario Web',
-          email: 'sistema'
-        }],
+
         archivos: urlsAdjuntos
       };
 
-      if (existingLeads.length > 0) {
-        leadData.bitacora.push({
-          tipo: 'cliente_existente',
-          icono: '🔗',
-          descripcion: `Cliente ya registrado en el sistema (${existingLeads.length} obras previas). Vinculado por CUIT/Email.`,
-          fecha: new Date().toISOString(),
-          usuario: 'Sistema',
-          email: 'sistema'
-        });
-      }
-
-      // 4. Guardar Lead en presupuestos
-      await addDoc(collection(db, 'presupuestos'), leadData);
-
-      // Agregar evento en la bitácora de las obras existentes del cliente
-      if (existingLeads.length > 0) {
-        for (let el of existingLeads) {
-          const bitacoraEvent = {
-            tipo: 'nueva_obra_solicitada',
-            icono: '🔗',
-            descripcion: `El cliente solicitó una nueva obra desde la web (Presupuesto: ${presupuestoNumber}).`,
-            fecha: new Date().toISOString(),
-            usuario: 'Sistema',
-            email: 'sistema'
-          };
-          await updateDoc(doc(db, 'presupuestos', el.id), {
-            bitacora: arrayUnion(bitacoraEvent)
-          });
-        }
-      }
-
-      // 5. Notificación interna (ERP)
-      await addDoc(collection(db, 'notifications'), {
-        title: '¡Nuevo Presupuesto Pendiente!',
-        message: `Recibiste una solicitud web de ${leadData.name} (${leadData.paramSistema}).`,
-        type: 'new_lead',
-        read: false,
-        createdAt: serverTimestamp()
-      });
+      const crearSolicitud = httpsCallable(functions, 'crearSolicitudPresupuesto');
+      await crearSolicitud({ lead });
 
       setIsSuccess(true);
     } catch (error) {
