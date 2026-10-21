@@ -16,9 +16,9 @@ import { db, storage } from '../../services/firebaseConfig';
 import { dbJornadas } from '../../services/firebaseJornadas';
 import {
   collection, onSnapshot, query, addDoc, updateDoc, deleteDoc, doc,
-  serverTimestamp, setDoc, arrayUnion, getDocs, where
+  serverTimestamp, setDoc, arrayUnion, arrayRemove, getDocs, where
 } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { getTipoCambio, calcularPrecios, calcularPrecioManoDeObra, IVA } from '../../services/tipoCambioService';
 import { generarPDFPresupuesto } from '../../services/pdfPresupuesto';
 import { calcularDescuentosPresupuesto, getItemCategory } from '../../services/descuentosService';
@@ -449,6 +449,10 @@ const KanbanBoard = () => {
   const docClienteInputRef = useRef(null);
   const [isUploadingDocCliente, setIsUploadingDocCliente] = useState(false);
   const [uploadDocProgress, setUploadDocProgress] = useState(0);
+
+  // Archivos adjuntos (planos, fotos, notas) cargados manualmente por el equipo
+  const archivosInputRef = useRef(null);
+  const [archivosSubiendo, setArchivosSubiendo] = useState([]); // [{ id, nombre, progress }]
 
   // Kanban horizontal scroll sync
   const kanbanContainerRef = useRef(null);
@@ -1349,6 +1353,137 @@ const KanbanBoard = () => {
         }
       }
     );
+  };
+
+  // ─── Archivos adjuntos (carga manual) ───────────────────────────────────────
+  // Para cuando el cliente no pudo subir los archivos en el formulario web y los
+  // mandó por WhatsApp / email: el equipo los sube acá y quedan en el presupuesto
+  // (y en la obra vinculada, si ya fue aprobado).
+  const MAX_ARCHIVO_MB = 50;
+
+  const tipoArchivo = (archivo) => {
+    const t = archivo.tipo || archivo.type || '';
+    if (t === 'imagen' || t === 'image' || t.startsWith('image/')) return 'imagen';
+    if (t === 'video' || t.startsWith('video/')) return 'video';
+    return 'documento';
+  };
+
+  const handleArchivosUpload = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (e.target) e.target.value = '';
+    if (!files.length || !selectedLead) return;
+
+    const leadId = selectedLead.id;
+    const grandes = files.filter(f => f.size > MAX_ARCHIVO_MB * 1024 * 1024);
+    if (grandes.length) {
+      alert(`Estos archivos superan los ${MAX_ARCHIVO_MB} MB y no se subirán:\n\n${grandes.map(f => '• ' + f.name).join('\n')}`);
+    }
+    const validos = files.filter(f => f.size <= MAX_ARCHIVO_MB * 1024 * 1024);
+    const nombreUsuario = currentUser?.name || currentUser?.email || 'Desconocido';
+
+    validos.forEach(file => {
+      const uploadId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+      const storageRef = ref(storage, `presupuestos/${leadId}/archivos/${uploadId}_${safeName}`);
+      const task = uploadBytesResumable(storageRef, file, file.type ? { contentType: file.type } : undefined);
+
+      setArchivosSubiendo(prev => [...prev, { id: uploadId, nombre: file.name, progress: 0 }]);
+      const quitar = () => setArchivosSubiendo(prev => prev.filter(a => a.id !== uploadId));
+
+      task.on('state_changed',
+        (snap) => {
+          const progress = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
+          setArchivosSubiendo(prev => prev.map(a => a.id === uploadId ? { ...a, progress } : a));
+        },
+        (err) => {
+          console.error('Error subiendo archivo adjunto:', err);
+          alert(`Error al subir "${file.name}": ${err.message}`);
+          quitar();
+        },
+        async () => {
+          try {
+            const url = await getDownloadURL(task.snapshot.ref);
+            const archivo = {
+              nombre: file.name,
+              name: file.name,
+              url,
+              tipo: tipoArchivo({ type: file.type }),
+              type: file.type || '',
+              size: file.size,
+              storagePath: storageRef.fullPath,
+              subidoEn: new Date().toISOString(),
+              subidoPor: currentUser?.email || 'desconocido',
+              subidoPorNombre: nombreUsuario,
+              origen: 'manual'
+            };
+
+            await updateDoc(doc(db, 'presupuestos', leadId), {
+              archivos: arrayUnion(archivo),
+              bitacora: arrayUnion({
+                tipo: 'archivo_adjunto',
+                icono: '📎',
+                descripcion: `${nombreUsuario} adjuntó el archivo: ${file.name}`,
+                fecha: new Date().toISOString(),
+                usuario: currentUser?.email,
+                email: currentUser?.email
+              })
+            });
+
+            // Sincronizar a la obra vinculada (si el presupuesto ya fue aprobado)
+            try {
+              const obrasSnap = await getDocs(query(collection(db, 'obras'), where('presupuestoId', '==', leadId)));
+              for (const o of obrasSnap.docs) {
+                await updateDoc(doc(db, 'obras', o.id), { archivos: arrayUnion(archivo) });
+              }
+            } catch (syncErr) {
+              console.warn('No se pudo sincronizar el archivo a la obra:', syncErr);
+            }
+
+            setSelectedLead(prev => prev && prev.id === leadId
+              ? { ...prev, archivos: [...(prev.archivos || []).filter(a => a.url !== archivo.url), archivo] }
+              : prev);
+          } catch (err) {
+            console.error('Error registrando archivo adjunto:', err);
+            alert(`El archivo "${file.name}" se subió pero no se pudo registrar en el presupuesto: ${err.message}`);
+          } finally {
+            quitar();
+          }
+        }
+      );
+    });
+  };
+
+  const handleArchivoDelete = async (archivo) => {
+    if (!selectedLead) return;
+    const nombre = archivo.nombre || archivo.name || 'archivo';
+    if (!window.confirm(`¿Quitar "${nombre}" de los archivos adjuntos?`)) return;
+    const leadId = selectedLead.id;
+    const nombreUsuario = currentUser?.name || currentUser?.email || 'Desconocido';
+    try {
+      await updateDoc(doc(db, 'presupuestos', leadId), {
+        archivos: arrayRemove(archivo),
+        bitacora: arrayUnion({
+          tipo: 'archivo_eliminado',
+          icono: '🗑️',
+          descripcion: `${nombreUsuario} quitó el archivo adjunto: ${nombre}`,
+          fecha: new Date().toISOString(),
+          usuario: currentUser?.email,
+          email: currentUser?.email
+        })
+      });
+      // Solo se borra físicamente lo subido manualmente desde el ERP
+      // (los adjuntos del formulario web pueden estar copiados en la obra).
+      if (archivo.origen === 'manual' && archivo.storagePath) {
+        const obrasSnap = await getDocs(query(collection(db, 'obras'), where('presupuestoId', '==', leadId))).catch(() => null);
+        const enObra = obrasSnap?.docs.some(o => (o.data().archivos || []).some(a => a.storagePath === archivo.storagePath));
+        if (!enObra) await deleteObject(ref(storage, archivo.storagePath)).catch(() => {});
+      }
+      setSelectedLead(prev => prev && prev.id === leadId
+        ? { ...prev, archivos: (prev.archivos || []).filter(a => a.url !== archivo.url) }
+        : prev);
+    } catch (err) {
+      alert('Error al quitar el archivo: ' + err.message);
+    }
   };
 
   // ─── Drag & drop ────────────────────────────────────────────────────────────
@@ -3724,29 +3859,89 @@ const KanbanBoard = () => {
                     </div>
                   )}
 
-                  {/* SECCIÓN 5: Archivos Adjuntos */}
-                  {selectedLead.archivos && selectedLead.archivos.length > 0 && (
-                    <div style={{ borderBottom:'1px solid var(--border-light)',paddingBottom:'1rem', marginTop: '0.5rem' }}>
-                      <h4 style={{ margin:'0 0 0.75rem 0',color:'var(--primary-700)',fontSize:'0.9rem',textTransform:'uppercase',letterSpacing:'0.05em' }}>Archivos Adjuntos ({selectedLead.archivos.length})</h4>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        {selectedLead.archivos.map((archivo, index) => (
-                          <div key={index} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0.75rem', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden' }}>
-                              <span style={{ fontSize: '1.2rem' }}>
-                                {archivo.tipo === 'image' ? '🖼️' : archivo.tipo === 'video' ? '🎥' : '📄'}
-                              </span>
-                              <span style={{ fontSize: '0.85rem', fontWeight: '500', color: '#334155', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={archivo.nombre || archivo.name}>
-                                {archivo.nombre || archivo.name}
-                              </span>
+                  {/* SECCIÓN 5: Archivos Adjuntos (del formulario web + cargados por el equipo) */}
+                  <div style={{ borderBottom:'1px solid var(--border-light)',paddingBottom:'1rem', marginTop: '0.5rem' }}>
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'0.5rem', marginBottom:'0.75rem', flexWrap:'wrap' }}>
+                      <h4 style={{ margin:0,color:'var(--primary-700)',fontSize:'0.9rem',textTransform:'uppercase',letterSpacing:'0.05em' }}>
+                        📎 Archivos Adjuntos ({(selectedLead.archivos || []).length})
+                      </h4>
+                      <button
+                        type="button"
+                        onClick={() => archivosInputRef.current?.click()}
+                        style={{ display:'flex', alignItems:'center', gap:'0.4rem', padding:'0.45rem 0.9rem', borderRadius:'8px', border:'2px dashed #93c5fd', background:'#eff6ff', color:'#2563eb', fontWeight:'600', fontSize:'0.8rem', cursor:'pointer' }}
+                      >
+                        <Upload size={15} /> Subir archivos
+                      </button>
+                    </div>
+                    <p style={{ margin:'0 0 0.75rem 0', fontSize:'0.75rem', color:'var(--text-secondary)' }}>
+                      Planos, fotos, videos, notas, etc. que el cliente haya enviado por WhatsApp o email. Máx {MAX_ARCHIVO_MB} MB por archivo.
+                    </p>
+                    <input
+                      type="file"
+                      multiple
+                      ref={archivosInputRef}
+                      style={{ display:'none' }}
+                      onChange={handleArchivosUpload}
+                    />
+
+                    {archivosSubiendo.length > 0 && (
+                      <div style={{ display:'flex', flexDirection:'column', gap:'0.4rem', marginBottom:'0.5rem' }}>
+                        {archivosSubiendo.map(a => (
+                          <div key={a.id} style={{ padding:'0.5rem 0.75rem', backgroundColor:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:'6px' }}>
+                            <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', marginBottom:'0.3rem' }}>
+                              <Loader size={14} style={{ animation: 'spin 1s linear infinite' }} />
+                              <span style={{ fontSize:'0.8rem', color:'#334155', flex:1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{a.nombre}</span>
+                              <span style={{ fontSize:'0.75rem', color:'var(--text-secondary)' }}>{a.progress}%</span>
                             </div>
-                            <a href={archivo.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.75rem', fontWeight: '600', color: '#2563eb', textDecoration: 'none', padding: '0.2rem 0.5rem', backgroundColor: '#eff6ff', borderRadius: '4px', border: '1px solid #bfdbfe' }}>
-                              Ver / Descargar
-                            </a>
+                            <div style={{ width:'100%', height:'5px', backgroundColor:'#e2e8f0', borderRadius:'3px', overflow:'hidden' }}>
+                              <div style={{ width:`${a.progress}%`, height:'100%', backgroundColor:'#2563eb', transition:'width 0.3s' }} />
+                            </div>
                           </div>
                         ))}
                       </div>
-                    </div>
-                  )}
+                    )}
+
+                    {(selectedLead.archivos || []).length === 0 && archivosSubiendo.length === 0 ? (
+                      <div style={{ padding:'0.75rem', textAlign:'center', color:'#94a3b8', fontSize:'0.8rem', fontStyle:'italic', border:'1px dashed #e2e8f0', borderRadius:'6px' }}>
+                        Sin archivos adjuntos.
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        {(selectedLead.archivos || []).map((archivo, index) => (
+                          <div key={archivo.url || index} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap:'0.5rem', padding: '0.5rem 0.75rem', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden', minWidth: 0 }}>
+                              <span style={{ fontSize: '1.2rem' }}>
+                                {tipoArchivo(archivo) === 'imagen' ? '🖼️' : tipoArchivo(archivo) === 'video' ? '🎥' : '📄'}
+                              </span>
+                              <div style={{ minWidth: 0 }}>
+                                <div style={{ fontSize: '0.85rem', fontWeight: '500', color: '#334155', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={archivo.nombre || archivo.name}>
+                                  {archivo.nombre || archivo.name}
+                                </div>
+                                <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
+                                  {archivo.origen === 'manual'
+                                    ? `Subido por ${archivo.subidoPorNombre || archivo.subidoPor || 'el equipo'}${archivo.subidoEn ? ' el ' + new Date(archivo.subidoEn).toLocaleDateString('es-AR') : ''}`
+                                    : 'Enviado por el cliente (formulario web)'}
+                                </div>
+                              </div>
+                            </div>
+                            <div style={{ display:'flex', alignItems:'center', gap:'0.35rem', flexShrink: 0 }}>
+                              <a href={archivo.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.75rem', fontWeight: '600', color: '#2563eb', textDecoration: 'none', padding: '0.2rem 0.5rem', backgroundColor: '#eff6ff', borderRadius: '4px', border: '1px solid #bfdbfe' }}>
+                                Ver / Descargar
+                              </a>
+                              <button
+                                type="button"
+                                onClick={() => handleArchivoDelete(archivo)}
+                                title="Quitar archivo"
+                                style={{ display:'flex', alignItems:'center', padding:'0.25rem', background:'transparent', border:'1px solid #fecaca', borderRadius:'4px', color:'#dc2626', cursor:'pointer' }}
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
 
                 </div>
               )}

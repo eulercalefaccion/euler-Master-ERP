@@ -40,6 +40,17 @@ service firebase.storage {
         && request.resource.size < 20 * 1024 * 1024;
     }
 
+    // ─── Archivos adjuntos de presupuestos cargados por el equipo ─
+    // (planos, fotos, videos que el cliente mandó por WhatsApp/email).
+    // Solo usuarios reales del ERP (no anónimos). Máx 50 MB.
+    match /presupuestos/{presupuestoId}/archivos/{fileId} {
+      allow create, update: if request.auth != null
+        && request.auth.token.firebase.sign_in_provider != 'anonymous'
+        && request.resource.size < 50 * 1024 * 1024;
+      allow delete: if request.auth != null
+        && request.auth.token.firebase.sign_in_provider != 'anonymous';
+    }
+
     // ─── Manuales técnicos ─────────────────────────────────────
     match /manuales/{fileId} {
       allow read: if request.auth != null;
