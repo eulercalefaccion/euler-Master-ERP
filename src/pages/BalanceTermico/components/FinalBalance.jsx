@@ -22,7 +22,8 @@ const FinalBalance = ({ environments, params, onBack, isEmbedded = false, onSave
       const updated = { ...prev };
       environments.filter(e => e.calefaccion).forEach(env => {
         if (!updated[env.id]) {
-          const isBathroom = env.nombre.toLowerCase().includes('baño') || env.nombre.toLowerCase().includes('toilette');
+          const nombreLower = (env.nombre || '').toLowerCase();
+          const isBathroom = nombreLower.includes('baño') || nombreLower.includes('toilette');
           updated[env.id] = env.choice || {
             type: isBathroom ? 'Toallero 80cm' : 'Radiador',
             customRads: null
@@ -87,8 +88,8 @@ const FinalBalance = ({ environments, params, onBack, isEmbedded = false, onSave
   // Cálculo de entornos
   const computedEnvs = useMemo(() => {
     return environments.filter(e => e.calefaccion).map(env => {
-      const superficie = parseFloat(env.superficie) || 0;
-      const altura = parseFloat(env.altura) || 2.8;
+      const superficie = parseFloat(String(env.superficie ?? '').replace(',', '.')) || 0;
+      const altura = parseFloat(String(env.altura ?? '').replace(',', '.')) || 2.8;
       const volumen = superficie * altura;
 
       const envCoef = (env.coefVolumetrico !== undefined && env.coefVolumetrico !== null && env.coefVolumetrico !== '' && !isNaN(parseFloat(env.coefVolumetrico)))
@@ -104,6 +105,10 @@ const FinalBalance = ({ environments, params, onBack, isEmbedded = false, onSave
 
       let envResult = {
         ...env,
+        nombre: env.nombre || '',
+        // Normalizar a número: el editor puede guardar strings (ej: "12,5")
+        superficie,
+        altura,
         coefVolumetrico: envCoef,
         volumen,
         transmisionW: transmisionKcal * 1.163,
@@ -163,7 +168,8 @@ const FinalBalance = ({ environments, params, onBack, isEmbedded = false, onSave
         const maxCircuito = params.longitudMaxTubo || 100;
         // La longitud mínima razonable que dijiste es 50m. Si es un local muy chico (ej un baño de 4m2 -> 20m), igual contará como 1 circuito, pero podría unirse a otro. Simplificamos a 1 circuito min.
         const circuitos = Math.max(1, Math.ceil(tuboTotal / maxCircuito));
-        const isBathroom = env.nombre.toLowerCase().includes('baño') || env.nombre.toLowerCase().includes('toilette');
+        const nombreLower = (env.nombre || '').toLowerCase();
+        const isBathroom = nombreLower.includes('baño') || nombreLower.includes('toilette');
         
         // Temp superficial aproximada: T_ambiente (20 o 22) + (W/m2 / 11)
         const tAmb = isBathroom ? 22 : 20;
@@ -176,7 +182,7 @@ const FinalBalance = ({ environments, params, onBack, isEmbedded = false, onSave
 
       return envResult;
     });
-  }, [environments, coef, margenMultiplier, esPisoRadiante, emitterChoices, rendimientoElemento, params.pasoTubo, params.longitudMaxTubo]);
+  }, [environments, coef, margenMultiplier, esPisoRadiante, emitterChoices, rendimientoElemento, params.pasoTubo, params.longitudMaxTubo, params.coefVolumetrico]);
 
   // Cálculos totales
   const totalKcal = computedEnvs.reduce((acc, e) => acc + e.totalKcal, 0);

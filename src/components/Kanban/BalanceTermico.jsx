@@ -372,7 +372,7 @@ export default function BalanceTermico({ selectedLead, setSelectedLead, db }) {
                         <tr key={env.id} style={{ borderTop: '1px solid var(--border-light)' }} title={env.motivo || ''}>
                           <td style={{ padding: '0.35rem 0.5rem' }}>{env.nombre}</td>
                           <td style={{ padding: '0.35rem 0.5rem' }}>{env.planta}</td>
-                          <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>{env.superficie ? env.superficie.toFixed(2) : '—'}</td>
+                          <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>{Number(env.superficie) ? Number(env.superficie).toFixed(2) : '—'}</td>
                           <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>{env.altura}</td>
                           <td style={{ padding: '0.35rem 0.5rem', textAlign: 'center' }}>{env.calefaccion ? 'Sí' : 'No'}</td>
                           <td style={{ padding: '0.35rem 0.5rem' }}>{env.confianza}</td>
